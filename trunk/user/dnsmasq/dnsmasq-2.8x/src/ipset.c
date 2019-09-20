@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
 #include <arpa/inet.h>
 #include <linux/version.h>
 #include <linux/netlink.h>
@@ -71,7 +72,7 @@ struct my_nfgenmsg {
 
 #define NL_ALIGN(len) (((len)+3) & ~(3))
 static const struct sockaddr_nl snl = { .nl_family = AF_NETLINK };
-static int ipset_sock;
+static int ipset_sock, old_kernel;
 static char *buffer;
 
 static inline void add_attr(struct nlmsghdr *nlh, uint16_t type, size_t len, const void *data)
@@ -86,7 +87,25 @@ static inline void add_attr(struct nlmsghdr *nlh, uint16_t type, size_t len, con
 
 void ipset_init(void)
 {
-  if ( 
+  struct utsname utsname;
+  int version;
+  char *split;
+  
+  if (uname(&utsname) < 0)
+    die(_("failed to find kernel version: %s"), NULL, EC_MISC);
+  
+  split = strtok(utsname.release, ".");
+  version = (split ? atoi(split) : 0);
+  split = strtok(NULL, ".");
+  version = version * 256 + (split ? atoi(split) : 0);
+  split = strtok(NULL, ".");
+  version = version * 256 + (split ? atoi(split) : 0);
+  old_kernel = (version < KERNEL_VERSION(2,6,32));
+  
+  if (old_kernel && (ipset_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) != -1)
+    return;
+  
+  if (!old_kernel && 
       (buffer = safe_malloc(BUFF_SZ)) &&
       (ipset_sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER)) != -1 &&
       (bind(ipset_sock, (struct sockaddr *)&snl, sizeof(snl)) != -1))
@@ -95,19 +114,14 @@ void ipset_init(void)
   die (_("failed to create IPset control socket: %s"), NULL, EC_MISC);
 }
 
-static int new_add_to_ipset(const char *setname, const struct all_addr *ipaddr, int af, int remove)
+static int new_add_to_ipset(const char *setname, const union all_addr *ipaddr, int af, int remove)
 {
   struct nlmsghdr *nlh;
   struct my_nfgenmsg *nfg;
   struct my_nlattr *nested[2];
   uint8_t proto;
-  int addrsz = INADDRSZ;
+  int addrsz = (af == AF_INET6) ? IN6ADDRSZ : INADDRSZ;
 
-#ifdef HAVE_IPV6
-  if (af == AF_INET6)
-    addrsz = IN6ADDRSZ;
-#endif
-    
   if (strlen(setname) >= IPSET_MAXNAMELEN) 
     {
       errno = ENAMETOOLONG;
@@ -138,7 +152,7 @@ static int new_add_to_ipset(const char *setname, const struct all_addr *ipaddr, 
   nested[1]->nla_type = NLA_F_NESTED | IPSET_ATTR_IP;
   add_attr(nlh, 
 	   (af == AF_INET ? IPSET_ATTR_IPADDR_IPV4 : IPSET_ATTR_IPADDR_IPV6) | NLA_F_NET_BYTEORDER,
-	   addrsz, &ipaddr->addr);
+	   addrsz, ipaddr);
   nested[1]->nla_len = (void *)buffer + NL_ALIGN(nlh->nlmsg_len) - (void *)nested[1];
   nested[0]->nla_len = (void *)buffer + NL_ALIGN(nlh->nlmsg_len) - (void *)nested[0];
 	
@@ -149,16 +163,65 @@ static int new_add_to_ipset(const char *setname, const struct all_addr *ipaddr, 
 }
 
 
-int add_to_ipset(const char *setname, const struct all_addr *ipaddr, int flags, int remove)
+static int old_add_to_ipset(const char *setname, const union all_addr *ipaddr, int remove)
 {
-  int ret, af = AF_INET;
-
-#ifdef HAVE_IPV6
-  if (flags & F_IPV6)
-      af = AF_INET6;
-#endif
+  socklen_t size;
+  struct ip_set_req_adt_get {
+    unsigned op;
+    unsigned version;
+    union {
+      char name[IPSET_MAXNAMELEN];
+      uint16_t index;
+    } set;
+    char typename[IPSET_MAXNAMELEN];
+  } req_adt_get;
+  struct ip_set_req_adt {
+    unsigned op;
+    uint16_t index;
+    uint32_t ip;
+  } req_adt;
   
-  ret = new_add_to_ipset(setname, ipaddr, af, remove);
+  if (strlen(setname) >= sizeof(req_adt_get.set.name)) 
+    {
+      errno = ENAMETOOLONG;
+      return -1;
+    }
+  
+  req_adt_get.op = 0x10;
+  req_adt_get.version = 3;
+  strcpy(req_adt_get.set.name, setname);
+  size = sizeof(req_adt_get);
+  if (getsockopt(ipset_sock, SOL_IP, 83, &req_adt_get, &size) < 0)
+    return -1;
+  req_adt.op = remove ? 0x102 : 0x101;
+  req_adt.index = req_adt_get.set.index;
+  req_adt.ip = ntohl(ipaddr->addr4.s_addr);
+  if (setsockopt(ipset_sock, SOL_IP, 83, &req_adt, sizeof(req_adt)) < 0)
+    return -1;
+  
+  return 0;
+}
+
+
+
+int add_to_ipset(const char *setname, const union all_addr *ipaddr, int flags, int remove)
+{
+  int ret = 0, af = AF_INET;
+
+  if (flags & F_IPV6)
+    {
+      af = AF_INET6;
+      /* old method only supports IPv4 */
+      if (old_kernel)
+	{
+	  errno = EAFNOSUPPORT ;
+	  ret = -1;
+	}
+    }
+  
+  if (ret != -1) 
+    ret = old_kernel ? old_add_to_ipset(setname, ipaddr, remove) : new_add_to_ipset(setname, ipaddr, af, remove);
+
   if (ret == -1)
      my_syslog(LOG_ERR, _("failed to update ipset %s: %s"), setname, strerror(errno));
 
