@@ -56,9 +56,6 @@ static void printhelp() {
 #else
 					"Usage: %s [options] [user@]host[/port] [command]\n"
 #endif
-#if defined AF_INET6 && AF_INET6 < AF_MAX
-					"-4,-6 Explicitly force IPv4 or IPv6 usage\n"
-#endif
 					"-p <remoteport>\n"
 					"-l <username>\n"
 					"-t    Allocate a pty\n"
@@ -182,7 +179,10 @@ void cli_getopts(int argc, char ** argv) {
 #ifndef DISABLE_SYSLOG
 	opts.usingsyslog = 0;
 #endif
-	cli_opts.ipfamily = AF_UNSPEC;
+	/* not yet
+	opts.ipv4 = 1;
+	opts.ipv6 = 1;
+	*/
 	opts.recv_window = DEFAULT_RECV_WINDOW;
 	opts.keepalive_secs = DEFAULT_KEEPALIVE;
 	opts.idle_timeout_secs = DEFAULT_IDLE_TIMEOUT;
@@ -213,16 +213,8 @@ void cli_getopts(int argc, char ** argv) {
 					}
 					cli_opts.always_accept_key = 1;
 					break;
-#if defined AF_INET6 && AF_INET6 < AF_MAX
-				case '4':
-					cli_opts.ipfamily = AF_INET;
-					break;
-				case '6':
-					cli_opts.ipfamily = AF_INET6;
-					break;
-#endif
 				case 'p': /* remoteport */
-					next = &cli_opts.remoteport;
+					next = (char**)&cli_opts.remoteport;
 					break;
 #if DROPBEAR_CLI_PUBKEY_AUTH
 				case 'i': /* an identityfile */
@@ -899,6 +891,7 @@ static void add_extendedopt(const char* origstr) {
 #ifndef DISABLE_SYSLOG
 			"\tUseSyslog\n"
 #endif
+			"\tPort\n"
 		);
 		exit(EXIT_SUCCESS);
 	}
@@ -916,6 +909,11 @@ static void add_extendedopt(const char* origstr) {
 		return;
 	}
 #endif
+
+	if (match_extendedopt(&optstr, "Port") == DROPBEAR_SUCCESS) {
+		cli_opts.remoteport = optstr;
+		return;
+	}
 
 	dropbear_log(LOG_WARNING, "Ignoring unknown configuration option '%s'", origstr);
 }

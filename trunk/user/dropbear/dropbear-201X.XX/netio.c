@@ -171,8 +171,8 @@ static void connect_try_next(struct dropbear_progress_connection *c) {
 }
 
 /* Connect via TCP to a host. */
-struct dropbear_progress_connection *connect_remote(int family, const char* remotehost,
-	const char* remoteport, connect_callback cb, void* cb_data,
+struct dropbear_progress_connection *connect_remote(const char* remotehost, const char* remoteport,
+	connect_callback cb, void* cb_data, 
 	const char* bind_address, const char* bind_port)
 {
 	struct dropbear_progress_connection *c = NULL;
@@ -190,7 +190,7 @@ struct dropbear_progress_connection *connect_remote(int family, const char* remo
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_family = family;
+	hints.ai_family = AF_UNSPEC;
 
 	err = getaddrinfo(remotehost, remoteport, &hints, &c->res);
 	if (err) {
@@ -224,7 +224,6 @@ void remove_connect_pending() {
 
 void set_connect_fds(fd_set *writefd) {
 	m_list_elem *iter;
-	TRACE(("enter set_connect_fds"))
 	iter = ses.conn_pending.first;
 	while (iter) {
 		m_list_elem *next_iter = iter->next;
@@ -249,7 +248,6 @@ void set_connect_fds(fd_set *writefd) {
 
 void handle_connect_fds(const fd_set *writefd) {
 	m_list_elem *iter;
-	TRACE(("enter handle_connect_fds"))
 	for (iter = ses.conn_pending.first; iter; iter = iter->next) {
 		int val;
 		socklen_t vallen = sizeof(val);
@@ -283,7 +281,6 @@ void handle_connect_fds(const fd_set *writefd) {
 			return; 
 		}
 	}
-	TRACE(("leave handle_connect_fds - end iter"))
 }
 
 void connect_set_writequeue(struct dropbear_progress_connection *c, struct Queue *writequeue) {
@@ -297,7 +294,11 @@ void packet_queue_to_iovec(const struct Queue *queue, struct iovec *iov, unsigne
 	buffer *writebuf;
 
 	#ifndef IOV_MAX
-	#define IOV_MAX UIO_MAXIOV
+		#if defined(__CYGWIN__) && !defined(UIO_MAXIOV)
+		#define IOV_MAX 1024
+		#else
+		#define IOV_MAX UIO_MAXIOV
+		#endif
 	#endif
 
 	*iov_count = MIN(MIN(queue->count, IOV_MAX), *iov_count);
@@ -305,10 +306,10 @@ void packet_queue_to_iovec(const struct Queue *queue, struct iovec *iov, unsigne
 	for (l = queue->head, i = 0; i < *iov_count; l = l->link, i++)
 	{
 		writebuf = (buffer*)l->item;
-		len = writebuf->len - 1 - writebuf->pos;
+		len = writebuf->len - writebuf->pos;
 		dropbear_assert(len > 0);
-		TRACE2(("write_packet writev #%d  type %d len %d/%d", i, writebuf->data[writebuf->len-1],
-				len, writebuf->len-1))
+		TRACE2(("write_packet writev #%d len %d/%d", i,
+				len, writebuf->len))
 		iov[i].iov_base = buf_getptr(writebuf, len);
 		iov[i].iov_len = len;
 	}
@@ -319,7 +320,7 @@ void packet_queue_consume(struct Queue *queue, ssize_t written) {
 	int len;
 	while (written > 0) {
 		writebuf = (buffer*)examine(queue);
-		len = writebuf->len - 1 - writebuf->pos;
+		len = writebuf->len - writebuf->pos;
 		if (len > written) {
 			/* partial buffer write */
 			buf_incrpos(writebuf, written);
@@ -360,6 +361,12 @@ void set_sock_priority(int sock, enum dropbear_prio prio) {
 	int so_prio_val = 0;
 #endif
 
+#if DROPBEAR_FUZZ
+	if (fuzz.fuzzing) {
+		TRACE(("fuzzing skips set_sock_prio"))
+		return;
+	}
+#endif
 
 	/* Don't log ENOTSOCK errors so that this can harmlessly be called
 	 * on a client '-J' proxy pipe */
@@ -435,7 +442,7 @@ int get_sock_port(int sock) {
  * Returns the number of sockets bound on success, or -1 on failure. On
  * failure, if errstring wasn't NULL, it'll be a newly malloced error
  * string.*/
-int dropbear_listen(int family, const char* address, const char* port,
+int dropbear_listen(const char* address, const char* port,
 		int *socks, unsigned int sockcount, char **errstring, int *maxfd) {
 
 	struct addrinfo hints, *res = NULL, *res0 = NULL;
@@ -448,7 +455,7 @@ int dropbear_listen(int family, const char* address, const char* port,
 	TRACE(("enter dropbear_listen"))
 	
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = family;
+	hints.ai_family = AF_UNSPEC; /* TODO: let them flag v4 only etc */
 	hints.ai_socktype = SOCK_STREAM;
 
 	/* for calling getaddrinfo:
@@ -584,6 +591,13 @@ void get_socket_address(int fd, char **local_host, char **local_port,
 {
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
+
+#if DROPBEAR_FUZZ
+	if (fuzz.fuzzing) {
+		fuzz_get_socket_address(fd, local_host, local_port, remote_host, remote_port, host_lookup);
+		return;
+	}
+#endif
 	
 	if (local_host || local_port) {
 		addrlen = sizeof(addr);

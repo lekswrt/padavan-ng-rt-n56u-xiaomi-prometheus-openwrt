@@ -414,8 +414,7 @@ static char * sign_key_md5_fingerprint(const unsigned char* keyblob,
 	/* skip the size int of the string - this is a bit messy */
 	md5_process(&hs, keyblob, keybloblen);
 
-	if (md5_done(&hs, hash) != CRYPT_OK)
-		return NULL;
+	md5_done(&hs, hash);
 
 	/* "md5 hexfingerprinthere\0", each hex digit is "AB:" etc */
 	buflen = 4 + 3*MD5_HASH_SIZE;
@@ -581,6 +580,10 @@ int cmp_base64_key(const unsigned char* keyblob, unsigned int keybloblen,
 
 	/* now we have the actual data */
 	len = line->len - line->pos;
+	if (len == 0) {
+		/* base64_decode doesn't like NULL argument */
+		return DROPBEAR_FAILURE;
+	}
 	decodekeylen = len * 2; /* big to be safe */
 	decodekey = buf_new(decodekeylen);
 
@@ -623,4 +626,9 @@ out:
 	decodekey = NULL;
 	return ret;
 }
+#endif
+
+#if DROPBEAR_FUZZ
+const char * const * fuzz_signkey_names = signkey_names;
+
 #endif

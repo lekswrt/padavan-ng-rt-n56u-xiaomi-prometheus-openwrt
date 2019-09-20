@@ -6,8 +6,8 @@
 default_options.h  documents compile-time options, and provides default values.
 
 Local customisation should be added to localoptions.h which is
-used if it exists. Options defined there will override any options in this
-file.
+used if it exists in the build directory. Options defined there will override 
+any options in this file.
 
 Options can also be defined with -DDROPBEAR_XXX=[0,1] in Makefile CFLAGS
 
@@ -19,9 +19,9 @@ IMPORTANT: Some options will require "make clean" after changes */
 #define DROPBEAR_DEFADDRESS ""
 
 /* Default hostkey paths - these can be specified on the command line */
-#define DSS_PRIV_FILENAME "/etc/dropbear/dropbear_dss_host_key"
-#define RSA_PRIV_FILENAME "/etc/dropbear/dropbear_rsa_host_key"
-#define ECDSA_PRIV_FILENAME "/etc/dropbear/dropbear_ecdsa_host_key"
+#define DSS_PRIV_FILENAME "/etc/storage/dropbear/dss_host_key"
+#define RSA_PRIV_FILENAME "/etc/storage/dropbear/rsa_host_key"
+#define ECDSA_PRIV_FILENAME "/etc/storage/dropbear/ecdsa_host_key"
 
 /* Set NON_INETD_MODE if you require daemon functionality (ie Dropbear listens
  * on chosen ports and keeps accepting connections. This is the default.
@@ -195,6 +195,11 @@ group1 in Dropbear server too */
 /* Whether to take public key options in 
  * authorized_keys file into account */
 #define DROPBEAR_SVR_PUBKEY_OPTIONS 1
+
+/* Set this to 0 if your system does not have multiple user support.
+   (Linux kernel CONFIG_MULTIUSER option)
+   The resulting binary will not run on a normal system. */
+#define DROPBEAR_SVR_MULTIUSER 1
 
 /* Client authentication options */
 #define DROPBEAR_CLI_PASSWORD_AUTH 1

@@ -46,16 +46,16 @@ static void printhelp(const char * progname) {
 					"-b bannerfile	Display the contents of bannerfile"
 					" before user login\n"
 					"		(default: none)\n"
-					"-r keyfile  Specify hostkeys (repeatable)\n"
+					"-r keyfile      Specify hostkeys (repeatable)\n"
 					"		defaults: \n"
 #if DROPBEAR_DSS
-					"		dss %s\n"
+					"		- dss %s\n"
 #endif
 #if DROPBEAR_RSA
-					"		rsa %s\n"
+					"		- rsa %s\n"
 #endif
 #if DROPBEAR_ECDSA
-					"		ecdsa %s\n"
+					"		- ecdsa %s\n"
 #endif
 #if DROPBEAR_DELAY_HOSTKEY
 					"-R		Create hostkeys as required\n" 
@@ -87,9 +87,6 @@ static void printhelp(const char * progname) {
 					"-a		Allow connections to forwarded ports from any host\n"
 					"-c command	Force executed command\n"
 #endif
-#if defined AF_INET6 && AF_INET6 < AF_MAX
-					"-4,-6		Explicitly force IPv4 or IPv6 usage\n"
-#endif
 					"-p [address:]port\n"
 					"		Listen on specified tcp port (and optionally address),\n"
 					"		up to %d can be specified\n"
@@ -102,6 +99,10 @@ static void printhelp(const char * progname) {
 					"-W <receive_window_buffer> (default %d, larger may be faster, max 1MB)\n"
 					"-K <keepalive>  (0 is never, default %d, in seconds)\n"
 					"-I <idle_timeout>  (0 is never, default %d, in seconds)\n"
+#if DROPBEAR_PLUGIN
+                                        "-A <authplugin>[,<options>]\n"
+                                        "               Enable external public key auth through <authplugin>\n"
+#endif
 					"-V    Version\n"
 #if DEBUG_TRACE
 					"-v		verbose (compiled with DEBUG_TRACE)\n"
@@ -132,6 +133,9 @@ void svr_getopts(int argc, char ** argv) {
 	char* maxauthtries_arg = NULL;
 	char* keyfile = NULL;
 	char c;
+#if DROPBEAR_PLUGIN
+        char* pubkey_plugin = NULL;
+#endif
 
 
 	/* see printhelp() for options */
@@ -159,17 +163,25 @@ void svr_getopts(int argc, char ** argv) {
 #if DROPBEAR_SVR_REMOTETCPFWD
 	svr_opts.noremotetcp = 0;
 #endif
+#if DROPBEAR_PLUGIN
+        svr_opts.pubkey_plugin = NULL;
+        svr_opts.pubkey_plugin_options = NULL;
+#endif
 
 #ifndef DISABLE_ZLIB
 	opts.compress_mode = DROPBEAR_COMPRESS_DELAYED;
 #endif 
+
+	/* not yet
+	opts.ipv4 = 1;
+	opts.ipv6 = 1;
+	*/
 #if DO_MOTD
 	svr_opts.domotd = 1;
 #endif
 #ifndef DISABLE_SYSLOG
 	opts.usingsyslog = 1;
 #endif
-	svr_opts.ipfamily = AF_UNSPEC;
 	opts.recv_window = DEFAULT_RECV_WINDOW;
 	opts.keepalive_secs = DEFAULT_KEEPALIVE;
 	opts.idle_timeout_secs = DEFAULT_IDLE_TIMEOUT;
@@ -223,14 +235,6 @@ void svr_getopts(int argc, char ** argv) {
 					svr_opts.inetdmode = 1;
 					break;
 #endif
-#if defined AF_INET6 && AF_INET6 < AF_MAX
-				case '4':
-					svr_opts.ipfamily = AF_INET;
-					break;
-				case '6':
-					svr_opts.ipfamily = AF_INET6;
-					break;
-#endif
 				case 'p':
 				  nextisport = 1;
 				  break;
@@ -281,6 +285,11 @@ void svr_getopts(int argc, char ** argv) {
 				case 'u':
 					/* backwards compatibility with old urandom option */
 					break;
+#if DROPBEAR_PLUGIN
+                                case 'A':
+                                        next = &pubkey_plugin;
+                                        break;
+#endif
 #if DEBUG_TRACE
 				case 'v':
 					debug_trace = 1;
@@ -401,6 +410,17 @@ void svr_getopts(int argc, char ** argv) {
 	if (svr_opts.forced_command) {
 		dropbear_log(LOG_INFO, "Forced command set to '%s'", svr_opts.forced_command);
 	}
+#if DROPBEAR_PLUGIN
+        if (pubkey_plugin) {
+            char *args = strchr(pubkey_plugin, ',');
+            if (args) {
+                *args='\0';
+                ++args;
+            }
+            svr_opts.pubkey_plugin = pubkey_plugin;
+            svr_opts.pubkey_plugin_options = args;
+        }
+#endif
 }
 
 static void addportandaddress(const char* spec) {
@@ -530,10 +550,13 @@ static void addhostkey(const char *keyfile) {
 	svr_opts.num_hostkey_files++;
 }
 
+
 void load_all_hostkeys() {
 	int i;
-	int disable_unset_keys = 1;
 	int any_keys = 0;
+#ifdef DROPBEAR_ECDSA
+	int loaded_any_ecdsa = 0;
+#endif
 
 	svr_opts.hostkey = new_sign_key();
 
@@ -558,14 +581,8 @@ void load_all_hostkeys() {
 #endif
 	}
 
-#if DROPBEAR_DELAY_HOSTKEY
-	if (svr_opts.delay_hostkey) {
-		disable_unset_keys = 0;
-	}
-#endif
-
 #if DROPBEAR_RSA
-	if (disable_unset_keys && !svr_opts.hostkey->rsakey) {
+	if (!svr_opts.delay_hostkey && !svr_opts.hostkey->rsakey) {
 		disablekey(DROPBEAR_SIGNKEY_RSA);
 	} else {
 		any_keys = 1;
@@ -573,39 +590,54 @@ void load_all_hostkeys() {
 #endif
 
 #if DROPBEAR_DSS
-	if (disable_unset_keys && !svr_opts.hostkey->dsskey) {
+	if (!svr_opts.delay_hostkey && !svr_opts.hostkey->dsskey) {
 		disablekey(DROPBEAR_SIGNKEY_DSS);
 	} else {
 		any_keys = 1;
 	}
 #endif
 
-
 #if DROPBEAR_ECDSA
+	/* We want to advertise a single ecdsa algorithm size.
+	- If there is a ecdsa hostkey at startup we choose that that size.
+	- If we generate at runtime we choose the default ecdsa size.
+	- Otherwise no ecdsa keys will be advertised */
+
+	/* check if any keys were loaded at startup */
+	loaded_any_ecdsa = 
+		0
 #if DROPBEAR_ECC_256
-	if ((disable_unset_keys || ECDSA_DEFAULT_SIZE != 256)
-		&& !svr_opts.hostkey->ecckey256) {
-		disablekey(DROPBEAR_SIGNKEY_ECDSA_NISTP256);
-	} else {
-		any_keys = 1;
-	}
+		|| svr_opts.hostkey->ecckey256
 #endif
-
 #if DROPBEAR_ECC_384
-	if ((disable_unset_keys || ECDSA_DEFAULT_SIZE != 384)
-		&& !svr_opts.hostkey->ecckey384) {
-		disablekey(DROPBEAR_SIGNKEY_ECDSA_NISTP384);
-	} else {
-		any_keys = 1;
+		|| svr_opts.hostkey->ecckey384
+#endif
+#if DROPBEAR_ECC_521
+		|| svr_opts.hostkey->ecckey521
+#endif
+		;
+	any_keys |= loaded_any_ecdsa;
+
+	/* Or an ecdsa key could be generated at runtime */
+	any_keys |= svr_opts.delay_hostkey;
+
+	/* At most one ecdsa key size will be left enabled */
+#if DROPBEAR_ECC_256
+	if (!svr_opts.hostkey->ecckey256
+		&& (!svr_opts.delay_hostkey || loaded_any_ecdsa || ECDSA_DEFAULT_SIZE != 256 )) {
+		disablekey(DROPBEAR_SIGNKEY_ECDSA_NISTP256);
 	}
 #endif
-
+#if DROPBEAR_ECC_384
+	if (!svr_opts.hostkey->ecckey384
+		&& (!svr_opts.delay_hostkey || loaded_any_ecdsa || ECDSA_DEFAULT_SIZE != 384 )) {
+		disablekey(DROPBEAR_SIGNKEY_ECDSA_NISTP384);
+	}
+#endif
 #if DROPBEAR_ECC_521
-	if ((disable_unset_keys || ECDSA_DEFAULT_SIZE != 521)
-		&& !svr_opts.hostkey->ecckey521) {
+	if (!svr_opts.hostkey->ecckey521
+		&& (!svr_opts.delay_hostkey || loaded_any_ecdsa || ECDSA_DEFAULT_SIZE != 521 )) {
 		disablekey(DROPBEAR_SIGNKEY_ECDSA_NISTP521);
-	} else {
-		any_keys = 1;
 	}
 #endif
 #endif /* DROPBEAR_ECDSA */

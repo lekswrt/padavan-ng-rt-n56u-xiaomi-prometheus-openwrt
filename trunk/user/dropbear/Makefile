@@ -23,6 +23,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
+	autoreconf ; \
 	./configure \
 		--prefix=/usr \
 		--disable-harden \

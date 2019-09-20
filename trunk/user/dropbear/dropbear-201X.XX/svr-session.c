@@ -40,6 +40,7 @@
 #include "auth.h"
 #include "runopts.h"
 #include "crypto_desc.h"
+#include "fuzz.h"
 
 static void svr_remoteclosed(void);
 static void svr_algos_initialise(void);
@@ -87,6 +88,18 @@ svr_session_cleanup(void) {
 	m_free(svr_ses.remotehost);
 	m_free(svr_ses.childpids);
 	svr_ses.childpidsize = 0;
+
+#if DROPBEAR_PLUGIN
+        if (svr_ses.plugin_handle != NULL) {
+            if (svr_ses.plugin_instance) {
+                svr_ses.plugin_instance->delete_plugin(svr_ses.plugin_instance);
+                svr_ses.plugin_instance = NULL;
+            }
+
+            dlclose(svr_ses.plugin_handle);
+            svr_ses.plugin_handle = NULL;
+        }
+#endif
 }
 
 void svr_session(int sock, int childpipe) {
@@ -100,10 +113,6 @@ void svr_session(int sock, int childpipe) {
 #if DROPBEAR_VFORK
 	svr_ses.server_pid = getpid();
 #endif
-	svr_authinitialise();
-	chaninitialise(svr_chantypes);
-	svr_chansessinitialise();
-	svr_algos_initialise();
 
 	/* for logging the remote address */
 	get_socket_address(ses.sock_in, NULL, NULL, &host, &port, 0);
@@ -112,6 +121,56 @@ void svr_session(int sock, int childpipe) {
 	snprintf(svr_ses.addrstring, len, "%s:%s", host, port);
 	m_free(host);
 	m_free(port);
+
+#if DROPBEAR_PLUGIN
+        /* Initializes the PLUGIN Plugin */
+        svr_ses.plugin_handle = NULL;
+        svr_ses.plugin_instance = NULL;
+        if (svr_opts.pubkey_plugin) {
+#if DEBUG_TRACE
+            const int verbose = debug_trace;
+#else
+            const int verbose = 0;
+#endif
+            PubkeyExtPlugin_newFn  pluginConstructor;
+
+            /* RTLD_NOW: fails if not all the symbols are resolved now. Better fail now than at run-time */
+            svr_ses.plugin_handle = dlopen(svr_opts.pubkey_plugin, RTLD_NOW);
+            if (svr_ses.plugin_handle == NULL) {
+                dropbear_exit("failed to load external pubkey plugin '%s': %s", svr_opts.pubkey_plugin, dlerror());
+            }
+            pluginConstructor = (PubkeyExtPlugin_newFn)dlsym(svr_ses.plugin_handle, DROPBEAR_PUBKEY_PLUGIN_FNNAME_NEW);
+            if (!pluginConstructor) {
+                dropbear_exit("plugin constructor method not found in external pubkey plugin");
+            }
+
+            /* Create an instance of the plugin */
+            svr_ses.plugin_instance = pluginConstructor(verbose, svr_opts.pubkey_plugin_options, svr_ses.addrstring);
+            if (svr_ses.plugin_instance == NULL) {
+                dropbear_exit("external plugin initialization failed");
+            }
+            /* Check if the plugin is compatible */
+            if ( (svr_ses.plugin_instance->api_version[0] != DROPBEAR_PLUGIN_VERSION_MAJOR) ||
+                 (svr_ses.plugin_instance->api_version[1] < DROPBEAR_PLUGIN_VERSION_MINOR) ) {
+                dropbear_exit("plugin version check failed: "
+                              "Dropbear=%d.%d, plugin=%d.%d",
+                        DROPBEAR_PLUGIN_VERSION_MAJOR, DROPBEAR_PLUGIN_VERSION_MINOR,
+                        svr_ses.plugin_instance->api_version[0], svr_ses.plugin_instance->api_version[1]);
+            }
+            if (svr_ses.plugin_instance->api_version[1] > DROPBEAR_PLUGIN_VERSION_MINOR) {
+                dropbear_log(LOG_WARNING, "plugin API newer than dropbear API: "
+                              "Dropbear=%d.%d, plugin=%d.%d",
+                        DROPBEAR_PLUGIN_VERSION_MAJOR, DROPBEAR_PLUGIN_VERSION_MINOR,
+                        svr_ses.plugin_instance->api_version[0], svr_ses.plugin_instance->api_version[1]);
+            }
+            dropbear_log(LOG_INFO, "successfully loaded and initialized pubkey plugin '%s'", svr_opts.pubkey_plugin);
+        }
+#endif
+
+	svr_authinitialise();
+	chaninitialise(svr_chantypes);
+	svr_chansessinitialise();
+	svr_algos_initialise();
 
 	get_socket_address(ses.sock_in, NULL, NULL, 
 			&svr_ses.remotehost, NULL, 1);
@@ -150,6 +209,13 @@ void svr_dropbear_exit(int exitcode, const char* format, va_list param) {
 	char fullmsg[300];
 	int i;
 
+#if DROPBEAR_PLUGIN
+        if ((ses.plugin_session != NULL)) {
+            svr_ses.plugin_instance->delete_session(ses.plugin_session);
+        }
+        ses.plugin_session = NULL;
+#endif
+
 	/* Render the formatted exit message */
 	vsnprintf(exitmsg, sizeof(exitmsg), format, param);
 
@@ -184,6 +250,13 @@ void svr_dropbear_exit(int exitcode, const char* format, va_list param) {
 		session_cleanup();
 	}
 
+#if DROPBEAR_FUZZ
+	/* longjmp before cleaning up svr_opts */
+    if (fuzz.do_jmp) {
+        longjmp(fuzz.jmp, 1);
+    }
+#endif
+
 	if (svr_opts.hostkey) {
 		sign_key_free(svr_opts.hostkey);
 		svr_opts.hostkey = NULL;
@@ -193,6 +266,7 @@ void svr_dropbear_exit(int exitcode, const char* format, va_list param) {
 		m_free(svr_opts.ports[i]);
 	}
 
+    
 	exit(exitcode);
 
 }
@@ -238,7 +312,9 @@ void svr_dropbear_log(int priority, const char* format, va_list param) {
 static void svr_remoteclosed() {
 
 	m_close(ses.sock_in);
-	m_close(ses.sock_out);
+	if (ses.sock_in != ses.sock_out) {
+		m_close(ses.sock_out);
+	}
 	ses.sock_in = -1;
 	ses.sock_out = -1;
 	dropbear_close("Exited normally");
