@@ -18,9 +18,6 @@
  *  along with udpxy.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _XOPEN_SOURCE 600
-#define _BSD_SOURCE
-
 #include "osdef.h"  /* os-specific definitions */
 
 #include <sys/types.h>
@@ -61,6 +58,13 @@
 #include "dpkt.h"
 #include "netop.h"
 
+#include "ts.h"
+#include "psi.h"
+#include "pat.h"
+#include "pmt.h"
+
+#define HAS_FLAGS(x, flag) (((x)&(flag))==(flag))
+
 /* external globals */
 
 extern const char   CMD_UDP[];
@@ -98,34 +102,6 @@ static volatile sig_atomic_t g_childexit = 0;
 static const int PID_RESET = 1;
 
 /*********************************************************/
-
-#if defined(__UCLIBC_MAJOR__)
-# if __UCLIBC_MAJOR__ == 0 && \
-    (__UCLIBC_MINOR__ < 9 || (__UCLIBC_MINOR__ == 9 && __UCLIBC_SUBLEVEL__ < 29) )
-/* pselect stuff for old uclibc */
-int
-pselect(int nfds, fd_set *rset, fd_set *wset, fd_set *xset, const struct timespec *ts, const sigset_t *sigmask)
-{
-	int             n;
-	struct timeval  tv;
-	sigset_t        savemask;
-	
-	if (ts != NULL) {
-		tv.tv_sec = ts->tv_sec;
-		tv.tv_usec = ts->tv_nsec / 1000;    /* nanosec -> microsec */
-	}
-	
-	if (sigmask != NULL)
-		sigprocmask(SIG_SETMASK, sigmask, &savemask);   /* caller's mask */
-	n = select(nfds, rset, wset, xset, (ts == NULL) ? NULL : &tv);
-	if (sigmask != NULL)
-		sigprocmask(SIG_SETMASK, &savemask, NULL);      /* restore mask */
-	
-	return(n);
-}
-# endif
-#endif
-
 
 /* process client requests - implemented in sloop.c */
 extern int srv_loop (const char* ipaddr, int port,
@@ -379,18 +355,18 @@ send_http_response( int sockfd, int code, const char* reason)
  */
 static void
 check_mcast_refresh( int msockfd, time_t* last_tm,
-                     const struct in_addr* mifaddr )
+                     const struct ip_mreq* mreq )
 {
     time_t now = 0;
 
     if( NULL != g_uopt.srcfile ) /* reading from file */
         return;
 
-    assert( (msockfd > 0) && last_tm && mifaddr );
+    assert( (msockfd > 0) && last_tm && mreq );
     now = time(NULL);
 
     if( now - *last_tm >= g_uopt.mcast_refresh ) {
-        (void) renew_multicast( msockfd, mifaddr );
+        (void) renew_multicast( msockfd, mreq );
         *last_tm = now;
     }
 
@@ -521,18 +497,145 @@ sync_dsockbuf_len( int ssockfd, int dsockfd )
 }
 
 
+#define DEBUG_TS_FILTER
+
+struct filter_ctx {
+	char strmHdr[TS_SIZE*2];
+
+	#define F_PAT 1
+	#define F_PMT 2
+	#define F_MPG 4
+	#define F_INITED 32
+
+	#define F_FOUND (F_PAT|F_PMT)
+	uint32_t flags;
+	uint16_t pmtId;
+	size_t   skipped;
+
+	time_t   startTime;
+
+#ifdef DEBUG_TS_FILTER
+	int      nnn;
+#endif
+};
+
+static void
+init_ts_filter(struct filter_ctx* f)
+{
+	f->flags = /*g_uopt.dont_wait_patpmt != uf_FALSE ? (F_FOUND|F_INITED) :*/ 0;
+	f->pmtId = 0;
+	f->skipped = 0;
+	f->startTime = time(NULL);
+#ifdef DEBUG_TS_FILTER
+	f->nnn = 0;
+#endif
+}
+
+static void
+consume_ts_packet(uint8_t* pkt, struct filter_ctx* f)
+{
+	uint8_t  i=0;
+	uint16_t pid=0;
+	uint32_t flags=0;
+
+	if( !ts_validate(pkt) ) {
+#ifdef DEBUG_TS_FILTER
+		TRACE( (void)tmfprintf( g_flog, "--- broken pkt:\n"
+			"%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
+			pkt[0],pkt[1],pkt[2],pkt[3],pkt[4],pkt[5],pkt[6],pkt[7],pkt[8],
+			pkt[9],pkt[1],pkt[12],pkt[13],pkt[14],pkt[15]
+			) );
+#endif
+		return;
+	}
+	if( !ts_get_unitstart(pkt) )
+		return;
+
+	pid = ts_get_pid(pkt);
+
+#ifdef DEBUG_TS_FILTER
+	TRACE( (void)tmfprintf( g_flog, "--- PID: %d, #%04x\n", f->nnn, pid ) );
+	f->nnn++;
+#endif
+
+	flags = f->flags;
+	if( !HAS_FLAGS(flags, F_PAT) && pid == 0 ) {
+		uint8_t *pkt_end = pkt + TS_SIZE;
+		uint8_t *pat, *prg;
+
+		/* PAT found */
+		memcpy(f->strmHdr, pkt, TS_SIZE);
+
+		pat = ts_section(pkt);
+		if( pat >= pkt_end ) {
+			TRACE( (void)tmfprintf( g_flog, "Got PAT. No section\n" ) );
+			return;
+		}
+		while ((prg = pat_get_program(pat, i)) != NULL) {
+			i++;
+			if( (prg + PAT_PROGRAM_SIZE) >= pkt_end ) break;
+			// Program number 0 is NetworkID!
+			if (patn_get_program(prg) != 0) {
+				f->pmtId = patn_get_pid(prg);
+				TRACE( (void)tmfprintf( g_flog, "Got PAT. Found program #%04x\n", f->pmtId ) );
+				f->flags |= F_PAT;
+				return;
+			}
+		}
+		TRACE( (void)tmfprintf( g_flog, "Got PAT. No program\n" ) );
+		return;
+	}
+	if( HAS_FLAGS(flags, F_PAT) && pid == f->pmtId ) {
+		memcpy(f->strmHdr + TS_SIZE, pkt, TS_SIZE);
+		f->flags |= F_PMT;
+		TRACE( (void)tmfprintf( g_flog, "Got PMT\n" ) );
+		return;
+	}
+}
+
+static void
+apply_ts_filter(struct dstream_ctx* ds, char* data, ssize_t nrcv, struct filter_ctx* f)
+{
+	ssize_t i, imax;
+
+	if( ds->flags & F_SCATTERED ) {
+		for(i = 0, imax = ds->pkt_count; i < imax; ++i) {
+		    struct iovec* pkt = ds->pkt + i;
+		    if( pkt->iov_len < TS_SIZE )
+				continue;
+		    consume_ts_packet((uint8_t*)pkt->iov_base, f);
+			f->skipped = i;
+			if( HAS_FLAGS(f->flags, F_FOUND) )
+				return;
+		}
+		if( !HAS_FLAGS(f->flags, F_FOUND) )
+			reset_pkt_registry(ds);
+	} else {
+		for(i = 0, imax = nrcv - TS_SIZE; i < imax; i += TS_SIZE) {
+			consume_ts_packet((uint8_t*)(data + i), f);
+			f->skipped = i;
+			if( HAS_FLAGS(f->flags, F_FOUND) )
+				return;
+		}
+	}
+}
+
 /* relay traffic from source to destination socket
  *
  */
 static int
 relay_traffic( int ssockfd, int dsockfd, struct server_ctx* ctx,
-               int dfilefd, const struct in_addr* mifaddr )
+               const struct ip_mreq* mreq )
 {
+#ifdef USE_SELECT_READY
+    fd_set rfds, wfds;
+    struct timeval tv;
+#endif
     volatile sig_atomic_t quit = 0;
 
     int rc = 0;
     ssize_t nmsgs = -1;
-    ssize_t nrcv = 0, nsent = 0, nwr = 0,
+    ssize_t nrcv = 0, nsent = 0,
             lrcv = 0, lsent = 0;
     char*  data = NULL;
     size_t data_len = g_uopt.rbuf_len;
@@ -541,8 +644,7 @@ relay_traffic( int ssockfd, int dsockfd, struct server_ctx* ctx,
     sigset_t ubset;
 
     const int ALLOW_PAUSES = get_flagval( "UDPXY_ALLOW_PAUSES", 0 );
-    const ssize_t MAX_PAUSE_MSEC =
-        get_sizeval( "UDPXY_PAUSE_MSEC", 1000);
+    const ssize_t MAX_PAUSE_MSEC = get_sizeval( "UDPXY_PAUSE_MSEC", 1000);
 
     /* permissible variation in data-packet size */
     static const ssize_t t_delta = 0x20;
@@ -551,8 +653,9 @@ relay_traffic( int ssockfd, int dsockfd, struct server_ctx* ctx,
 
     static const int SET_PID = 1;
     struct tps_data tps;
+    struct filter_ctx ts_filter;
 
-    assert( ctx && mifaddr && MAX_PAUSE_MSEC > 0 );
+    assert( ctx && mreq && MAX_PAUSE_MSEC > 0 );
 
     (void) sigemptyset (&ubset);
     sigaddset (&ubset, SIGINT);
@@ -628,47 +731,102 @@ relay_traffic( int ssockfd, int dsockfd, struct server_ctx* ctx,
     ropt.buf_tmout = g_uopt.dhold_tmout;
 
     pause_time = 0;
-
+#ifdef USE_SELECT_READY
+    FD_ZERO( &rfds );
+    FD_SET( ssockfd, &rfds );
+    FD_ZERO( &wfds );
+    FD_SET( dsockfd, &wfds );
+#endif
+    init_ts_filter(&ts_filter);
     while( (0 == rc) && !(quit = must_quit()) ) {
+        char* pdata = data;
+        nrcv = nsent = 0;
         if( g_uopt.mcast_refresh > 0 ) {
-            check_mcast_refresh( ssockfd, &rfr_tm, mifaddr );
+            check_mcast_refresh( ssockfd, &rfr_tm, mreq );
         }
 
-        nrcv = read_data( &ds, ssockfd, data, data_len, &ropt );
-        if( -1 == nrcv ) break;
+#ifdef USE_SELECT_READY
+        tv.tv_sec = ctx->rcv_tmout;
+        tv.tv_usec = 0;
+        if ((select(ssockfd+1, &rfds, NULL, NULL, &tv)>0) && FD_ISSET(ssockfd, &rfds)) {
+#endif
+            nrcv = read_data( &ds, ssockfd, data, data_len, &ropt );
+            if( -1 == nrcv ) break;
+#ifdef USE_SELECT_READY
+        } else break;
+#endif
 
         TRACE( check_fragments( "received new", data_len,
                     lrcv, nrcv, t_delta, g_flog ) );
         lrcv = nrcv;
 
         if( dsockfd && (nrcv > 0) ) {
-            nsent = write_data( &ds, data, nrcv, dsockfd );
+
+        if( !HAS_FLAGS(ts_filter.flags, F_FOUND) )
+            apply_ts_filter(&ds, data, nrcv, &ts_filter);
+
+        if( !HAS_FLAGS(ts_filter.flags, F_FOUND) ) {
+            if ( difftime(time(NULL), ts_filter.startTime) < 15 ) {
+                continue;
+            } else {
+                TRACE( (void)tmfprintf( g_flog, "PMT search timeout, relay exited\n" ) );
+                break;
+            }
+        }
+
+        if( !HAS_FLAGS(ts_filter.flags, F_INITED) ) {
+
+#ifdef USE_SELECT_READY
+            tv.tv_sec = ctx->snd_tmout;
+            tv.tv_usec = 0;
+            nsent = IO_BLK;
+            if ((select(dsockfd+1, NULL, &wfds, NULL, &tv)>0) && FD_ISSET(dsockfd, &wfds))
+#endif
+            {
+                nsent = write_data( &ds, ts_filter.strmHdr, sizeof(ts_filter.strmHdr), dsockfd );
+            }
+            if( -1 == nsent ) break;
+
+            if( uf_TRUE == g_uopt.cl_tpstat )
+                tpstat_update( ctx, &tps, nsent );
+
+            if( ds.flags & F_SCATTERED ) {
+                ds.pkt_count -= ts_filter.skipped;
+                memmove(ds.pkt, ds.pkt + ts_filter.skipped, sizeof(ds.pkt[0]) * ds.pkt_count);
+            } else {
+                pdata += ts_filter.skipped;
+                nrcv -= ts_filter.skipped;
+            }
+            ts_filter.flags |= F_INITED;
+        }
+        nsent = 0;
+
+#ifdef USE_SELECT_READY
+        tv.tv_sec = ctx->snd_tmout;
+        tv.tv_usec = 0;
+        nsent = IO_BLK;
+        if ((select(dsockfd+1, NULL, &wfds, NULL, &tv)>0) && FD_ISSET(dsockfd, &wfds))
+#endif
+        {
+            nsent = write_data( &ds, pdata, nrcv, dsockfd );
+        }
             if( -1 == nsent ) break;
 
             if ( nsent < 0 ) {
                 if ( !ALLOW_PAUSES ) break;
-                if ( 0 != pause_detect( nsent, MAX_PAUSE_MSEC, &pause_time ) )
-                    break;
+                if ( 0 != pause_detect( nsent, MAX_PAUSE_MSEC, &pause_time ) ) break;
             }
 
             TRACE( check_fragments("sent", nrcv,
                         lsent, nsent, t_delta, g_flog) );
             lsent = nsent;
-        }
+            if(( uf_TRUE == g_uopt.cl_tpstat ) && ( nsent>0 ))
+              tpstat_update( ctx, &tps, nsent );
 
-        if( (dfilefd > 0) && (nrcv > 0) ) {
-            nwr = write_data( &ds, data, nrcv, dfilefd );
-            if( -1 == nwr )
-                break;
-            TRACE( check_fragments( "wrote to file",
-                    nrcv, lsent, nwr, t_delta, g_flog ) );
-            lsent = nwr;
         }
 
         if( ds.flags & F_SCATTERED ) reset_pkt_registry( &ds );
 
-        if( uf_TRUE == g_uopt.cl_tpstat )
-            tpstat_update( ctx, &tps, nsent );
 
     } /* end of RELAY LOOP */
 
@@ -696,22 +854,20 @@ static int
 udp_relay( int sockfd, struct server_ctx* ctx )
 {
     char                mcast_addr[ IPADDR_STR_SIZE ];
+    struct ip_mreq mreq;
     struct sockaddr_in  addr;
 
     uint16_t    port;
     pid_t       new_pid;
     int         rc = 0, flags; 
-    int         msockfd = -1, sfilefd = -1,
-                dfilefd = -1, srcfd = -1;
-    char        dfile_name[ MAXPATHLEN ];
+    int         msockfd = -1, srcfd = -1;
     size_t      rcvbuf_len = 0;
-
-    const struct in_addr *mifaddr = &(ctx->mcast_inaddr);
 
     assert( (sockfd > 0) && ctx );
 
     TRACE( (void)tmfprintf( g_flog, "udp_relay : new_socket=[%d] param=[%s]\n",
                         sockfd, ctx->rq.param) );
+    (void) memset( &mreq, 0, sizeof(mreq) );
     do {
         rc = parse_udprelay( ctx->rq.param, sizeof(ctx->rq.param),
                 mcast_addr, IPADDR_STR_SIZE, &port );
@@ -721,14 +877,24 @@ udp_relay( int sockfd, struct server_ctx* ctx )
             break;
         }
 
-        if( 1 != inet_aton(mcast_addr, &addr.sin_addr) ) {
-            (void) tmfprintf( g_flog, "Invalid address: [%s]\n", mcast_addr );
+        if( 1 != inet_aton(ctx->mcast_ifc_addr, (struct in_addr*)&mreq.imr_interface.s_addr) ) {
+            (void) tmfprintf( g_flog, "Invalid multicast interface: [%s]\n", ctx->mcast_ifc_addr );
             rc = ERR_INTERNAL;
             break;
         }
 
+        if( 1 != inet_aton(mcast_addr, (struct in_addr*)&mreq.imr_multiaddr.s_addr) ) {
+            (void) tmfprintf( g_flog, "Invalid multicast group address: [%s]\n", mcast_addr );
+            rc = ERR_INTERNAL;
+            break;
+        }
         addr.sin_family = AF_INET;
         addr.sin_port = htons( (short)port );
+#if defined(NO_MCAST_BIND)
+        addr.sin_addr.s_addr=htonl(INADDR_ANY);
+#else
+        (void) memcpy( &addr.sin_addr, &mreq.imr_multiaddr.s_addr, sizeof(struct in_addr) );
+#endif
 
     } while(0);
 
@@ -768,61 +934,23 @@ udp_relay( int sockfd, struct server_ctx* ctx )
             break;
         }
 
-        if( NULL != g_uopt.dstfile ) {
-            (void) snprintf( dfile_name, MAXPATHLEN - 1,
-                    "%s.%d", g_uopt.dstfile, getpid() );
-            dfilefd = creat( dfile_name, S_IRUSR | S_IWUSR | S_IRGRP );
-            if( -1 == dfilefd ) {
-                mperror( g_flog, errno, "%s: g_uopt.dstfile open", __func__ );
-                rc = -1;
-                break;
-            }
-
-            TRACE( (void)tmfprintf( g_flog,
-                        "Dest file [%s] opened as fd=[%d]\n",
-                        dfile_name, dfilefd ) );
-        }
-        else dfilefd = -1;
-
-        if( NULL != g_uopt.srcfile ) {
-            sfilefd = open( g_uopt.srcfile, O_RDONLY | O_NOCTTY );
-            if( -1 == sfilefd ) {
-                mperror( g_flog, errno, "%s: g_uopt.srcfile open", __func__ );
-                rc = -1;
-            }
-            else {
-                TRACE( (void) tmfprintf( g_flog, "Source file [%s] opened\n",
-                            g_uopt.srcfile ) );
-                srcfd = sfilefd;
-            }
-        }
-        else {
-            rc = calc_buf_settings( NULL, &rcvbuf_len );
-            if (0 == rc ) {
-                rc = setup_mcast_listener( &addr, mifaddr, &msockfd,
-                    (g_uopt.nosync_sbuf ? 0 : rcvbuf_len) );
-                srcfd = msockfd;
-            }
+        rc = calc_buf_settings( NULL, &rcvbuf_len );
+        if (0 == rc ) {
+            rc = setup_mcast_listener( &addr,
+                                       &mreq,
+                                       &msockfd,
+                                       (g_uopt.nosync_sbuf ? 0 : rcvbuf_len) );
+            srcfd = msockfd;
         }
         if( 0 != rc ) break;
 
-        rc = relay_traffic( srcfd, sockfd, ctx, dfilefd, mifaddr );
+        rc = relay_traffic( srcfd, sockfd, ctx, &mreq );
         if( 0 != rc ) break;
 
     } while(0);
 
     if( msockfd > 0 ) {
-        close_mcast_listener( msockfd, mifaddr );
-    }
-    if( sfilefd > 0 ) {
-       (void) close( sfilefd );
-       TRACE( (void) tmfprintf( g_flog, "Source file [%s] closed\n",
-                            g_uopt.srcfile ) );
-    }
-    if( dfilefd > 0 ) {
-       (void) close( dfilefd );
-       TRACE( (void) tmfprintf( g_flog, "Dest file [%s] closed\n",
-                            dfile_name ) );
+        close_mcast_listener( msockfd, &mreq );
     }
 
     if( 0 != rc ) {
@@ -858,10 +986,15 @@ report_status( int sockfd, const struct server_ctx* ctx, int options )
     char *buf = NULL;
     int rc = 0;
     ssize_t n = -1;
+#ifndef USE_BLOCKING_SOCKET
+    ssize_t nsent;
+#endif
     size_t nlen = 0, bufsz, i;
     struct client_ctx *clc = NULL;
 
+#ifdef USE_BLOCKING_SOCKET
     enum {BLOCKING = 0, NON_BLOCKING = 1};
+#endif
     enum {BYTES_HDR = 4096, BYTES_PER_CLI = 512};
 
     assert( (sockfd > 0) && ctx );
@@ -884,13 +1017,27 @@ report_status( int sockfd, const struct server_ctx* ctx, int options )
     nlen = bufsz;
     rc = mk_status_page( ctx, buf, &nlen, options | MSO_HTTP_HEADER );
 
+#ifdef USE_BLOCKING_SOCKET
     (void) set_nblock(sockfd, BLOCKING);
+#else
+    for( n = nsent = 0; (0 == rc) && (nsent < (ssize_t)nlen);  ) {
+        errno = 0;
+#endif /* USE_BLOCKING_SOCKET */
         n = send( sockfd, buf, (int)nlen, 0 );
+
         if( (-1 == n) && (EINTR != errno) ) {
             mperror(g_flog, errno, "%s: send", __func__);
             rc = ERR_INTERNAL;
+#ifndef USE_BLOCKING_SOCKET
+            break;
+#endif
         }
+#ifdef USE_BLOCKING_SOCKET
     (void) set_nblock(sockfd, NON_BLOCKING);
+#else
+        nsent += n;
+    }
+#endif /* USE_BLOCKING_SOCKET */
 
     if( 0 != rc ) {
         TRACE( (void)tmfprintf( g_flog, "Error generating status report\n" ) );
@@ -991,19 +1138,14 @@ accept_requests (int sockfd, tmfd_t* asock, size_t* alen)
         }
         */
         if (wmark > 0) {
-            if (0 != setsockopt (new_sockfd, SOL_SOCKET, SO_RCVLOWAT,
-                    (char*)&wmark, sizeof(wmark))) {
-                mperror (g_flog, errno, "%s: setsockopt SO_RCVLOWAT [%d]",
-                    __func__, wmark);
+            if (0 != set_lowmark(new_sockfd, wmark, "newly-accepted socket")) {
                 (void) close (new_sockfd); /* TODO: error-aware close */
                 continue;
-            } else {
-                TRACE( (void)tmfprintf (g_flog, "Receive LOW WATERMARK [%d] applied "
-                    "to newly-accepted socket [%d]\n", wmark, new_sockfd) );
             }
         }
 
         if (g_uopt.tcp_nodelay) {
+
             if (0 != setsockopt(new_sockfd, IPPROTO_TCP,
                 TCP_NODELAY, &YES, sizeof(YES))) {
                     mperror(g_flog, errno, "%s setsockopt TCP_NODELAY",
@@ -1229,11 +1371,8 @@ udpxy_main( int argc, char* const argv[] )
 /* support for -r -w (file read/write) option is disabled by default;
  * those features are experimental and for dev debugging ONLY
  * */
-#ifdef UDPXY_FILEIO
-    static const char UDPXY_OPTMASK[] = "TvSa:l:p:m:c:B:n:R:r:w:H:M:";
-#else
+
     static const char UDPXY_OPTMASK[] = "TvSa:l:p:m:c:B:n:R:H:M:";
-#endif
 
     struct sigaction qact, iact, cact, oldact;
 
@@ -1350,21 +1489,6 @@ udpxy_main( int argc, char* const argv[] )
                       }
                       break;
 
-    #ifdef UDPXY_FILEIO
-            case 'r':
-                      if( 0 != access(optarg, R_OK) ) {
-                        perror("source file - access");
-                        rc = ERR_PARAM;
-                        break;
-                      }
-
-                      g_uopt.srcfile = strdup( optarg );
-                      break;
-
-            case 'w':
-                      g_uopt.dstfile = strdup( optarg );
-                      break;
-    #endif /* UDPXY_FILEIO */
             case 'M':
                       g_uopt.mcast_refresh = (u_short)atoi( optarg );
 
@@ -1429,8 +1553,10 @@ udpxy_main( int argc, char* const argv[] )
                 rc = ERR_INTERNAL; break;
             }
         }
-
-        if( 0 == geteuid() ) {
+#if !defined(__CYGWIN__)
+        if( 0 == geteuid() )
+#endif
+        {
             if( !no_daemon ) {
                 if( stderr == g_flog ) {
                     (void) fprintf( stderr,

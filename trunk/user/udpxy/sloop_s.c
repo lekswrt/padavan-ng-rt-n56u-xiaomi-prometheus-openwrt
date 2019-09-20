@@ -87,7 +87,7 @@ srv_loop( const char* ipaddr, int port,
 
     g_srv.rcv_tmout = (u_short)g_uopt.rcv_tmout;
     g_srv.snd_tmout = RLY_SOCK_TIMEOUT;
-    g_srv.mcast_inaddr = mcast_inaddr;
+/*    g_srv.mcast_inaddr = mcast_inaddr;*/
 
     /* NB: server socket is non-blocking! */
     if( 0 != (rc = setup_listener( ipaddr, port, &g_srv.lsockfd,

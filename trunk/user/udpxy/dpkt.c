@@ -54,7 +54,8 @@ static const char* upxfmt_NAME[] = {
     "UDPXY-UDS",
     "RAW"
 };
-static const int UPXDT_LEN = sizeof(upxfmt_NAME) / sizeof(upxfmt_NAME[0]);
+
+const int UPXDT_LEN = sizeof(upxfmt_NAME) / sizeof(upxfmt_NAME[0]);
 
 
 const char*
@@ -617,16 +618,9 @@ read_packet( struct dstream_ctx* spc, int fd, char* buf, size_t len )
     if( (spc->stype == UPXDT_RTP_TS) || (spc->flags & F_CHECK_FMT) )
         chunk_len = (len > spc->mtu) ? spc->mtu : len;
 
-    if( spc->flags & F_FILE_INPUT ) {
-        assert( !buf_overrun( buf, len, 0, chunk_len, g_flog ) );
-        n = read_frecord( fd, buf, chunk_len, &(spc->stype), g_flog );
-        if( n <= 0 ) return n;
-    }
-    else {
-        assert( !buf_overrun(buf, len, 0, chunk_len, g_flog) );
-        n = read_buf( fd, buf, chunk_len, g_flog );
-        if( n <= 0 ) return n;
-    }
+    assert( !buf_overrun(buf, len, 0, chunk_len, g_flog) );
+    n = read_buf( fd, buf, chunk_len, g_flog );
+    if( n <= 0 ) return n;
 
     if( spc->flags & F_CHECK_FMT ) {
         spc->stype = get_mstream_type( buf, n, g_flog );
@@ -747,9 +741,7 @@ write_data( const struct dstream_ctx* spc,
                 (void)tmfprintf( g_flog, "Write on fd=[%d] timed out\n", fd);
                 error = IO_BLK;
             }
-/*
             mperror( g_flog, errno, "%s: writev", __func__ );
-*/
             return error;
         }
     }

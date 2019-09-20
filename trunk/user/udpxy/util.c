@@ -48,7 +48,7 @@ extern const int   BUILDNUM;
 extern const char  BUILD_TYPE[];
 extern const int   PATCH;
 
-static char s_sysinfo [80] = "\0";
+static char s_sysinfo [256] = "\0";
 
 extern struct udpxy_opt g_uopt;
 
@@ -701,7 +701,7 @@ a2time( const char* str, time_t* t, time_t from )
             continue;
         }
 
-        if( !isdigit( str[n] ) ) return ERR_NONDIGIT;
+        if( !isdigit( (int)str[n] ) ) return ERR_NONDIGIT;
 
         if( new_field ) {
             new_field = 0;
@@ -797,7 +797,7 @@ a2double( const char* str, double* pval )
     assert( str );
 
     /* skip to the first */
-    for( p = str; *p && !isalpha(*p); ++p );
+    for( p = str; *p && !isalpha((int)*p); ++p );
 
     if( '\0' != *p ) {
         /* there is a modifier, calculate multiplication

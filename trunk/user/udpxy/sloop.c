@@ -18,11 +18,17 @@
  *  along with udpxy.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef __CYGWIN__
+    #define HAS_PSELECT 1
+#else
+
 #include <sys/syscall.h>
 
 /* need to know if pselect(2) is available */
 #if defined(SYS_pselect6)
     #define HAS_PSELECT 1
+#endif
+
 #endif
 
 /* use pselect(2) in server loop unless select(2) demanded */

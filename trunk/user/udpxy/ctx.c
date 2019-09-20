@@ -263,7 +263,6 @@ tpstat_init( struct tps_data* d, int setpid )
         d->pid = getpid();
 
     d->tm_from = time(NULL);
-    d->niter = 0;
     d->nbytes = 0;
 
     return;
@@ -276,7 +275,6 @@ void
 tpstat_update( struct server_ctx* ctx,
                struct tps_data* d, ssize_t nbytes )
 {
-    static const double MAX_NOUPDATE_ITER = 1000.0;
     static const double MAX_SEC = 10.0;
 
     struct tput_stat ts;
@@ -287,15 +285,17 @@ tpstat_update( struct server_ctx* ctx,
 
     assert( ctx && d );
 
+        TRACE( (void)tmfprintf( g_flog,
+                "tps_data={ sender=[%ld], bytes=[%u], seconds=[%f] }\n",
+                (long)d->pid, d->nbytes, d->tm_from) );
+
     d->nbytes += nbytes;
 
     nsec = difftime( time(NULL), d->tm_from );
-    d->niter++;
-    if( !((d->niter >= MAX_NOUPDATE_ITER) || (nsec >= MAX_SEC)) )
+    if (nsec < MAX_SEC)
         return;
 
     /* attempt to send update to server */
-    d->niter = 0;
 
     ts.sender_id = d->pid;
     ts.nbytes = d->nbytes;
@@ -375,7 +375,7 @@ tpstat_read( struct server_ctx* ctx )
     }
 
     TRACE( (void)tmfprintf( g_flog,
-            "Received TSTAT={ sender=[%ld], bytes=[%f], seconds=[%f] }\n",
+            "Received TSTAT={ sender=[%ld], bytes=[%u], seconds=[%f] }\n",
             (long)ts.sender_id, ts.nbytes, ts.nsec) );
 
     cindex = find_client( ctx, (pid_t)ts.sender_id );
