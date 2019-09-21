@@ -392,7 +392,7 @@ fi
 if [ "$CONFIG_FIRMWARE_INCLUDE_SSWAN" = "y" ] ; then
 	CONFIG_FIRMWARE_INCLUDE_XFRM=y
 fi
-if [ "$CONFIG_PRODUCT" = "MT7621" ] ; then
+#if [ "$CONFIG_PRODUCT" = "MT7621" ] ; then
 if [ "$CONFIG_FIRMWARE_INCLUDE_XFRM" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_XFRM"
 	func_disable_kernel_param "CONFIG_XFRM_USER"
@@ -428,7 +428,7 @@ if [ "$CONFIG_FIRMWARE_INCLUDE_XFRM" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_CRYPTO_DES"
 	func_disable_kernel_param "CONFIG_CRYPTO_DEFLATE"
 fi
-fi
+#fi
 ############################ IPSET ####################################
 if [ "$CONFIG_FIRMWARE_INCLUDE_IPSET" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_NETFILTER_NETLINK"
