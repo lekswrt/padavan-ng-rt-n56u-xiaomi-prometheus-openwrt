@@ -53,7 +53,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./Configure \
-		linux-mips32el \
+		linux-mips32 \
 		shared \
 		--prefix=/ \
 		--openssldir=/etc/ssl \
