@@ -173,15 +173,9 @@ extern "C" {
 # define SSL_DEFAULT_CIPHER_LIST "ALL:!COMPLEMENTOFDEFAULT:!eNULL"
 /* This is the default set of TLSv1.3 ciphersuites */
 # if !defined(OPENSSL_NO_CHACHA) && !defined(OPENSSL_NO_POLY1305)
-#  ifdef OPENSSL_PREFER_CHACHA_OVER_GCM
-#   define TLS_DEFAULT_CIPHERSUITES "TLS_CHACHA20_POLY1305_SHA256:" \
-                                    "TLS_AES_256_GCM_SHA384:" \
-                                    "TLS_AES_128_GCM_SHA256"
-#  else
-#   define TLS_DEFAULT_CIPHERSUITES "TLS_AES_256_GCM_SHA384:" \
-                                    "TLS_CHACHA20_POLY1305_SHA256:" \
-                                    "TLS_AES_128_GCM_SHA256"
-#  endif
+#  define TLS_DEFAULT_CIPHERSUITES "TLS_AES_256_GCM_SHA384:" \
+                                   "TLS_CHACHA20_POLY1305_SHA256:" \
+                                   "TLS_AES_128_GCM_SHA256"
 # else
 #  define TLS_DEFAULT_CIPHERSUITES "TLS_AES_256_GCM_SHA384:" \
                                    "TLS_AES_128_GCM_SHA256"
@@ -2145,7 +2139,7 @@ size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
 #  define SSL_cache_hit(s) SSL_session_reused(s)
 # endif
 
-__owur int SSL_session_reused(SSL *s);
+__owur int SSL_session_reused(const SSL *s);
 __owur int SSL_is_server(const SSL *s);
 
 __owur __owur SSL_CONF_CTX *SSL_CONF_CTX_new(void);
