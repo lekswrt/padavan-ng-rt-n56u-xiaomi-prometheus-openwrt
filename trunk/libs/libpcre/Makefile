@@ -1,4 +1,4 @@
-SRC_NAME=pcre-8.42
+SRC_NAME=pcre-8.43
 
 all: config_test
 	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
