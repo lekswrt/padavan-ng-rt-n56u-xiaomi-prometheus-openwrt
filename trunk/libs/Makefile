@@ -102,6 +102,10 @@ LIBS_INCLUDE_LIBSSL=y
 LIBS_INCLUDE_LIBEVENT=y
 endif
 
+ifneq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_PRIVOXY) $(CONFIG_FIRMWARE_ENABLE_DNSMASQ_REGEX)))
+LIBS_INCLUDE_LIBPCRE=y
+endif
+
 dir_y						+= libz
 dir_$(LIBS_INCLUDE_LIBLZO)			+= liblzo
 dir_$(LIBS_INCLUDE_LIBSSL)			+= libssl
@@ -132,8 +136,8 @@ dir_$(CONFIG_FIRMWARE_INCLUDE_TRANSMISSION)	+= libcurl
 # aria2 shared libs
 dir_$(CONFIG_FIRMWARE_INCLUDE_ARIA)		+= libxml2
 
-# privoxy shared libs
-dir_$(CONFIG_FIRMWARE_INCLUDE_PRIVOXY)		+= libpcre
+# REGEX shared lib (privoxy and dnsmasq)
+dir_$(LIBS_INCLUDE_LIBPCRE)			+= libpcre
 
 # dnscrypt extra libs
 dir_$(CONFIG_FIRMWARE_INCLUDE_DNSCRYPT)		+= libsodium
@@ -142,6 +146,8 @@ dir_$(CONFIG_FIRMWARE_INCLUDE_DNSCRYPT)		+= libsodium
 ifneq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_NFSD) $(CONFIG_FIRMWARE_INCLUDE_NFSC)))
 dir_y						+= libtirpc
 endif
+
+
 
 all:
 	for i in $(dir_y) ; do \
