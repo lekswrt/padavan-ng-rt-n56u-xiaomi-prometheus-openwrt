@@ -1,4 +1,4 @@
-SRC_NAME=mtd-utils-2.0.x
+SRC_NAME=mtd-utils-2.1.x
 
 CFLAGS+=$(COPT) -ffunction-sections -fdata-sections -fvisibility=hidden
 LDFLAGS += -Wl,--gc-sections
@@ -15,6 +15,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
+	autoreconf ; \
 	./configure \
 		--prefix= \
 		--enable-static \
