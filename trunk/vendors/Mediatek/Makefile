@@ -147,6 +147,13 @@ romfs.post::
 	rm -f $(KERNELZ).lzma
 	$(TOOLS_DIR)/mksquashfs_xz/mksquashfs $(ROMFSDIR) $(RAMDISK) -all-root -no-exports -noappend -nopad -noI -no-xattrs
 
+modules.archive:
+	###########CREATE MODULES ARCHIVE##########
+	if [ -d $(ROMFSDIR)/opt/lib ]; then \
+		tar -C $(ROMFSDIR) -czf $(IMAGE_BASE)_modules.tgz opt ; \
+		rm -rf $(ROMFSDIR)/opt/lib ; \
+	fi
+
 image:
 	##############CREATE IMAGE#################
 	$(CROSS_COMPILE)objcopy -O binary -R .note -R .comment -S $(ROOTDIR)/$(LINUXDIR)/vmlinux $(KERNELZ)

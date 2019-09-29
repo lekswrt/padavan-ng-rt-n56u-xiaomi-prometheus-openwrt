@@ -1,0 +1,39 @@
+# Generic register map support.  There are no user servicable options here,
+# this is an API intended to be used by other kernel subsystems.  These
+# subsystems should select the appropriate symbols.
+
+menu "REGMAP Config"
+
+config REGMAP
+	default y if REGMAP_I2C
+	bool
+
+config REGMAP_I2C
+	bool "I2C REGMAP Support"
+
+config I2C
+	tristate
+	default y
+	select I2C_MUX
+	select I2C_CHARDEV
+	select I2C_COMPAT
+	select I2C_BOARDINFO
+	select I2C_HELPER_AUTO
+
+config I2C_MUX
+	bool
+
+config I2C_COMPAT
+	bool
+
+config I2C_CHARDEV
+	default y
+	tristate
+
+config I2C_BOARDINFO
+	bool
+
+config I2C_HELPER_AUTO
+	bool
+
+endmenu

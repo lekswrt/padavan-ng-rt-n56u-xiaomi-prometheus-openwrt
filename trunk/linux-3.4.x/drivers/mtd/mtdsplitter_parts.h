@@ -1,7 +1,7 @@
 {
-	name:   "Bootloader",
+	name:	"Bootloader",
 	offset:	0x0,
-	size:   0x30000,
+	size:	0x30000,
 }, {
 	name:	"Config",
 	offset: 0x30000,
@@ -11,11 +11,11 @@
 	offset: 0x40000,
 	size:	0x10000,
 }, {
-	name:	"Firmware_Stub",
+	name:	"Firmware",
 	offset:	0x50000,
-	size:	0x7A0000,
+	size:	0x790000,
 }, {
 	name:	"Storage",
-	offset: 0x7F0000,
-	size:	0x10000
+	offset: 0x7E0000,
+	size:	0x20000,
 }

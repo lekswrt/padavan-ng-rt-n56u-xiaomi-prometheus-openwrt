@@ -94,13 +94,19 @@ modules_install:
 		$(MAKEARCH_KERNEL) -C $(LINUXDIR) INSTALL_MOD_PATH=$(ROMFSDIR) DEPMOD=$(ROOTDIR)/tools/depmod.sh modules_install; \
 	fi
 
+modules_backports_install:
+	find $(ROMFSDIR)/lib/modules/*/updates | xargs -r rm -rf ; \
+	. $(LINUXDIR)/.config; if [ "$$CONFIG_MODULES" = "y" ]&&[ ! -z "$$CONFIG_USB_SUPPORT" ]&&([ "$$CONFIG_FIRMWARE_ENABLE_BACKPORTED" = "y" ]||[ "$$CONFIG_FIRMWARE_INCLUDE_BACKPORTED" = "y" ]); then \
+		$(MAKEARCH_KERNEL) -C $(ROOTDIR)/backports KLIB_BUILD=$(ROOTDIR)/$(LINUXDIR) KLIB=$(ROMFSDIR) modules_install; \
+	fi
+
 ############################################################################
 #
 # normal make targets
 #
 
 .PHONY: romfs
-romfs: romfs.subdirs modules_install romfs.post
+romfs: romfs.subdirs modules_backports_install modules_install romfs.post
 
 .PHONY: romfs.subdirs
 romfs.subdirs:
@@ -110,6 +116,7 @@ romfs.subdirs:
 romfs.post:
 	-find $(ROMFSDIR)/. -name CVS | xargs -r rm -rf ; \
 	$(ROOTDIR)/tools/strip-romfs.sh ; \
+	$(MAKEARCH) -C vendors modules.archive ; \
 	$(MAKEARCH) -C vendors romfs.post
 
 .PHONY: image
@@ -152,6 +159,7 @@ tools:
 clean:
 	make clean -C tools
 	for dir in  $(DIRS); do [ ! -d $$dir ] || $(MAKEARCH) -C $$dir clean ; done
+	$(MAKEARCH_KERNEL) -C $(ROOTDIR)/backports KLIB_BUILD=$(ROOTDIR)/$(LINUXDIR) clean
 	$(MAKEARCH_KERNEL) -C $(LINUXDIR) distclean
 	rm -rf $(STAGEDIR)
 	rm -rf $(ROMFSDIR)

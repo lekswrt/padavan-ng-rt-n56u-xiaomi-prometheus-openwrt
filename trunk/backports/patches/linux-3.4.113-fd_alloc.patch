@@ -1,0 +1,10 @@
+--- linux-3.4.113.orig/fs/file.c	2017-01-25 00:06:49.055218563 +0300
++++ linux-3.4.113/fs/file.c	2017-01-20 12:29:34.000000000 +0300
+@@ -476,6 +476,7 @@ out:
+ 	spin_unlock(&files->file_lock);
+ 	return error;
+ }
++EXPORT_SYMBOL(alloc_fd);
+ 
+ int get_unused_fd(void)
+ {

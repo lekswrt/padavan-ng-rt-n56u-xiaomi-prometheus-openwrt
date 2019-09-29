@@ -284,6 +284,7 @@ if [ "$CONFIG_FIRMWARE_ENABLE_USB" != "y" ] || [ -z "$CONFIG_USB_SUPPORT" ] ; th
 	func_disable_kernel_param "CONFIG_SCSI"
 	func_disable_kernel_param "CONFIG_SCSI_MOD"
 	func_disable_kernel_param "CONFIG_INPUT"
+	func_disable_kernel_param "CONFIG_RC_CORE"
 	func_disable_kernel_param "CONFIG_USB_SUPPORT"
 	func_disable_kernel_param "CONFIG_HID_SUPPORT"
 	func_disable_kernel_param "CONFIG_MEDIA_SUPPORT"
@@ -373,14 +374,22 @@ if [ "$CONFIG_FIRMWARE_INCLUDE_NFSD" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_NFSD"
 fi
 ############################# UVC #####################################
-if [ "$CONFIG_FIRMWARE_INCLUDE_UVC" != "y" ] ; then
+if [ "$CONFIG_FIRMWARE_INCLUDE_UVC" != "y" ]&&[ "$CONFIG_FIRMWARE_ENABLE_BACKPORTED" != "y" ]&&[ "$CONFIG_FIRMWARE_INCLUDE_BACKPORTED" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_MEDIA_SUPPORT"
 fi
+if [ "$CONFIG_FIRMWARE_ENABLE_BACKPORTED" = "y" ]||[ "$CONFIG_FIRMWARE_INCLUDE_BACKPORTED" = "y" ] ; then
+	func_disable_kernel_param "CONFIG_VIDEO_DEV"
+fi
 ############################# HID #####################################
-if [ "$CONFIG_FIRMWARE_INCLUDE_HID" != "y" ] ; then
+if [ "$CONFIG_FIRMWARE_INCLUDE_HID" != "y" ]&&[ "$CONFIG_FIRMWARE_ENABLE_BACKPORTED" != "y" ]&&[ "$CONFIG_FIRMWARE_INCLUDE_BACKPORTED" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_INPUT"
+fi
+if [ "$CONFIG_FIRMWARE_INCLUDE_HID" != "y" ] ; then
 	func_disable_kernel_param "CONFIG_HID_SUPPORT"
 	func_disable_kernel_param "CONFIG_USB_HID"
+fi
+if [ "$CONFIG_FIRMWARE_ENABLE_BACKPORTED" != "y" ]&&[ "$CONFIG_FIRMWARE_INCLUDE_BACKPORTED" != "y" ] ; then
+	func_disable_kernel_param "CONFIG_RC_CORE"
 fi
 ############################# UART ####################################
 if [ "$CONFIG_FIRMWARE_INCLUDE_SERIAL" != "y" ] ; then

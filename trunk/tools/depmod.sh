@@ -47,3 +47,10 @@ rm -f "${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE}/modules.builtin.bin"
 rm -f "${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE}/modules.order"
 rm -f "${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE}/build"
 rm -f "${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE}/source"
+
+rm -rf "${INSTALL_MOD_PATH}/opt/lib"
+if [ -z ${CONFIG_FIRMWARE_INCLUDE_BACKPORTED} ]&&[ -d ${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE}/updates ]; then
+	mkdir -p "${INSTALL_MOD_PATH}/opt/lib/modules/${KERNELRELEASE}/"
+	mv -vf "${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE}/updates" -t "${INSTALL_MOD_PATH}/opt/lib/modules/${KERNELRELEASE}"
+	ln -st ${INSTALL_MOD_PATH}/lib/modules/${KERNELRELEASE} /opt/lib/modules/${KERNELRELEASE}/updates
+fi
