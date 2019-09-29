@@ -1,4 +1,4 @@
-SRC_NAME=tor-0.3.X.X
+SRC_NAME=tor-0.4.X.X
 
 CFLAGS +=$(COPT) -ffunction-sections -fdata-sections -fvisibility=hidden
 LDFLAGS += -Wl,--gc-sections
@@ -15,6 +15,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
+	autoreconf ; \
 	./configure \
 		--prefix=/usr \
 		--host=$(HOST_TARGET) \
