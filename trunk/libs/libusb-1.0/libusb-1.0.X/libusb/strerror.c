@@ -32,11 +32,13 @@
 #define strncasecmp _strnicmp
 #endif
 
+static size_t usbi_locale = 0;
+
 /** \ingroup libusb_misc
  * How to add a new \ref libusb_strerror() translation:
  * <ol>
  * <li> Download the latest \c strerror.c from:<br>
- *      https://raw.github.com/libusb/libusb/master/libusb/sterror.c </li>
+ *      https://raw.github.com/libusb/libusb/master/libusb/strerror.c </li>
  * <li> Open the file in an UTF-8 capable editor </li>
  * <li> Add the 2 letter <a href="http://en.wikipedia.org/wiki/List_of_ISO_639-1_codes">ISO 639-1</a>
  *      code for your locale at the end of \c usbi_locale_supported[]<br>
@@ -58,7 +60,9 @@
  * </ol>
  */
 
-static const char* usbi_localized_errors[LIBUSB_ERROR_COUNT] = {
+static const char* usbi_locale_supported[] = { "en", "nl", "fr", "ru", "de", "hu" };
+static const char* usbi_localized_errors[ARRAYSIZE(usbi_locale_supported)][LIBUSB_ERROR_COUNT] = {
+	{ /* English (en) */
 		"Success",
 		"Input/Output Error",
 		"Invalid parameter",
@@ -72,7 +76,84 @@ static const char* usbi_localized_errors[LIBUSB_ERROR_COUNT] = {
 		"System call interrupted (perhaps due to signal)",
 		"Insufficient memory",
 		"Operation not supported or unimplemented on this platform",
-		"Other error"
+		"Other error",
+	}, { /* Dutch (nl) */
+		"Gelukt",
+		"Invoer-/uitvoerfout",
+		"Ongeldig argument",
+		"Toegang geweigerd (onvoldoende toegangsrechten)",
+		"Apparaat bestaat niet (verbinding met apparaat verbroken?)",
+		"Niet gevonden",
+		"Apparaat of hulpbron is bezig",
+		"Bewerking verlopen",
+		"Waarde is te groot",
+		"Gebroken pijp",
+		"Onderbroken systeemaanroep",
+		"Onvoldoende geheugen beschikbaar",
+		"Bewerking wordt niet ondersteund",
+		"Andere fout",
+	}, { /* French (fr) */
+		"Succès",
+		"Erreur d'entrée/sortie",
+		"Paramètre invalide",
+		"Accès refusé (permissions insuffisantes)",
+		"Périphérique introuvable (peut-être déconnecté)",
+		"Elément introuvable",
+		"Resource déjà occupée",
+		"Operation expirée",
+		"Débordement",
+		"Erreur de pipe",
+		"Appel système abandonné (peut-être à cause d’un signal)",
+		"Mémoire insuffisante",
+		"Opération non supportée or non implémentée sur cette plateforme",
+		"Autre erreur",
+	}, { /* Russian (ru) */
+		"Успех",
+		"Ошибка ввода/вывода",
+		"Неверный параметр",
+		"Доступ запрещён (не хватает прав)",
+		"Устройство отсутствует (возможно, оно было отсоединено)",
+		"Элемент не найден",
+		"Ресурс занят",
+		"Истекло время ожидания операции",
+		"Переполнение",
+		"Ошибка канала",
+		"Системный вызов прерван (возможно, сигналом)",
+		"Память исчерпана",
+		"Операция не поддерживается данной платформой",
+		"Неизвестная ошибка"
+	
+	}, { /* German (de) */
+		"Erfolgreich",
+		"Eingabe-/Ausgabefehler",
+		"Ungültiger Parameter",
+		"Keine Berechtigung (Zugriffsrechte fehlen)",
+		"Kein passendes Gerät gefunden (es könnte entfernt worden sein)",
+		"Entität nicht gefunden",
+		"Die Ressource ist belegt",
+		"Die Wartezeit für die Operation ist abgelaufen",
+		"Mehr Daten empfangen als erwartet",
+		"Datenübergabe unterbrochen (broken pipe)",
+		"Unterbrechung während des Betriebssystemaufrufs",
+		"Nicht genügend Hauptspeicher verfügbar",
+		"Die Operation wird nicht unterstützt oder ist auf dieser Platform nicht implementiert",
+		"Allgemeiner Fehler",
+	}, { /* Hungarian (hu) */
+		"Sikeres",
+		"Be-/kimeneti hiba",
+		"Érvénytelen paraméter",
+		"Hozzáférés megtagadva",
+		"Az eszköz nem található (eltávolították?)",
+		"Nem található",
+		"Az erőforrás foglalt",
+		"Időtúllépés",
+		"Túlcsordulás",
+		"Törött adatcsatorna",
+		"Rendszerhívás megszakítva",
+		"Nincs elég memória",
+		"A művelet nem támogatott ezen a rendszeren",
+		"Általános hiba",
+	}
 };
 
 /** \ingroup libusb_misc
@@ -107,6 +188,22 @@ static const char* usbi_localized_errors[LIBUSB_ERROR_COUNT] = {
 
 int API_EXPORTED libusb_setlocale(const char *locale)
 {
+	size_t i;
+
+	if ( (locale == NULL) || (strlen(locale) < 2)
+	  || ((strlen(locale) > 2) && (locale[2] != '-') && (locale[2] != '_') && (locale[2] != '.')) )
+		return LIBUSB_ERROR_INVALID_PARAM;
+
+	for (i=0; i<ARRAYSIZE(usbi_locale_supported); i++) {
+		if (strncasecmp(usbi_locale_supported[i], locale, 2) == 0)
+			break;
+	}
+	if (i >= ARRAYSIZE(usbi_locale_supported)) {
+		return LIBUSB_ERROR_NOT_FOUND;
+	}
+
+	usbi_locale = i;
+
 	return LIBUSB_SUCCESS;
 }
 
@@ -132,5 +229,5 @@ DEFAULT_VISIBILITY const char* LIBUSB_CALL libusb_strerror(enum libusb_error err
 		errcode_index = LIBUSB_ERROR_COUNT - 1;
 	}
 
-	return usbi_localized_errors[errcode_index];
+	return usbi_localized_errors[usbi_locale][errcode_index];
 }

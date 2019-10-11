@@ -21,9 +21,9 @@ AC_INIT([libusb],[LIBUSB_MAJOR[.]LIBUSB_MINOR[.]LIBUSB_MICRO[]LIBUSB_RC],[libusb
 # These numbers should be tweaked on every release. Read carefully:
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 # http://sourceware.org/autobook/autobook/autobook_91.html
-lt_current=1
+lt_current=2
 lt_revision=0
-lt_age=1
+lt_age=2
 LTLDFLAGS="-version-info ${lt_current}:${lt_revision}:${lt_age}"
 
 AM_INIT_AUTOMAKE
@@ -32,7 +32,6 @@ AC_CONFIG_SRCDIR([libusb/core.c])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
-AM_MAINTAINER_MODE([disable])
 
 AC_PREREQ([2.69])
 AC_PROG_CC
@@ -108,7 +107,7 @@ case $backend in
 linux)
 	AC_DEFINE(OS_LINUX, 1, [Linux backend])
 	AC_SUBST(OS_LINUX)
-	AC_SEARCH_LIBS([clock_gettime2], [rt], [], [], [-pthread])
+	AC_SEARCH_LIBS([clock_gettime], [rt], [], [], [-pthread])
 	AC_ARG_ENABLE([udev],
 		[AC_HELP_STRING([--enable-udev], [use udev for device enumeration and hotplug support (recommended) [default=yes]])],
 		[], [enable_udev=yes])
