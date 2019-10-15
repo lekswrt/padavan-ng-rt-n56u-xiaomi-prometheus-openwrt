@@ -12,6 +12,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
+	autoreconf ; \
 	ac_cv_lib_rt_clock_gettime=no \
 	./configure \
 		--prefix=$(STAGEDIR) \
