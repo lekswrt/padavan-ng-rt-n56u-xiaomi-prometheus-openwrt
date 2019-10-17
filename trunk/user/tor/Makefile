@@ -15,7 +15,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
-	autoreconf ; \
+	autoreconf -fi ; \
 	./configure \
 		--prefix=/usr \
 		--host=$(HOST_TARGET) \
@@ -26,7 +26,8 @@ configure:
 		--disable-gcc-hardening \
 		--disable-asciidoc \
 		--disable-systemd \
-		--disable-lzma; \
+		--disable-lzma \
+		--disable-zstd; \
 	)
 
 clean:
