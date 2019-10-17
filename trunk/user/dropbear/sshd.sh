@@ -46,10 +46,10 @@ func_start()
 		key_s="-s"
 	fi
 
-	ip6_service=`nvram get ip6_service`
-	if [ -z "$ip6_service" ] && [ -d /proc/sys/net/ipv6 ] ; then
-		key_4="-4"
-	fi
+#	ip6_service=`nvram get ip6_service`
+#	if [ -z "$ip6_service" ] && [ -d /proc/sys/net/ipv6 ] ; then
+#		key_4="-4"
+#	fi
 
 	gateway_ports=`nvram get sshd_enable_gp`
 	if [ "$gateway_ports" != "0" ]; then
