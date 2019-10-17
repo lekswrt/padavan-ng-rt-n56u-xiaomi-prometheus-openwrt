@@ -24,7 +24,6 @@ func_start()
 {
 	key_a=""
 	key_s=""
-	key_4=""
 
 	[ ! -d "$dir_storage" ] && mkdir -p -m 755 $dir_storage
 
@@ -46,17 +45,12 @@ func_start()
 		key_s="-s"
 	fi
 
-#	ip6_service=`nvram get ip6_service`
-#	if [ -z "$ip6_service" ] && [ -d /proc/sys/net/ipv6 ] ; then
-#		key_4="-4"
-#	fi
-
 	gateway_ports=`nvram get sshd_enable_gp`
-	if [ "$gateway_ports" != "0" ]; then
+	if [ "$gateway_ports" = "1" ]; then
 		key_a="-a"
 	fi
 
-	/usr/sbin/dropbear $key_4 $key_s $key_a
+	/usr/sbin/dropbear $key_s $key_a
 }
 
 func_stop()

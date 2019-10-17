@@ -141,7 +141,7 @@ func_start()
 	fi
 
         gateway_ports=`nvram get sshd_enable_gp`
-        if [ "$gateway_ports" != "0" ]; then
+        if [ "$gateway_ports" = "1" ]; then
                 key_gatewayports="-o GatewayPorts=yes"
         fi
 
