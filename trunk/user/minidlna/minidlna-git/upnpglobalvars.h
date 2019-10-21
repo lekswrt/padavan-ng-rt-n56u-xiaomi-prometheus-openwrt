@@ -199,6 +199,7 @@ extern uint32_t runtime_flags;
 #define TIVO_BONJOUR_MASK     0x0080
 #else
 #define TIVO_BONJOUR_MASK     0x0000
+#define UPDATE_SCAN_MASK      0x0080
 #endif
 #define SCANNING_MASK         0x0100
 #define RESCAN_MASK           0x0200

@@ -718,6 +718,26 @@ filter_avp(scan_filter *d)
 		);
 }
 
+static int
+is_sys_dir(const char *dirname)
+{
+	static const char *MS_System_folder[] = {"SYSTEM VOLUME INFORMATION", "RECYCLER", "RECYCLED", "$RECYCLE.BIN", NULL};
+	static const char *Linux_System_folder[] = {"lost+found", NULL};
+	int i;
+
+	for (i = 0; MS_System_folder[i] != NULL; ++i) {
+		if (!strcasecmp(dirname, MS_System_folder[i]))
+			return 1;
+	}
+
+	for (i = 0; Linux_System_folder[i] != NULL; ++i) {
+		if (!strcasecmp(dirname, Linux_System_folder[i]))
+			return 1;
+	}
+
+	return 0;
+}
+
 static void
 ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 {
@@ -725,7 +745,7 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 	int i, n, startID = 0;
 	char *full_path;
 	char *name = NULL;
-	static long long unsigned int fileno = 0;
+	static uint64_t fileno = 0;
 	enum file_types type;
 
 	DPRINTF(parent?E_INFO:E_WARN, L_SCANNER, _("Scanning %s\n"), dir);
@@ -799,7 +819,24 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 		}
 		if( (type == TYPE_DIR) && (access(full_path, R_OK|X_OK) == 0) )
 		{
-			char *parent_id;
+			char *parent_id, *objectID;
+
+			if (is_sys_dir(name))
+				goto next_entry;
+
+			if ( GETFLAG(UPDATE_SCAN_MASK) )
+			{
+				objectID = sql_get_text_field(db, "SELECT OBJECT_ID from OBJECTS o left join DETAILS d"
+				                                  " on (d.ID = o.DETAIL_ID) where d.PATH = '%q'"
+				                                  " and o.OBJECT_ID glob '%s$*'", full_path, BROWSEDIR_ID);
+				if( objectID )
+				{
+					ScanDirectory(full_path, objectID+2, dir_types);
+					sqlite3_free(objectID);
+					goto next_entry;
+				}
+			}
+
 			insert_directory(name, full_path, BROWSEDIR_ID, THISORNUL(parent), i+startID);
 			xasprintf(&parent_id, "%s$%X", THISORNUL(parent), i+startID);
 			ScanDirectory(full_path, parent_id, dir_types);
@@ -807,9 +844,17 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 		}
 		else if( type == TYPE_FILE && (access(full_path, R_OK) == 0) )
 		{
+			if( GETFLAG(UPDATE_SCAN_MASK) )
+			{
+				/* TODO: Check the timestamp, and update the file details if it's newer */
+				if( sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", full_path) > 0 )
+					goto next_entry;
+			}
+
 			if( insert_file(name, full_path, THISORNUL(parent), i+startID, dir_types) == 0 )
 				fileno++;
 		}
+next_entry:
 		free(name);
 		free(namelist[i]);
 	}
@@ -932,7 +977,11 @@ start_scanner(void)
 	/* Create this index after scanning, so it doesn't slow down the scanning process.
 	 * This index is very useful for large libraries used with an XBox360 (or any
 	 * client that uses UPnPSearch on large containers). */
+
+	if( !GETFLAG(UPDATE_SCAN_MASK) )
+	{
 	sql_exec(db, "create INDEX IDX_SEARCH_OPT ON OBJECTS(OBJECT_ID, CLASS, DETAIL_ID);");
+	}
 
 	fill_playlists();
 

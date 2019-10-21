@@ -1057,12 +1057,12 @@ Process_upnphttp(struct event *ev)
 		n = recv(h->ev.fd, buf, 2048, 0);
 		if(n<0)
 		{
-			DPRINTF(E_ERROR, L_HTTP, "recv (state0): %s\n", strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "recv (state0): %s\n", strerror(errno));
 			h->state = 100;
 		}
 		else if(n==0)
 		{
-			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly\n");
+			DPRINTF(E_DEBUG, L_HTTP, "HTTP Connection closed unexpectedly\n");
 			h->state = 100;
 		}
 		else
@@ -1103,12 +1103,12 @@ Process_upnphttp(struct event *ev)
 		n = recv(h->ev.fd, buf, sizeof(buf), 0);
 		if(n < 0)
 		{
-			DPRINTF(E_ERROR, L_HTTP, "recv (state%d): %s\n", h->state, strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "recv (state%d): %s\n", h->state, strerror(errno));
 			h->state = 100;
 		}
 		else if(n == 0)
 		{
-			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly\n");
+			DPRINTF(E_DEBUG, L_HTTP, "HTTP Connection closed unexpectedly\n");
 			h->state = 100;
 		}
 		else

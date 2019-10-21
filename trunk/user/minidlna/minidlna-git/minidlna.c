@@ -406,7 +406,7 @@ rescan:
 		if (CreateDatabase() != 0)
 			DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to create sqlite database!  Exiting...\n");
 	}
-	if (ret || GETFLAG(RESCAN_MASK))
+	if (ret || GETFLAG(RESCAN_MASK) || GETFLAG(UPDATE_SCAN_MASK))
 	{
 #if USE_FORK
 		sqlite3_close(db);
@@ -953,6 +953,9 @@ init(int argc, char **argv)
 			SETFLAG(SYSTEMD_MASK);
 			break;
 #endif
+		case 'U':
+			SETFLAG(UPDATE_SCAN_MASK);
+			break;
 		case 'V':
 			printf("Version " MINIDLNA_VERSION "\n");
 			exit(0);
@@ -987,6 +990,7 @@ init(int argc, char **argv)
 #ifdef __linux__
 			"\t-S changes behaviour for systemd\n"
 #endif
+			"\t-U starts an update scan\n"
 			"\t-V print the version number\n",
 			argv[0], pidfilename);
 		return 1;
