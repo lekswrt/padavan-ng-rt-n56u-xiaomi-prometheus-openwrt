@@ -9,7 +9,7 @@ subdirs += utils
 # "make utils" flags
 
 CFLAGS-utils := \
-    $(SSP_DISABLE_FLAGS) \
+    $(SSP_ALL_CFLAGS) \
     -I$(top_srcdir)ldso/ldso/$(TARGET_ARCH) \
     -I$(top_srcdir)ldso/include \
     -DUCLIBC_RUNTIME_PREFIX=\"$(RUNTIME_PREFIX)\" \
