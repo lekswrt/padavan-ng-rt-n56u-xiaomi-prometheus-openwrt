@@ -398,7 +398,7 @@ int bond_dev_queue_xmit(struct bonding *bond, struct sk_buff *skb,
 		     sizeof(qdisc_skb_cb(skb)->bond_queue_mapping));
 	skb->queue_mapping = qdisc_skb_cb(skb)->bond_queue_mapping;
 
-	if (unlikely(netpoll_tx_running(slave_dev)))
+	if (unlikely(netpoll_tx_running(bond->dev)))
 		bond_netpoll_send_skb(bond_get_slave_by_dev(bond, slave_dev), skb);
 	else
 		dev_queue_xmit(skb);
@@ -1240,9 +1240,7 @@ static inline int slave_enable_netpoll(struct slave *slave)
 	if (!np)
 		goto out;
 
-	np->dev = slave->dev;
-	strlcpy(np->dev_name, slave->dev->name, IFNAMSIZ);
-	err = __netpoll_setup(np);
+	err = __netpoll_setup(np, slave->dev);
 	if (err) {
 		kfree(np);
 		goto out;
@@ -1259,17 +1257,7 @@ static inline void slave_disable_netpoll(struct slave *slave)
 		return;
 
 	slave->np = NULL;
-	synchronize_rcu_bh();
-	__netpoll_cleanup(np);
-	kfree(np);
-}
-static inline bool slave_dev_support_netpoll(struct net_device *slave_dev)
-{
-	if (slave_dev->priv_flags & IFF_DISABLE_NETPOLL)
-		return false;
-	if (!slave_dev->netdev_ops->ndo_poll_controller)
-		return false;
-	return true;
+	__netpoll_free_async(np);
 }
 
 static void bond_poll_controller(struct net_device *bond_dev)

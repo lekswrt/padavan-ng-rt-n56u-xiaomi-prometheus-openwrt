@@ -216,6 +216,33 @@ static void br_netpoll_cleanup(struct net_device *dev)
 	}
 }
 
+static int __br_netpoll_enable(struct net_bridge_port *p)
+{
+	struct netpoll *np;
+	int err;
+
+	np = kzalloc(sizeof(*p->np), GFP_KERNEL);
+	if (!np)
+		return -ENOMEM;
+
+	err = __netpoll_setup(np, p->dev);
+	if (err) {
+		kfree(np);
+		return err;
+	}
+
+	p->np = np;
+	return err;
+}
+
+int br_netpoll_enable(struct net_bridge_port *p)
+{
+	if (!p->br->dev->npinfo)
+		return 0;
+
+	return __br_netpoll_enable(p);
+}
+
 static int br_netpoll_setup(struct net_device *dev, struct netpoll_info *ni)
 {
 	struct net_bridge *br = netdev_priv(dev);
@@ -225,8 +252,7 @@ static int br_netpoll_setup(struct net_device *dev, struct netpoll_info *ni)
 	list_for_each_entry_safe(p, n, &br->port_list, list) {
 		if (!p->dev)
 			continue;
-
-		err = br_netpoll_enable(p);
+		err = __br_netpoll_enable(p);
 		if (err)
 			goto fail;
 	}
@@ -239,31 +265,6 @@ fail:
 	goto out;
 }
 
-int br_netpoll_enable(struct net_bridge_port *p)
-{
-	struct netpoll *np;
-	int err = 0;
-
-	np = kzalloc(sizeof(*p->np), GFP_KERNEL);
-	err = -ENOMEM;
-	if (!np)
-		goto out;
-
-	np->dev = p->dev;
-	strlcpy(np->dev_name, p->dev->name, IFNAMSIZ);
-
-	err = __netpoll_setup(np);
-	if (err) {
-		kfree(np);
-		goto out;
-	}
-
-	p->np = np;
-
-out:
-	return err;
-}
-
 void br_netpoll_disable(struct net_bridge_port *p)
 {
 	struct netpoll *np = p->np;
@@ -273,11 +274,7 @@ void br_netpoll_disable(struct net_bridge_port *p)
 
 	p->np = NULL;
 
-	/* Wait for transmitting packets to finish before freeing. */
-	synchronize_rcu_bh();
-
-	__netpoll_cleanup(np);
-	kfree(np);
+	__netpoll_free_async(np);
 }
 
 #endif

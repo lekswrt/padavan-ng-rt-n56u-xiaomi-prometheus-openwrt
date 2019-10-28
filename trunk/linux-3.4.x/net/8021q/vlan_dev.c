@@ -714,10 +714,7 @@ static int vlan_dev_netpoll_setup(struct net_device *dev, struct netpoll_info *n
 	if (!netpoll)
 		goto out;
 
-	netpoll->dev = real_dev;
-	strlcpy(netpoll->dev_name, real_dev->name, IFNAMSIZ);
-
-	err = __netpoll_setup(netpoll);
+	err = __netpoll_setup(netpoll, real_dev);
 	if (err) {
 		kfree(netpoll);
 		goto out;
@@ -739,11 +736,7 @@ static void vlan_dev_netpoll_cleanup(struct net_device *dev)
 
 	info->netpoll = NULL;
 
-        /* Wait for transmitting packets to finish before freeing. */
-        synchronize_rcu_bh();
-
-        __netpoll_cleanup(netpoll);
-        kfree(netpoll);
+	__netpoll_free_async(netpoll);
 }
 #endif /* CONFIG_NET_POLL_CONTROLLER */
 

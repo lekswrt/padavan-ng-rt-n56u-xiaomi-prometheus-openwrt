@@ -1195,6 +1195,19 @@ ei_start_xmit(struct sk_buff* skb, struct net_device *dev)
 	return dma_xmit(skb, dev, ei_local, PSE_PORT_GMAC1);
 }
 
+static void ei_fake_poll(struct net_device *dev)
+{
+//	request_irq(dev->irq, ei_interrupt, IRQF_DISABLED, dev->name, dev);
+	disable_irq(dev->irq);
+	ei_interrupt(dev->irq, dev);
+	enable_irq(dev->irq);
+//#if defined (CONFIG_RAETH_NAPI)
+//	ei_napi_poll(0, 16);
+//#else
+//	ei_receive((unsigned long)dev);
+//#endif
+}
+
 static const struct net_device_ops ei_netdev_ops = {
 	.ndo_init		= ei_init,
 	.ndo_uninit		= ei_uninit,
@@ -1207,6 +1220,7 @@ static const struct net_device_ops ei_netdev_ops = {
 	.ndo_fix_features	= ei_fix_features,
 	.ndo_set_mac_address	= eth_mac_addr,
 	.ndo_validate_addr	= eth_validate_addr,
+	.ndo_poll_controller	= ei_fake_poll
 };
 
 /**
