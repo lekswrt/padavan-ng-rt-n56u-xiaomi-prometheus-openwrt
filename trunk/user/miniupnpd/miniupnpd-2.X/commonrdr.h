@@ -1,6 +1,6 @@
-/* $Id: commonrdr.h,v 1.10 2016/02/12 12:34:39 nanard Exp $ */
+/* $Id: commonrdr.h,v 1.11 2019/10/02 22:12:02 nanard Exp $ */
 /* MiniUPnP project
- * (c) 2006-2016 Thomas Bernard
+ * (c) 2006-2019 Thomas Bernard
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
@@ -63,5 +63,27 @@ int
 update_portmapping_desc_timestamp(const char * ifname,
                    unsigned short eport, int proto,
                    const char * desc, unsigned int timestamp);
+
+#ifdef USE_NFTABLES
+/*
+ * only provided by nftables implementation at the moment.
+ * Should be implemented for iptables too, for consistency
+ */
+
+typedef enum {
+	RDR_TABLE_NAME,
+	RDR_NAT_PREROUTING_CHAIN_NAME,
+	RDR_NAT_POSTROUTING_CHAIN_NAME,
+	RDR_FORWARD_CHAIN_NAME,
+} rdr_name_type;
+
+/*
+ * used by the config file parsing in the core
+ * to set
+ */
+
+int set_rdr_name( rdr_name_type param, const char * string );
+
+#endif
 
 #endif

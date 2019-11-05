@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.90 2017/12/12 11:40:13 nanard Exp $
+# $Id: Makefile,v 1.93 2019/10/05 19:22:10 nanard Exp $
 # MiniUPnP project
 # http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
 # Author: Thomas Bernard
@@ -29,6 +29,7 @@ RM = rm -f
 MV = mv
 INSTALL = install
 STRIP = strip
+DOXYGEN ?= doxygen
 
 # OSNAME and FWNAME are used for building OS or FW dependent code.
 OSNAME != uname -s
@@ -97,10 +98,18 @@ CFLAGS += -m64 -mcmodel=medlow
 .endif
 .endif
 
+ISGITREPO != git rev-parse --is-inside-work-tree
+.if $(ISGITREPO) == "true"
+GITREF != git rev-parse --short HEAD
+GITBRANCH != git rev-parse --abbrev-ref HEAD
+CFLAGS += -DMINIUPNPD_GIT_REF=\"$(GITBRANCH)-$(GITREF)\"
+.endif
+
 STDOBJS = miniupnpd.o upnphttp.o upnpdescgen.o upnpsoap.o \
           upnpredirect.o getifaddr.o daemonize.o upnpglobalvars.o \
           options.o upnppermissions.o minissdp.o natpmp.o pcpserver.o \
           upnpevents.o upnputils.o getconnstatus.o \
+          upnpstun.o \
           upnppinhole.o asyncsendto.o portinuse.o
 BSDOBJS = bsd/getifstats.o bsd/ifacewatcher.o bsd/getroute.o
 SUNOSOBJS = solaris/getifstats.o bsd/ifacewatcher.o bsd/getroute.o
@@ -223,6 +232,9 @@ depend:	config.h
     testupnppermissions.c miniupnpdctl.c testgetifaddr.c \
 	testgetroute.c testportinuse.c testasyncsendto.c \
 	testssdppktgen.c
+
+dox:	miniupnpd.doxyconf
+	$(DOXYGEN) $>
 
 miniupnpd: config.h $(ALLOBJS)
 	$(CC) $(LDFLAGS) -o $@ $(ALLOBJS) $(LIBS)

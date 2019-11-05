@@ -1,7 +1,7 @@
-/* $Id: testnftnlrdr.c,v 1.1 2015/04/30 09:05:08 nanard Exp $ */
+/* $Id: testnftnlrdr.c,v 1.3 2019/10/06 20:50:48 nanard Exp $ */
 /* MiniUPnP project
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
- * (c) 2006-2012 Thomas Bernard
+ * (c) 2006-2019 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
@@ -11,6 +11,7 @@
 #include <syslog.h>
 
 #include "nftnlrdr.h"
+#include "nftnlrdr_misc.h"
 #include "../commonrdr.h"
 
 #ifndef PRIu64
@@ -84,7 +85,7 @@ main(int argc, char ** argv)
 		printf("test\n");
 	}
 	printf("trying to list nat rules :\n");
-	list_redirect_rule(argv[1]);
+	print_redirect_rules(argv[1]);
 	printf("deleting\n");
 	delete_redirect_and_filter_rules(eport, IPPROTO_TCP);
 	return 0;

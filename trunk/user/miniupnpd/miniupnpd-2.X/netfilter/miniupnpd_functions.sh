@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: miniupnpd_functions.sh,v 1.1 2018/04/06 09:21:11 nanard Exp $
+# $Id: miniupnpd_functions.sh,v 1.3 2019/04/03 16:25:55 nanard Exp $
 
 IP=$(which ip) || {
 	echo "Can't find ip" >&2
@@ -18,6 +18,7 @@ else
 	}
 	IP="$IP -6"
 fi
+IPTABLES="$IPTABLES -w"
 
 CHAIN=MINIUPNPD
 CLEAN=
@@ -56,9 +57,9 @@ if [ -n "$EXT" ]; then
 	#fi
 fi
 
-FDIRTY=$(LC_ALL=C $IPTABLES -t filter -L -n | awk "/$CHAIN/ {printf \$1}")
+FDIRTY=$(LC_ALL=C $IPTABLES -t filter -L -n | awk "/$CHAIN / {printf \$1}")
 if [ -z "$IPV6" ]; then
-	NDIRTY=$(LC_ALL=C $IPTABLES -t nat -L -n | awk "/$CHAIN/ {printf \$1}")
-	MDIRTY=$(LC_ALL=C $IPTABLES -t mangle -L -n | awk "/$CHAIN/ {printf \$1}")
-	NPDIRTY=$(LC_ALL=C $IPTABLES -t nat -L -n | awk "/$CHAIN-POSTROUTING/ {printf \$1}")
+	NDIRTY=$(LC_ALL=C $IPTABLES -t nat -L -n | awk "/$CHAIN / {printf \$1}")
+	MDIRTY=$(LC_ALL=C $IPTABLES -t mangle -L -n | awk "/$CHAIN / {printf \$1}")
+	NPDIRTY=$(LC_ALL=C $IPTABLES -t nat -L -n | awk "/$CHAIN-POSTROUTING / {printf \$1}")
 fi

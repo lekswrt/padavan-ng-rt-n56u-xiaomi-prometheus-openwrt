@@ -1,7 +1,8 @@
-/* $Id: iptcrdr.c,v 1.59 2016/03/08 09:23:52 nanard Exp $ */
-/* MiniUPnP project
- * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
- * (c) 2006-2016 Thomas Bernard
+/* $Id: iptcrdr.c,v 1.62 2019/08/24 07:06:22 nanard Exp $ */
+/* vim: tabstop=4 shiftwidth=4 noexpandtab
+ * MiniUPnP project
+ * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
+ * (c) 2006-2019 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 #include <stdio.h>
@@ -13,15 +14,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <dlfcn.h>
-#ifdef IPTABLES_143
 #include <xtables.h>
-#endif
 #include <linux/netfilter/xt_DSCP.h>
 #include <libiptc/libiptc.h>
 
 #include <linux/version.h>
 
-#ifdef IPTABLES_143
+#if IPTABLES_143
 /* IPTABLES API version >= 1.4.3 */
 
 /* added in order to compile on gentoo :
@@ -43,7 +42,7 @@
 #else
 /* IPTABLES API version < 1.4.3 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-#include <linux/netfilter/nf_nat.h>
+#include <linux/netfilter_ipv4/ip_nat.h>
 #else
 #if 0
 #include <linux/netfilter/nf_nat.h>
@@ -623,6 +622,69 @@ delete_rule_and_commit(unsigned int index, IPTC_HANDLE h,
 	return r;
 }
 
+/* delete_filter_rule()
+ */
+int
+delete_filter_rule(const char * ifname, unsigned short port, int proto)
+{
+	int r = -1;
+	unsigned index = 0;
+	unsigned i = 0;
+	IPTC_HANDLE h;
+	const struct ipt_entry * e;
+	const struct ipt_entry_match *match;
+	UNUSED(ifname);
+
+	if((h = iptc_init("filter")))
+	{
+		i = 0;
+		/* we must find the right index for the filter rule */
+#ifdef IPTABLES_143
+		for(e = iptc_first_rule(miniupnpd_forward_chain, h);
+		    e;
+			e = iptc_next_rule(e, h), i++)
+#else
+		for(e = iptc_first_rule(miniupnpd_forward_chain, &h);
+		    e;
+			e = iptc_next_rule(e, &h), i++)
+#endif
+		{
+			if(proto==e->ip.proto)
+			{
+				match = (const struct ipt_entry_match *)&e->elems;
+				/*syslog(LOG_DEBUG, "filter rule #%u: %s %s",
+				       i, match->u.user.name, inet_ntoa(e->ip.dst));*/
+				if(0 == strncmp(match->u.user.name, "tcp", IPT_FUNCTION_MAXNAMELEN))
+				{
+					const struct ipt_tcp * info;
+					info = (const struct ipt_tcp *)match->data;
+					if(port != info->dpts[0])
+						continue;
+				}
+				else
+				{
+					const struct ipt_udp * info;
+					info = (const struct ipt_udp *)match->data;
+					if(port != info->dpts[0])
+						continue;
+				}
+				index = i;
+				/*syslog(LOG_INFO, "Trying to delete filter rule at index %u", index);*/
+				r = delete_rule_and_commit(index, h, miniupnpd_forward_chain, "delete_filter_rule");
+				h = NULL;
+				break;
+			}
+		}
+	}
+	if(h)
+#ifdef IPTABLES_143
+		iptc_free(h);
+#else
+		iptc_free(&h);
+#endif
+	return r;
+}
+
 /* delete_redirect_and_filter_rules()
  */
 int
@@ -1118,9 +1180,13 @@ addnatrule(int proto, unsigned short eport,
 	} else {
 		match = get_udp_match(eport, 0);
 	}
-	e->nfcache = NFC_IP_DST_PT;
+#ifdef NFC_UNKNOWN
+	e->nfcache = NFC_UNKNOWN;
+#endif
 	target = get_dnat_target(iaddr, iport);
-	e->nfcache |= NFC_UNKNOWN;
+#ifdef NFC_IP_DST_PT
+	e->nfcache |= NFC_IP_DST_PT;
+#endif
 	tmp = realloc(e, sizeof(struct ipt_entry)
 	               + match->u.match_size
 				   + target->u.target_size);
@@ -1188,9 +1254,13 @@ addmasqueraderule(int proto,
 	} else {
 		match = get_udp_match(0, iport);
 	}
-	e->nfcache = NFC_IP_DST_PT;
+#ifdef NFC_UNKNOWN
+	e->nfcache = NFC_UNKNOWN;
+#endif
 	target = get_masquerade_target(eport);
-	e->nfcache |= NFC_UNKNOWN;
+#ifdef NFC_IP_DST_PT
+	e->nfcache |= NFC_IP_DST_PT;
+#endif
 	tmp = realloc(e, sizeof(struct ipt_entry)
 	               + match->u.match_size
 				   + target->u.target_size);
@@ -1268,9 +1338,16 @@ addpeernatrule(int proto,
 	} else {
 		match = get_udp_match(rport, iport);
 	}
-	e->nfcache = NFC_IP_DST_PT | NFC_IP_SRC_PT;
+#ifdef NFC_UNKNOWN
+	e->nfcache = NFC_UNKNOWN;
+#endif
 	target = get_snat_target(eaddr, eport);
-	e->nfcache |= NFC_UNKNOWN;
+#ifdef NFC_IP_DST_PT
+	e->nfcache |= NFC_IP_DST_PT;
+#endif
+#ifdef NFC_IP_SRC_PT
+	e->nfcache |= NFC_IP_SRC_PT;
+#endif
 	tmp = realloc(e, sizeof(struct ipt_entry)
 	               + match->u.match_size
 				   + target->u.target_size);
@@ -1339,9 +1416,16 @@ addpeerdscprule(int proto, unsigned char dscp,
 	} else {
 		match = get_udp_match(rport, iport);
 	}
-	e->nfcache = NFC_IP_DST_PT | NFC_IP_SRC_PT;
+#ifdef NFC_UNKNOWN
+	e->nfcache = NFC_UNKNOWN;
+#endif
 	target = get_dscp_target(dscp);
-	e->nfcache |= NFC_UNKNOWN;
+#ifdef NFC_IP_DST_PT
+	e->nfcache |= NFC_IP_DST_PT;
+#endif
+#ifdef NFC_IP_SRC_PT
+	e->nfcache |= NFC_IP_SRC_PT;
+#endif
 	tmp = realloc(e, sizeof(struct ipt_entry)
 	               + match->u.match_size
 				   + target->u.target_size);
@@ -1422,11 +1506,15 @@ add_filter_rule(int proto, const char * rhost,
 	} else {
 		match = get_udp_match(iport,0);
 	}
-	e->nfcache = NFC_IP_DST_PT;
 	e->ip.dst.s_addr = inet_addr(iaddr);
 	e->ip.dmsk.s_addr = INADDR_NONE;
+#ifdef NFC_UNKNOWN
+	e->nfcache = NFC_UNKNOWN;
+#endif
 	target = get_accept_target();
-	e->nfcache |= NFC_UNKNOWN;
+#ifdef NFC_IP_DST_PT
+	e->nfcache |= NFC_IP_DST_PT;
+#endif
 	tmp = realloc(e, sizeof(struct ipt_entry)
 	               + match->u.match_size
 				   + target->u.target_size);
@@ -1529,6 +1617,9 @@ get_portmappings_in_range(unsigned short startport, unsigned short endport,
 					{
 						unsigned short * tmp;
 						/* need to increase the capacity of the array */
+						capacity += 128;
+						if (capacity <= *number)
+							capacity = *number + 1;
 						tmp = realloc(array, sizeof(unsigned short)*capacity);
 						if(!tmp)
 						{

@@ -1,11 +1,12 @@
-/* $Id: asyncsendto.c,v 1.9 2018/04/12 08:12:31 nanard Exp $ */
+/* $Id: asyncsendto.c,v 1.11 2019/09/24 11:46:01 nanard Exp $ */
 /* MiniUPnP project
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
- * (c) 2006-2017 Thomas Bernard
+ * (c) 2006-2019 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/queue.h>
@@ -251,7 +252,7 @@ int try_sendto(fd_set * writefds)
 					/* uncatched error */
 					if(sockaddr_to_string(elt->dest_addr, addr_str, sizeof(addr_str)) <= 0)
 						addr_str[0] = '\0';
-					syslog(LOG_DEBUG, "%s(sock=%d, len=%u, dest=%s): sendto: %m",
+					syslog(LOG_ERR, "%s(sock=%d, len=%u, dest=%s): sendto: %m",
 					       "try_sendto", elt->sockfd, (unsigned)elt->len,
 					       addr_str);
 					ret--;
@@ -345,4 +346,3 @@ void finalize_sendto(void)
 		}
 	}
 }
-

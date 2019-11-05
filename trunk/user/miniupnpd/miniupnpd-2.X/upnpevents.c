@@ -1,8 +1,8 @@
-/* $Id: upnpevents.c,v 1.40 2018/05/03 08:26:32 nanard Exp $ */
+/* $Id: upnpevents.c,v 1.44 2019/09/24 11:47:06 nanard Exp $ */
 /* vim: tabstop=4 shiftwidth=4 noexpandtab
  * MiniUPnP project
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
- * (c) 2008-2018 Thomas Bernard
+ * (c) 2008-2019 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -341,7 +342,7 @@ upnp_event_notify_connect(struct upnp_event_notify * obj)
 		i = 1;
 		p++;
 		port = (unsigned short)atoi(p);
-		while(*p != '/') {
+		while(*p != '\0' && *p != '/') {
 			if(i<7) obj->portstr[i++] = *p;
 			p++;
 		}
@@ -443,19 +444,35 @@ static void upnp_event_prepare(struct upnp_event_notify * obj)
 		l = 0;
 	}
 	obj->buffersize = 1024;
-	obj->buffer = malloc(obj->buffersize);
-	if(!obj->buffer) {
-		syslog(LOG_ERR, "%s: malloc returned NULL", "upnp_event_prepare");
-		if(xml) {
-			free(xml);
+	for (;;) {
+		obj->buffer = malloc(obj->buffersize);
+		if(!obj->buffer) {
+			syslog(LOG_ERR, "%s: malloc returned NULL", "upnp_event_prepare");
+			if(xml) {
+				free(xml);
+			}
+			obj->state = EError;
+			return;
 		}
-		obj->state = EError;
-		return;
+		obj->tosend = snprintf(obj->buffer, obj->buffersize, notifymsg,
+		                       (obj->path[0] != '\0') ? obj->path : "/",
+		                       obj->addrstr, obj->portstr, l+2,
+		                       obj->sub->uuid, obj->sub->seq,
+		                       l, xml);
+		if (obj->tosend < 0) {
+			syslog(LOG_ERR, "%s: snprintf() failed", "upnp_event_prepare");
+			if(xml) {
+				free(xml);
+			}
+			obj->state = EError;
+			return;
+		} else if (obj->tosend < obj->buffersize) {
+			break; /* the buffer was large enough */
+		}
+		/* Try again with a buffer big enough */
+		free(obj->buffer);
+		obj->buffersize = obj->tosend + 1;	/* reserve space for the final 0 */
 	}
-	obj->tosend = snprintf(obj->buffer, obj->buffersize, notifymsg,
-	                       obj->path, obj->addrstr, obj->portstr, l+2,
-	                       obj->sub->uuid, obj->sub->seq,
-	                       l, xml);
 	if(xml) {
 		free(xml);
 		xml = NULL;
@@ -474,7 +491,7 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 	i = send(obj->s, obj->buffer + obj->sent, obj->tosend - obj->sent, 0);
 	if(i<0) {
 		if(errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-			syslog(LOG_DEBUG, "%s: send(%s%s): %m", "upnp_event_send",
+			syslog(LOG_NOTICE, "%s: send(%s%s): %m", "upnp_event_send",
 			       obj->addrstr, obj->portstr);
 			obj->state = EError;
 			return;
@@ -499,7 +516,7 @@ static void upnp_event_recv(struct upnp_event_notify * obj)
 		if(errno != EAGAIN &&
 		   errno != EWOULDBLOCK &&
 		   errno != EINTR) {
-			syslog(LOG_DEBUG, "%s: recv(): %m", "upnp_event_recv");
+			syslog(LOG_ERR, "%s: recv(): %m", "upnp_event_recv");
 			obj->state = EError;
 		}
 		return;
@@ -530,7 +547,7 @@ upnp_event_process_notify(struct upnp_event_notify * obj)
 		}
 		if(err != 0) {
 			errno = err;
-			syslog(LOG_DEBUG, "%s: connect(%s%s): %m",
+			syslog(LOG_WARNING, "%s: connect(%s%s): %m",
 			       "upnp_event_process_notify",
 			       obj->addrstr, obj->portstr);
 			obj->state = EError;
@@ -567,6 +584,9 @@ void upnpevents_selectfds(fd_set *readset, fd_set *writeset, int * max_fd)
 				upnp_event_notify_connect(obj);
 				if(obj->state != EConnecting)
 					break;
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+				__attribute__ ((fallthrough));
+#endif
 			case EConnecting:
 			case ESending:
 				FD_SET(obj->s, writeset);

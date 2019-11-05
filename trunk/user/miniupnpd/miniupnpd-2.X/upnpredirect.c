@@ -1,4 +1,4 @@
-/* $Id: upnpredirect.c,v 1.94 2018/05/03 08:27:40 nanard Exp $ */
+/* $Id: upnpredirect.c,v 1.96 2019/02/10 11:51:07 nanard Exp $ */
 /* vim: tabstop=4 shiftwidth=4 noexpandtab
  * MiniUPnP project
  * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
@@ -207,7 +207,7 @@ int reload_from_lease_file()
 	if(!lease_file) return -1;
 	fd = fopen( lease_file, "r");
 	if (fd==NULL) {
-		syslog(LOG_DEBUG, "could not open lease file: %s", lease_file);
+		syslog(LOG_ERR, "could not open lease file: %s", lease_file);
 		return -1;
 	}
 	if(unlink(lease_file) < 0) {
@@ -356,6 +356,10 @@ upnp_redirect(const char * rhost, unsigned short eport,
 		                 "%hu->%s:%hu %s", eport, iaddr, iport, protocol);
 		return -3;
 	}
+
+	if (desc == NULL)
+		desc = "";	/* assume empty description */
+
 	/* IGDv1 (WANIPConnection:1 Service Template Version 1.01 / Nov 12, 2001)
 	 * - 2.2.20.PortMappingDescription :
 	 *  Overwriting Previous / Existing Port Mappings:
@@ -440,6 +444,8 @@ upnp_redirect_internal(const char * rhost, unsigned short eport,
 {
 	/*syslog(LOG_INFO, "redirecting port %hu to %s:%hu protocol %s for: %s",
 		eport, iaddr, iport, protocol, desc);			*/
+	if(disable_port_forwarding)
+		return -1;
 	if(add_redirect_rule2(ext_if_name, rhost, eport, iaddr, iport, proto,
 	                      desc, timestamp) < 0) {
 		return -1;
@@ -670,7 +676,7 @@ get_upnp_rules_state_list(int max_rules_number_target)
 	{
 		if(tmp->to_remove)
 		{
-			syslog(LOG_INFO, "remove port mapping %hu %s because it has expired",
+			syslog(LOG_NOTICE, "remove port mapping %hu %s because it has expired",
 			       tmp->eport, proto_itoa(tmp->proto));
 			_upnp_delete_redir(tmp->eport, tmp->proto);
 			*p = tmp->next;
@@ -716,7 +722,7 @@ remove_unused_rules(struct rule_state * list)
 				       "%" PRIu64 "packets %" PRIu64 "bytes",
 				       list->eport, proto_itoa(list->proto),
 				       packets, bytes);
-				if(_upnp_delete_redir(list->eport, list->proto) >= 0)
+				_upnp_delete_redir(list->eport, list->proto);
 				n++;
 			}
 		}
@@ -779,4 +785,3 @@ write_ruleset_details(int s)
 	}
 }
 #endif
-

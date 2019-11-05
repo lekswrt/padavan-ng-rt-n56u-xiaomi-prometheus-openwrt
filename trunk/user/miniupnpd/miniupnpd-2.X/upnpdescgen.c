@@ -1,4 +1,4 @@
-/* $Id: upnpdescgen.c,v 1.85 2018/02/22 13:18:58 nanard Exp $ */
+/* $Id: upnpdescgen.c,v 1.86 2018/07/06 12:05:48 nanard Exp $ */
 /* vim: tabstop=4 shiftwidth=4 noexpandtab
  * MiniUPnP project
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
@@ -1281,8 +1281,9 @@ genEventVars(int * len, const struct serviceDesc * s)
 				if(use_ext_ip_addr)
 					str = strcat_str(str, len, &tmplen, use_ext_ip_addr);
 				else {
+					struct in_addr addr;
 					char ext_ip_addr[INET_ADDRSTRLEN];
-					if(getifaddr(ext_if_name, ext_ip_addr, INET_ADDRSTRLEN, NULL, NULL) < 0) {
+					if(getifaddr(ext_if_name, ext_ip_addr, INET_ADDRSTRLEN, &addr, NULL) < 0 || addr_is_reserved(&addr)) {
 						str = strcat_str(str, len, &tmplen, "0.0.0.0");
 					} else {
 						str = strcat_str(str, len, &tmplen, ext_ip_addr);

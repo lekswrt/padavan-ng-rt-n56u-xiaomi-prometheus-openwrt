@@ -1,4 +1,66 @@
-$Id: Changelog.txt,v 1.441 2018/05/08 21:34:18 nanard Exp $
+$Id: Changelog.txt,v 1.456 2019/10/05 20:08:33 nanard Exp $
+
+2019/10/05:
+  Use OpenSSL TLS_server_method() instead of TLSv1_server_method()
+  Add --version commandline option
+
+2019/10/03:
+  Use OpenBSD pledge()
+
+2019/10/02:
+  Working NFTables implementation thanks to Paul Chambers
+
+2019/09/24:
+  Distinguish between iptables and nftables in genconfig.sh
+
+2019/09/01:
+  fix of nftables scripts : https://github.com/miniupnp/miniupnp/pull/395
+
+2019/08/24:
+  Small fixes in netfilter code
+
+2019/06/25:
+  Update netfilter nftables code
+
+2019/05/21:
+  Allow to use two different network interfaces for IPv4 and IPv6 internet
+
+2019/05/02:
+  Fix ssdp notify on unrelated interfaces
+
+2019/04/09:
+  Fix buffer over-read in upnpevents.c with urls in the form http://ip:port
+
+2019/04/05:
+  Fix memory leak in upnpreplyparse.c with NewPortListing element
+
+2019/03/22:
+  netfilter: miniupnpd_functions.sh parsing fix.
+    fix postrouting chain init.
+    use iptables -I instead of -A to add rules
+
+2019/03/09:
+  check NULL protocol arg in AddAnyPortMapping
+
+2019/03/07:
+  Update portinuse code to reflect changes made in FreeBSD 12.0
+
+2019/02/12:
+  linux/getifstats.c: use custom strtoul() implementation to roll over
+    after 2^32-1
+
+2019/02/03:
+  netfilter: fix build with linux kernel 5.0
+
+2018/12/18:
+  upnp_redirect(): accept NULL desc argument (avoid DOS in AddPortMapping)
+  upnp_event_prepare(): check the return value of snprintf()
+
+2018/09/07:
+  Fix PCP Public address announcement
+
+2018/07/06:
+  STUN support
 
 VERSION 2.1 : released on 2018/05/08
 
