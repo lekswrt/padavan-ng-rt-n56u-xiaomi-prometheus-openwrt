@@ -103,6 +103,9 @@ if [ -f ../shared/tomato_version ]; then
 	OS_VERSION="Tomato $TOMATO_VER"
 fi
 
+# N56U special case
+OS_NAME=RT-N56U
+
 ${RM} ${CONFIGFILE}
 
 echo "/* MiniUPnP Project" >> ${CONFIGFILE}
@@ -367,6 +370,15 @@ case $OS_NAME in
 		echo "#endif" >> ${CONFIGFILE}
 		FW=iptables
 		;;
+	RT-N56U)
+		OS_VERSION=3.4.3.9
+		OS_URL=https://bitbucket.org/padavan/rt-n56u/
+		LEASEFILE=1
+		VENDORCFG=1
+		HAVE_IP_MREQN=1
+		DISABLEPPPCONN=1
+		FW=iptables
+		;;
 	Darwin)
 		MAJORVER=`echo $OS_VERSION | cut -d. -f1`
 		echo "#define USE_IFACEWATCHER 1" >> ${CONFIGFILE}
@@ -440,9 +452,9 @@ if [ \( "$FW" = "netfilter" \) -o \( "$FW" = "pf" \) -o \( "$FW" = "ipfw" \) ] ;
 	echo "#define SUPPORT_REMOTEHOST" >> ${CONFIGFILE}
 fi
 
-echo "/* Enable IGD2 \"Port Triggering\" as defined in Section 2.5.16" >> ${CONFIGFILE}
-echo " * figure 2.2 in UPnP-gw-WANIPConnection-v2-Service.pdf */" >> ${CONFIGFILE}
-echo "#define ENABLE_PORT_TRIGGERING" >> ${CONFIGFILE}
+#echo "/* Enable IGD2 \"Port Triggering\" as defined in Section 2.5.16" >> ${CONFIGFILE}
+#echo " * figure 2.2 in UPnP-gw-WANIPConnection-v2-Service.pdf */" >> ${CONFIGFILE}
+#echo "#define ENABLE_PORT_TRIGGERING" >> ${CONFIGFILE}
 
 echo "" >> ${CONFIGFILE}
 echo "#define OS_NAME		\"$OS_NAME\"" >> ${CONFIGFILE}
@@ -489,9 +501,9 @@ echo "" >> ${CONFIGFILE}
 
 echo "/* Uncomment the following line to enable caching of results of" >> ${CONFIGFILE}
 echo " * the getifstats() function */" >> ${CONFIGFILE}
-echo "/*#define ENABLE_GETIFSTATS_CACHING*/" >> ${CONFIGFILE}
+echo "#define ENABLE_GETIFSTATS_CACHING" >> ${CONFIGFILE}
 echo "/* The cache duration is indicated in seconds */" >> ${CONFIGFILE}
-echo "#define GETIFSTATS_CACHING_DURATION 2" >> ${CONFIGFILE}
+echo "#define GETIFSTATS_CACHING_DURATION 3" >> ${CONFIGFILE}
 echo "" >> ${CONFIGFILE}
 
 echo "/* Uncomment the following line to enable multiple external ip support */" >> ${CONFIGFILE}
@@ -593,7 +605,7 @@ echo "#define ENABLE_EVENTS" >> ${CONFIGFILE}
 echo "" >> ${CONFIGFILE}
 
 echo "/* include interface name in pf and ipf rules */" >> ${CONFIGFILE}
-echo "#define USE_IFNAME_IN_RULES" >> ${CONFIGFILE}
+echo "/*#define USE_IFNAME_IN_RULES*/" >> ${CONFIGFILE}
 echo "" >> ${CONFIGFILE}
 
 echo "/* Experimental NFQUEUE support. */" >> ${CONFIGFILE}
