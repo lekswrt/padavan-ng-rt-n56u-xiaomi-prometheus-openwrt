@@ -372,7 +372,7 @@ case $OS_NAME in
 		;;
 	RT-N56U)
 		OS_VERSION=3.4.3.9
-		OS_URL=https://bitbucket.org/padavan/rt-n56u/
+		OS_URL=https://gitlab.com/dm38/padavan-ng
 		LEASEFILE=1
 		VENDORCFG=1
 		HAVE_IP_MREQN=1
