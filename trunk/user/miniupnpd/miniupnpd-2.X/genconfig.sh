@@ -428,6 +428,8 @@ case $OS_NAME in
 	OpenWRT)
 		echo "#define LIB_UUID" >> ${CONFIGFILE}
 		;;
+	RT-N56U)
+		;;
 	*)
 		if grep uuid_create /usr/include/uuid.h > /dev/null 2>&1 ; then
 			echo "#define BSD_UUID" >> ${CONFIGFILE}
