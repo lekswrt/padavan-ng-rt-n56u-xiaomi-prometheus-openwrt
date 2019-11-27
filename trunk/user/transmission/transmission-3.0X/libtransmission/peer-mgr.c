@@ -2196,7 +2196,14 @@ void tr_peerMgrAddPex(tr_torrent* tor, uint8_t from, tr_pex const* pex, int8_t s
         {
             if (tr_address_is_valid_for_peers(&pex->addr, pex->port))
             {
-                ensureAtomExists(s, &pex->addr, pex->port, pex->flags, seedProbability, from);
+                if (pex->addr.type == TR_AF_INET6 && !tr_net_hasIPv6(pex->port))
+                {
+                    tr_logAddDebug("skip IPv6 peer \"%s\"", tr_address_to_string(&pex->addr));
+                }
+                else
+                {
+                    ensureAtomExists(s, &pex->addr, pex->port, pex->flags, seedProbability, from);
+                }
             }
         }
 
