@@ -3,6 +3,13 @@
 ROOTDIR=`pwd`
 export ROOTDIR=$ROOTDIR
 
+FAKEROOT='fakeroot'
+${FAKEROOT} echo 1 2>&1 >/dev/null
+if [ $? -ne 0 ] ; then
+    FAKEROOT='sudo'
+fi
+export FAKEROOT=$FAKEROOT
+
 kernel_id="3.4.x"
 kernel_cf=""
 kernel_tf=""
