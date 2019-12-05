@@ -28,8 +28,8 @@
 #define BOARD_HAS_5G_11AC       0
 #define BOARD_NUM_ANT_5G_TX     0
 #define BOARD_NUM_ANT_5G_RX     0
-#define BOARD_NUM_ANT_2G_TX     1
-#define BOARD_NUM_ANT_2G_RX     1
+#define BOARD_NUM_ANT_2G_TX     2
+#define BOARD_NUM_ANT_2G_RX     2
 #define BOARD_NUM_ETH_LEDS      0
 #define BOARD_HAS_EPHY_L1000    0
 #define BOARD_HAS_EPHY_W1000    0
