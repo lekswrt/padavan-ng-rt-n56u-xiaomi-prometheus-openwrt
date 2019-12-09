@@ -68,13 +68,6 @@ musl_backend_once() {
 
     extra_cflags=( ${multi_flags} )
 
-    # From buildroot:
-    # gcc constant folding bug with weak aliases workaround
-    # See http://www.openwall.com/lists/musl/2014/05/15/1
-    if [ "${CT_GCC_BUG_61144}" = "y" ]; then
-        extra_cflags+=("-fno-toplevel-reorder")
-    fi
-
     if [ "${CT_LIBC_MUSL_DEBUG}" = "y" ]; then
         extra_config+=("--enable-debug")
     fi
@@ -82,6 +75,11 @@ musl_backend_once() {
     if [ "${CT_LIBC_MUSL_WARNINGS}" = "y" ]; then
         extra_config+=("--enable-warnings")
     fi
+
+    case "${CT_SHARED_LIBS}" in
+        y) extra_config+=("--enable-shared");;
+        *) extra_config+=("--disable-shared");;
+    esac
 
     extra_config+=( "--enable-optimize=${CT_LIBC_MUSL_OPTIMIZE}" )
 
@@ -130,7 +128,7 @@ musl_backend_once() {
             "${multi_root}${multilib_dir}/libc.so"
 
         CT_DoLog EXTRA "Building C library"
-        CT_DoExecLog ALL make ${JOBSFLAGS}
+        CT_DoExecLog ALL make ${CT_JOBSFLAGS}
 
         CT_DoLog EXTRA "Installing C library"
         CT_DoExecLog ALL make DESTDIR="${multi_root}" install

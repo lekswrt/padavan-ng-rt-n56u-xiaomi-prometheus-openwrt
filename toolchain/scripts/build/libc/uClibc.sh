@@ -44,7 +44,7 @@ uClibc_backend_once()
     local libc_mode
     local multi_dir multi_os_dir multi_root multi_flags multi_index multi_count
     local multilib_dir startfiles_dir
-    local jflag=${CT_LIBC_UCLIBC_PARALLEL:+${JOBSFLAGS}}
+    local jflag=${CT_LIBC_UCLIBC_PARALLEL:+${CT_JOBSFLAGS}}
     local -a make_args
     local extra_cflags f cfg_cflags cf
     local hdr_install_subdir
@@ -125,7 +125,6 @@ uClibc_backend_once()
         fi
     done
     CT_DoLog DEBUG "Filtered multilib CFLAGS: ${extra_cflags}"
-    extra_cflags+=" ${CT_LIBC_UCLIBC_EXTRA_CFLAGS}"
     make_args+=( UCLIBC_EXTRA_CFLAGS="${extra_cflags}" )
 
     # uClibc does not have a way to select the installation subdirectory for headers,
@@ -154,20 +153,22 @@ uClibc_backend_once()
             CT_DoExecLog ALL make ${jflag} "${make_args[@]}" \
                 lib/crt1.o lib/crti.o lib/crtn.o
 
-            # From:  http://git.openembedded.org/cgit.cgi/openembedded/commit/?id=ad5668a7ac7e0436db92e55caaf3fdf782b6ba3b
-            # libm.so is needed for ppc, as libgcc is linked against libm.so
-            # No problem to create it for other archs.
-            CT_DoLog EXTRA "Building dummy shared libs"
-            CT_DoExecLog ALL "${CT_TARGET}-${CT_CC}" -nostdlib -nostartfiles \
-                -shared ${multi_flags} -x c /dev/null -o libdummy.so
+            if [ "${CT_SHARED_LIBS}" = "y" ]; then
+                # From:  http://git.openembedded.org/cgit.cgi/openembedded/commit/?id=ad5668a7ac7e0436db92e55caaf3fdf782b6ba3b
+                # libm.so is needed for ppc, as libgcc is linked against libm.so
+                # No problem to create it for other archs.
+                CT_DoLog EXTRA "Building dummy shared libs"
+                CT_DoExecLog ALL "${CT_TARGET}-${CT_CC}" -nostdlib -nostartfiles \
+                    -shared ${multi_flags} -x c /dev/null -o libdummy.so
 
-            CT_DoLog EXTRA "Installing start files"
-            CT_DoExecLog ALL install -m 0644 lib/crt1.o lib/crti.o lib/crtn.o \
-                                             "${startfiles_dir}"
+                CT_DoLog EXTRA "Installing start files"
+                CT_DoExecLog ALL install -m 0644 lib/crt1.o lib/crti.o lib/crtn.o \
+                                                 "${startfiles_dir}"
 
-            CT_DoLog EXTRA "Installing dummy shared libs"
-            CT_DoExecLog ALL install -m 0755 libdummy.so "${startfiles_dir}/libc.so"
-            CT_DoExecLog ALL install -m 0755 libdummy.so "${startfiles_dir}/libm.so"
+                CT_DoLog EXTRA "Installing dummy shared libs"
+                CT_DoExecLog ALL install -m 0755 libdummy.so "${startfiles_dir}/libc.so"
+                CT_DoExecLog ALL install -m 0755 libdummy.so "${startfiles_dir}/libm.so"
+            fi # CT_SHARED_LIBS == y
         fi # CT_THREADS == nptl
     fi # libc_mode == startfiles
 
@@ -238,6 +239,15 @@ manage_uClibc_config()
         CT_KconfigEnableOption "ARCH_USE_MMU" "${dst}"
     else
         CT_KconfigDisableOption "ARCH_USE_MMU" "${dst}"
+        CT_KconfigDisableOption "UCLIBC_FORMAT_FDPIC" "${dst}"
+        CT_KconfigDisableOption "UCLIBC_FORMAT_FLAT" "${dst}"
+        CT_KconfigDisableOption "UCLIBC_FORMAT_SHARED_FLAT" "${dst}"
+        case "${CT_ARCH_BINFMT_FLAT},${CT_ARCH_BINFMT_FDPIC},${CT_SHARED_LIBS}" in
+            y,,y) CT_KconfigEnableOption "UCLIBC_FORMAT_SHARED_FLAT" "${dst}";;
+            y,,) CT_KconfigEnableOption "UCLIBC_FORMAT_FLAT" "${dst}";;
+            ,y,*) CT_KconfigEnableOption "UCLIBC_FORMAT_FDPIC" "${dst}";;
+            *) CT_Abort "Unsupported binary format";;
+        esac
     fi
 
     if [ "${CT_SHARED_LIBS}" = "y" ]; then
@@ -405,6 +415,10 @@ manage_uClibc_config()
     # Now allow architecture to tweak as it wants
     CT_DoArchUClibcConfig "${dst}"
     CT_DoArchUClibcCflags "${dst}" "${flags}"
+
+    # Preserve the config we created (before uclibc's `make olddefconfig`
+    # overrides anything).
+    CT_DoExecLog ALL cp "${dst}" "${dst}.created-by-ct-ng"
 }
 
 uClibc_post_cc()

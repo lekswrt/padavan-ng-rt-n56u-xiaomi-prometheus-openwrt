@@ -79,11 +79,9 @@ do_cloog_backend() {
         eval "${arg// /\\ }"
     done
 
-    if [ "${CT_CLOOG_HAS_WITH_GMP_ISL_OSL}" = y ]; then
-        cloog_opts+=( --with-gmp=system --with-gmp-prefix="${prefix}" )
-        cloog_opts+=( --with-isl=system --with-isl-prefix="${prefix}" )
-        cloog_opts+=( --without-osl )
-    fi
+    cloog_opts+=( --with-gmp=system --with-gmp-prefix="${prefix}" )
+    cloog_opts+=( --with-isl=system --with-isl-prefix="${prefix}" )
+    cloog_opts+=( --without-osl )
 
     CT_DoLog EXTRA "Configuring CLooG"
 
@@ -103,12 +101,12 @@ do_cloog_backend() {
         "${cloog_opts[@]}"
 
     CT_DoLog EXTRA "Building CLooG"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL make ${CT_JOBSFLAGS}
 
     if [ "${CT_COMPLIBS_CHECK}" = "y" ]; then
         if [ "${host}" = "${CT_BUILD}" ]; then
             CT_DoLog EXTRA "Checking CLooG"
-            CT_DoExecLog ALL make ${JOBSFLAGS} -s check
+            CT_DoExecLog ALL make ${CT_JOBSFLAGS} -s check
         else
             # Cannot run host binaries on build in a canadian cross
             CT_DoLog EXTRA "Skipping check for CLooG on the host"

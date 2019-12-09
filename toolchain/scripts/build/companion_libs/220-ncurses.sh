@@ -96,6 +96,7 @@ do_ncurses_for_target() {
     do_ncurses_backend host="${CT_TARGET}" \
                        prefix="${prefix}" \
                        destdir="${CT_SYSROOT_DIR}" \
+                       shared="${CT_SHARED_LIBS}" \
                        cflags="${CT_ALL_TARGET_CFLAGS}" \
                        "${opts[@]}"
     CT_Popd
@@ -109,6 +110,7 @@ fi
 #   prefix        : prefix to install into    : dir       : (none)
 #   cflags        : cflags to use             : string    : (empty)
 #   ldflags       : ldflags to use            : string    : (empty)
+#   shared        : build shared lib          : bool      : n
 #   --*           : passed to configure       : n/a       : n/a
 do_ncurses_backend() {
     local -a ncurses_opts
@@ -116,13 +118,14 @@ do_ncurses_backend() {
     local prefix
     local cflags
     local ldflags
+    local shared
     local arg
     local install_target=install
 
     for arg in "$@"; do
         case "$arg" in
             --*)
-                ncurses_opts+=("$arg")
+                ncurses_opts+=("${arg}")
                 ;;
             *)
                 eval "${arg// /\\ }"
@@ -142,6 +145,10 @@ do_ncurses_backend() {
             ncurses_opts+=("--enable-sp-funcs")
             ;;
     esac
+
+    if [ "${shared}" = "y" ]; then
+        ncurses_opts+=("--with-shared")
+    fi
 
     CT_DoLog EXTRA "Configuring ncurses"
     CT_DoExecLog CFG                                                    \
@@ -167,7 +174,7 @@ do_ncurses_backend() {
     # it also builds ncurses anyway, and dedicated targets (install.includes and
     # install.progs) do not do well with parallel make (-jX).
     CT_DoLog EXTRA "Building ncurses"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL make ${CT_JOBSFLAGS}
 
     # STRIPPROG is handled by our wrapper around install.
     CT_DoLog EXTRA "Installing ncurses"

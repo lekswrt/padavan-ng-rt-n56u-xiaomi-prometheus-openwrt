@@ -32,6 +32,8 @@ if [ -z "${CT_ALLOW_BUILD_AS_ROOT_SURE}" ]; then
     fi
 fi
 
+CT_TestAndAbort "Invalid configuration. Run 'ct-ng menuconfig' and check which options select INVALID_CONFIGURATION." -n "${CT_INVALID_CONFIGURATION}"
+
 # If we want an interactive debug-shell, we must ensure these FDs
 # are indeed connected to a terminal (and not redirected in any way).
 if [ "${CT_DEBUG_INTERACTIVE}" = "y" -a ! \( -t 0 -a -t 6 -a -t 2 \) ]; then
@@ -101,6 +103,14 @@ for d in            \
                 ;;
         esac
 done
+
+n_open_files=$(ulimit -n)
+if [ "${n_open_files}" -lt 2048 ]; then
+    # Newer ld seems to keep a lot of open file descriptors, hitting the default limit
+    # (1024) for example during uClibc-ng link.
+    CT_DoLog WARN "Number of open files ${n_open_files} may not be sufficient to build the toolchain; increasing to 2048"
+    ulimit -n 2048
+fi
 
 # Where will we work?
 CT_WORK_DIR="${CT_WORK_DIR:-${CT_TOP_DIR}/.build}"
@@ -450,6 +460,7 @@ if [ -z "${CT_RESTART}" ]; then
             fi
 
             # Not all tools are available for all platforms, but some are required.
+            # TBD do we need these as shell wrappers? exec is slow on Cygwin, and this makes exec twice for each compiler/linker run
             if [ -n "${where}" ]; then
                 CT_DoLog DEBUG "  '${!v}-${tool}' -> '${where}'"
                 printf "#${BANG}${CT_CONFIG_SHELL}\nexec '${where}' \"\${@}\"\n" >"${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
@@ -460,7 +471,7 @@ if [ -z "${CT_RESTART}" ]; then
                     ar|as|gcc|ld|nm|objcopy|objdump|ranlib)
                         CT_Abort "Missing: '${t}${tool}${!s}' or '${t}${tool}' or '${tool}' : either needed!"
                         ;;
-                    # Some are conditionnally required
+                    # Some are conditionally required
                     # Add them in alphabetical (C locale) ordering
                     g++)
                         # g++ (needed for companion lib), only needed for HOST
@@ -523,6 +534,9 @@ if [ -z "${CT_RESTART}" ]; then
     CT_LDFLAGS_FOR_BUILD="-L${CT_BUILDTOOLS_PREFIX_DIR}/lib"
     CT_LDFLAGS_FOR_BUILD+=" ${CT_EXTRA_LDFLAGS_FOR_BUILD}"
 
+    if ${CT_BUILD}-gcc --version 2>&1 | grep clang; then
+        CT_CFLAGS_FOR_BUILD+=" -Qunused-arguments"
+    fi
     case "${CT_BUILD}" in
         *darwin*)
             # Two issues while building on MacOS. Really, we should be checking for
@@ -550,6 +564,9 @@ if [ -z "${CT_RESTART}" ]; then
     CT_CFLAGS_FOR_HOST+=" ${CT_EXTRA_CFLAGS_FOR_HOST}"
     CT_LDFLAGS_FOR_HOST="-L${CT_HOST_COMPLIBS_DIR}/lib"
     CT_LDFLAGS_FOR_HOST+=" ${CT_EXTRA_LDFLAGS_FOR_HOST}"
+    if ${CT_HOST}-gcc --version 2>&1 | grep clang; then
+        CT_CFLAGS_FOR_HOST+=" -Qunused-arguments"
+    fi
     case "${CT_HOST}" in
         *darwin*)
             # Same as above, for host
@@ -561,7 +578,7 @@ if [ -z "${CT_RESTART}" ]; then
     CT_DoLog DEBUG "LDFLAGS for host compiler: '${CT_LDFLAGS_FOR_HOST}'"
 
     # And help make go faster
-    JOBSFLAGS=
+    CT_JOBSFLAGS=
     # Override the configured jobs with what's been given on the command line
     if [ -n "${CT_JOBS}" ]; then
         if [ ! -z "`echo "${CT_JOBS}" | ${sed} 's/[0-9]//g'`" ]; then
@@ -572,9 +589,9 @@ if [ -z "${CT_RESTART}" ]; then
     # Use the number of processors+1 when automatically setting the number of
     # parallel jobs.
     AUTO_JOBS=$[ BUILD_NCPUS + 1 ]
-    [ ${CT_PARALLEL_JOBS} -eq 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${AUTO_JOBS}"
-    [ ${CT_PARALLEL_JOBS} -gt 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${CT_PARALLEL_JOBS}"
-    JOBSFLAGS="${JOBSFLAGS} -l${CT_LOAD}"
+    [ ${CT_PARALLEL_JOBS} -eq 0 ] && CT_JOBSFLAGS="${CT_JOBSFLAGS} -j${AUTO_JOBS}"
+    [ ${CT_PARALLEL_JOBS} -gt 0 ] && CT_JOBSFLAGS="${CT_JOBSFLAGS} -j${CT_PARALLEL_JOBS}"
+    CT_JOBSFLAGS="${CT_JOBSFLAGS} -l${CT_LOAD}"
 
     # Override 'download only' option
     [ -n "${CT_SOURCE}" ] && CT_ONLY_DOWNLOAD=y
@@ -720,11 +737,6 @@ fi
 # CT_TEST_SUITE_DIR may not exist if only downloading or extracting
 if [ "${CT_TEST_SUITE}" = "y" -a -d "${CT_TEST_SUITE_DIR}" ]; then
     chmod -R u+w "${CT_TEST_SUITE_DIR}"
-fi
-
-if [ "${CT_CREATE_TARBALL}" = "y" ]; then
-    n="${CT_TOP_DIR}/toolchain_${CT_VERSION}_${CT_TARGET}_$(date +%d%m%Y_%H%M).tar.bz2"
-    tar cjf "${n}" -C "${CT_PREFIX_DIR}" .
 fi
 
 trap - EXIT

@@ -283,13 +283,15 @@ CT_DoLog() {
           _prog_bar[3]='|'
           indent=$((2*CT_STEP_COUNT))
           while read line; do
-              case "${CT_LOG_SEE_TOOLS_WARN},${line}" in
-                y,*"warning:"*)         cur_L=WARN; cur_l=${CT_LOG_LEVEL_WARN};;
-                y,*"WARNING:"*)         cur_L=WARN; cur_l=${CT_LOG_LEVEL_WARN};;
-                *"error:"*)             cur_L=ERROR; cur_l=${CT_LOG_LEVEL_ERROR};;
-                *"Error:"*)             cur_L=ERROR; cur_l=${CT_LOG_LEVEL_ERROR};;
-                *"make["*"]: ***"*)     cur_L=ERROR; cur_l=${CT_LOG_LEVEL_ERROR};;
-                *)                      cur_L="${LEVEL}"; cur_l="${level}";;
+              case "${CT_LOG_SEE_TOOLS_WARN:-n},${line}" in
+                  y,*[[:space:]][Ww]arning:*|y,[Ww]arning:*|y,*[[:space:]]WARNING:*|y,WARNING:*)
+                      cur_L=WARN; cur_l=${CT_LOG_LEVEL_WARN};;
+                  *[[:space:]][Ee]rror:*|[yn],[Ee]rror:*)
+                      cur_L=ERROR; cur_l=${CT_LOG_LEVEL_ERROR};;
+                  *"make["*"]: ***"*)
+                      cur_L=ERROR; cur_l=${CT_LOG_LEVEL_ERROR};;
+                  *)
+                      cur_L="${LEVEL}"; cur_l="${level}";;
               esac
               # There will always be a log file (stdout, fd #1), be it /dev/null
               if [ -n "${CT_LOG_ENABLED}" ]; then
@@ -667,7 +669,9 @@ CT_DoListTarballExt()
 {
     printf ".tar.xz\n"
     printf ".tar.lzma\n"
-    printf ".tar.lz\n"
+    if [ "${CT_CONFIGURE_has_lzip}" = "y" ]; then
+        printf ".tar.lz\n"
+    fi
     printf ".tar.bz2\n"
     printf ".tar.gz\n.tgz\n"
     printf ".tar\n"
@@ -761,29 +765,34 @@ CT_DoGetFile()
 # and if so, symlinks it for later usage. This function is called from
 # the `if' condition (via the CT_GetFile) and therefore must return
 # on error rather than relying on the shell's ERR trap to catch it.
-# Usage: CT_SaveLocal </full/path/file.name>
+# Usage: CT_SaveLocal </full/path/file.name> <subdirectory>
 CT_SaveLocal()
 {
     local file="$1"
+    local savedir="${CT_LOCAL_TARBALLS_DIR}${CT_TARBALLS_BUILDROOT_LAYOUT:+/$2}"
     local basename="${file##*/}"
 
     if [ "${CT_SAVE_TARBALLS}" = "y" ]; then
         CT_DoLog EXTRA "Saving '${basename}' to local storage"
+        # The subdirectory for this package may not exist yet; create it
+        if [ ! -d "${savedir}" ]; then
+            CT_DoExecLog ALL mkdir -p "${savedir}"
+        fi
         # The file may already exist if downloads are forced: remove it first
-        if ! CT_DoExecLog ALL rm -f "${CT_LOCAL_TARBALLS_DIR}/${basename}"; then
+        if ! CT_DoExecLog ALL rm -f "${savedir}/${basename}"; then
             return 1
         fi
-        if ! CT_DoExecLog ALL mv -f "${file}" "${CT_LOCAL_TARBALLS_DIR}"; then
+        if ! CT_DoExecLog ALL mv -f "${file}" "${savedir}"; then
             # Move may have failed if the local tarball storage is on a different
             # filesystem. Fallback to copy+delete.
-            if ! CT_DoExecLog ALL cp -f "${file}" "${CT_LOCAL_TARBALLS_DIR}"; then
+            if ! CT_DoExecLog ALL cp -f "${file}" "${savedir}"; then
                 return 1
             fi
             if ! CT_DoExecLog ALL rm -f "${file}"; then
                 return 1
             fi
         fi
-        if ! CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${basename}" "${file}"; then
+        if ! CT_DoExecLog ALL ln -s "${savedir}/${basename}" "${file}"; then
             return 1
         fi
     fi
@@ -854,7 +863,7 @@ CT_ZCat()
 
 # Verify the file against a detached signature.
 # Fetched from the URL, or obtained from the package directory.
-# Usage: CT_DoVerifySignature <local-file-path> <URL-used-for-download> <signature-format>
+# Usage: CT_DoVerifySignature <local-file-path> <URL-used-for-download> <signature-format> <save-subdirectory>
 CT_DoVerifySignature()
 {
     local path="$1"
@@ -865,6 +874,7 @@ CT_DoVerifySignature()
     local format="$3"
     local method="${format%/*}"
     local ext="${format#*/}"
+    local save_subdir="$4"
     local sigfile
     local cat
 
@@ -908,7 +918,7 @@ CT_DoVerifySignature()
     CT_Popd
 
     # If we get here, verification succeeded.
-    if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${sigfile}${ext}"; then
+    if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${sigfile}${ext}" "${save_subdir}"; then
         CT_Popd
         return 1
     fi
@@ -922,18 +932,23 @@ CT_GetFile()
     local -a argnames=(
         package             # Name of the package
         pkg_dir             # Directory with package's auxiliary files
+        dir_name            # Package's directory name in downloads dir
         basename            # Base name of file/archive
         extensions          # Extension(s) for the file/archive
         digest              # If 'y', verify the digest
         signature_format    # Format of the signature
         mirrors             # Mirrors to download from
     )
+    local dl_dir
     local -a URLS
     local ext url
 
     for arg in "${argnames[@]/%/=}" "$@"; do
         eval "local ${arg//[[:space:]]/\\ }"
     done
+
+    CT_TestOrAbort "Internal error: dir_name not set" -n "${dir_name}"
+    dl_dir="${CT_LOCAL_TARBALLS_DIR:+${CT_LOCAL_TARBALLS_DIR}${CT_TARBALLS_BUILDROOT_LAYOUT:+/${dir_name}}}"
 
     # Does any of the requested files exist localy?
     for ext in ${extensions}; do
@@ -943,12 +958,24 @@ CT_GetFile()
             return 0
         fi
 
-        if [ -n "${CT_LOCAL_TARBALLS_DIR}" -a "${CT_FORCE_DOWNLOAD}" != "y" -a \
-                -r "${CT_LOCAL_TARBALLS_DIR}/${basename}${ext}" ]; then
-            CT_DoLog DEBUG "Got '${basename}' from local storage"
-            CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${basename}${ext}" \
-                    "${CT_TARBALLS_DIR}/${basename}${ext}"
-            return 0
+        if [ "${CT_FORCE_DOWNLOAD}" != "y" ]; then
+            if [ -n "${dl_dir}" -a -r "${dl_dir}/${basename}${ext}" ]; then
+                CT_DoLog DEBUG "Got '${basename}' from local storage"
+                CT_DoExecLog ALL ln -s "${dl_dir}/${basename}${ext}" \
+                        "${CT_TARBALLS_DIR}/${basename}${ext}"
+                return 0
+            elif [ -n "${CT_LOCAL_TARBALLS_DIR}" -a -r "${CT_LOCAL_TARBALLS_DIR}/${basename}${ext}" ]; then
+                # Only different if we're using new buildroot layout
+                CT_DoLog DEBUG "Got '${basename}' from local storage"
+                CT_DoLog INFO "Moving the ${basename}${ext} into ${dir_name}/${basename}${ext}"
+                if [ ! -d "${dl_dir}" ]; then
+                    CT_DoExecLog ALL mkdir -p "${dl_dir}"
+                fi
+                CT_DoExecLog ALL mv "${CT_LOCAL_TARBALLS_DIR}/${basename}${ext}" "${dl_dir}/${basename}${ext}"
+                CT_DoExecLog ALL ln -s "${dl_dir}/${basename}${ext}" \
+                        "${CT_TARBALLS_DIR}/${basename}${ext}"
+                return 0
+            fi
         fi
     done
 
@@ -998,7 +1025,7 @@ CT_GetFile()
                     CT_DoExecLog ALL rm "${CT_TARBALLS_DIR}/${basename}${ext}"
                     return 1
                 fi
-                if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}${ext}"; then
+                if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}${ext}" "${dir_name}"; then
                     return 1
                 fi
                 return 0
@@ -1394,6 +1421,7 @@ CT_KconfigSetOption() {
     local value="$2"
     local file="$3"
 
+    CT_DoLog DEBUG "${file}: set ${option}=${value}"
     ${grep} -E -q "^${option}=.*" "${file}" && \
         ${sed} -i -r -e "s;^${option}=.*$;${option}=${value};" "${file}" || \
     ${grep} -E -q "^# ${option} is not set$" "${file}" && \
@@ -1416,6 +1444,7 @@ CT_KconfigDisableOption() {
     local option="${1}"
     local file="${2}"
 
+    CT_DoLog DEBUG "${file}: disable ${option}"
     ${grep} -E -q "^# ${option} is not set$" "${file}" || \
     ${grep} -E -q "^${option}=.*$" "${file}" && \
         ${sed} -i -r -e "s;^${option}=.*$;# ${option} is not set;" "${file}" || \
@@ -1429,6 +1458,7 @@ CT_KconfigDeleteOption() {
     local option="${1}"
     local file="${2}"
 
+    CT_DoLog DEBUG "${file}: delete ${option}"
     ${grep} -E -q "^# ${option} is not set$" "${file}" && \
         ${sed} -i -r -e "/^# ${option} is not set$/d" "${file}" || \
     ${grep} -E -q "^${option}=.*$" "${file}" && \
@@ -1756,7 +1786,7 @@ CT_Mirrors()
             '')
                 # Ignore, this happens before .config is fully evaluated
                 ;;
-            [34].*)
+            [345].*)
                 echo "http://www.kernel.org/pub/linux/kernel/v${version%%.*}.x"
                 ;;
             2.6.*)
@@ -2046,6 +2076,7 @@ CT_PackageRun()
 CT_DoFetch()
 {
     local tmp_dir
+    local extensions e a
 
     if [ "${src_release}" = "y" ]; then
         # Some packages do not contain any directory level at all
@@ -2055,8 +2086,17 @@ CT_DoFetch()
             basename="${pkg_name}-${version}"
         fi
         pkg_dir="${pkg_name}/${version}"
-        if ! CT_GetFile package="${pkg_name}" pkg_dir="${pkg_dir}" \
-                basename="${archive_filename}" extensions="${archive_formats}" \
+        # Check which extensions we are allowed to fetch
+        for a in ${archive_formats}; do
+            for e in $(CT_DoListTarballExt); do
+                if [ "${a}" = "${e}" ]; then
+                    extensions="${extensions} ${a}"
+                    break
+                fi
+            done
+        done
+        if ! CT_GetFile package="${pkg_name}" pkg_dir="${pkg_dir}" dir_name="${dir_name}" \
+                basename="${archive_filename}" extensions="${extensions}" \
                 digest="${CT_VERIFY_DOWNLOAD_DIGEST}" \
                 signature_format="${CT_VERIFY_DOWNLOAD_SIGNATURE:+${signature_format}}" \
                 mirrors="${mirrors}"; then
@@ -2090,7 +2130,7 @@ CT_DoFetch()
         # attempt getting it from local storage or from the mirror if configured.
         # Bzip2 offers a reasonable compromise between compression speed and size.
         if [ "${unique_id}" != "to.be.determined" ] && \
-                CT_GetFile package="${pkg_name}" \
+                CT_GetFile package="${pkg_name}" dir_name="${dir_name}" \
                         basename="${basename}" extensions='.tar.bz2'; then
             return 0
         fi
@@ -2112,7 +2152,7 @@ CT_DoFetch()
 
         CT_DoExecLog ALL mv "${pkg_name}${devel_subdir:+/${devel_subdir}}" "${basename}"
         CT_DoExecLog ALL tar cjf "${CT_TARBALLS_DIR}/${basename}.tar.bz2" "${basename}"
-        if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}.tar.bz2"; then
+        if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}.tar.bz2" "${dir_name}"; then
             CT_Abort "${pkg_name}: failed to save to local storage"
         fi
         CT_Popd

@@ -2,7 +2,7 @@
 
 ## select CC_SUPPORT_CXX if !LIBC_NONE
 ## select CC_SUPPORT_FORTRAN
-## select CC_SUPPORT_JAVA if !GCC_7_or_later
+## select CC_SUPPORT_JAVA if !GCC_7_or_later && OBSOLETE
 ## select CC_SUPPORT_ADA
 ## select CC_SUPPORT_OBJC
 ## select CC_SUPPORT_OBJCXX
@@ -33,11 +33,6 @@ config CC_GCC_ENABLE_PLUGINS
     def_bool y
     depends on BINUTILS_PLUGINS
     depends on ! STATIC_TOOLCHAIN
-
-# Affects the build of musl
-config GCC_BUG_61144
-    bool
-    default y if GCC_4_9_or_later && !GCC_4_9_2_or_later
 
 # If binutils installs gold, enable support for gold in gcc
 config CC_GCC_GOLD
@@ -179,6 +174,7 @@ config CC_GCC_USE_LTO
     bool "Enable LTO"
     default y
     depends on ! STATIC_TOOLCHAIN
+    select ZLIB_NEEDED
     help
       Enable the Link Time Optimisations.
 
@@ -243,7 +239,7 @@ config CC_GCC_LIBSANITIZER
     bool
     prompt "Compile libsanitizer"
     depends on THREADS_NATIVE
-    depends on !LIBC_MUSL # Currently lacks required headers (like netrom.h)
+    depends on !LIBC_UCLIBC && !LIBC_MUSL # Currently lacks required headers (like netrom.h)
     help
       libsanitizer is a library which provides run-time sanitising of either
       or both of:

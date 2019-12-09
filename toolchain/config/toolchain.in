@@ -133,14 +133,6 @@ config TARGET_VENDOR
       
       Keep the default (unknown) if you don't know better.
 
-config TARGET_VENDOR_SAMPLE_REV
-    string
-    prompt "Tuple's vendor sample revision"
-    depends on !LIBC_AVR_LIBC && TARGET_VENDOR != ""
-    default ""
-    help
-      Vendor sample revision part of a target tuple.
-
 config TARGET_ALIAS_SED_EXPR
     string
     prompt "Tuple's sed transform"

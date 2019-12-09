@@ -57,6 +57,7 @@ do_expat_for_target() {
     expat_opts+=( "cflags=${CT_ALL_TARGET_CFLAGS}" )
     expat_opts+=( "prefix=${prefix}" )
     expat_opts+=( "destdir=${CT_SYSROOT_DIR}" )
+    expat_opts+=( "shared=${CT_SHARED_LIBS}" )
 
     do_expat_backend "${expat_opts[@]}"
 
@@ -75,6 +76,7 @@ do_expat_backend() {
     local prefix
     local cflags
     local ldflags
+    local shared
     local arg
     local -a extra_config
 
@@ -82,7 +84,9 @@ do_expat_backend() {
         eval "${arg// /\\ }"
     done
 
-    extra_config+=("--disable-shared")
+    if [ "${shared}" != "y" ]; then
+        extra_config+=("--disable-shared")
+    fi
 
     CT_DoLog EXTRA "Configuring expat"
 
@@ -95,10 +99,11 @@ do_expat_backend() {
         --host=${host}                                              \
         --prefix="${prefix}"                                        \
         --enable-static                                             \
+        --without-docbook                                           \
         "${extra_config[@]}"
 
     CT_DoLog EXTRA "Building expat"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL make ${CT_JOBSFLAGS}
     CT_DoLog EXTRA "Installing expat"
     CT_DoExecLog ALL make install DESTDIR="${destdir}"
 }

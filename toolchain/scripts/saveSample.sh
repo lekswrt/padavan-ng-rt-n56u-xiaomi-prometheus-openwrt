@@ -30,32 +30,17 @@ CT_LOG_LEVEL_MAX="WARN"
 
 # Compute the name of the sample directory
 case "${CT_TOOLCHAIN_TYPE}" in
-    cross)      case "${CT_TARGET_VENDOR}" in
-                    ndms) CT_GetChoicePkgBuildVersion CC cc_ver
-                          CT_GetChoicePkgBuildVersion KERNEL kernel_ver
-                          CT_GetChoicePkgBuildVersion LIBC libc_ver
-
-                          def_samp_name="${CT_TARGET_ARCH}"
-                          def_samp_name="${def_samp_name}${CT_TARGET_VENDOR:+-${CT_TARGET_VENDOR}}"
-                          def_samp_name="${def_samp_name}${CT_TARGET_VENDOR_SAMPLE_REV:+-${CT_TARGET_VENDOR_SAMPLE_REV}}"
-                          def_samp_name="${def_samp_name}-${cc_ver}-${kernel_ver}-${libc_ver}"
-                          ;;
-                    *)    def_samp_name="${CT_TARGET}"
-                          ;;
-                esac;;
-    canadian)   def_samp_name="${CT_HOST},${CT_TARGET}";;
+    cross)      samp_name="${CT_TARGET}";;
+    canadian)   samp_name="${CT_HOST},${CT_TARGET}";;
     *)          CT_Abort "Unsupported toolchain type '${CT_TOOLCHAIN_TYPE}'";;
 esac
-
-read -p "Sample name [${def_samp_name}]: " tmp_samp_name
-samp_name=${tmp_samp_name:=${def_samp_name}}
-
 samp_dir="samples/${samp_name}"
 mkdir -p "${samp_dir}"
 
 # Tweak the .config file: remove the options that we want to keep
 # at default setting in samples.
 force_default_opts=( \
+    PREFIX_DIR LOG_TO_FILE LOG_FILE_COMPRESS \
     LOCAL_TARBALLS_DIR SAVE_TARBALLS \
     LOG_ERROR LOG_WARN LOG_INFO LOG_EXTRA LOG_ALL LOG_DEBUG \
     LOG_PROGRESS_BAR
@@ -86,14 +71,8 @@ fi
 # Save the uClibc .config file
 if [ -n "${CT_LIBC_UCLIBC_CONFIG_FILE}" ]; then
     # We save the file, and then point the saved sample to this file
-    CT_GetChoicePkgBuildVersion LIBC libc_ver
-    def_fname=${libc_ver}.config
-
-    read -p "New uClibc config filename [${def_fname}]: " tmp_fname
-    fname=${tmp_fname:=${def_fname}}
-
-    CT_DoAddFileToSample "${CT_LIBC_UCLIBC_CONFIG_FILE}" "${samp_dir}/${fname}"
-    "${sed}" -r -i -e 's|^(CT_LIBC_UCLIBC_CONFIG_FILE)=.+$|\1="'"${samp_top_dir}"/samples/${samp_name}/${fname}'"|;' \
+    CT_DoAddFileToSample "${CT_LIBC_UCLIBC_CONFIG_FILE}" "${samp_dir}/${CT_LIBC}.config"
+    "${sed}" -r -i -e 's|^(CT_LIBC_UCLIBC_CONFIG_FILE)=.+$|\1="'"${samp_top_dir}"'/samples/${CT_TARGET}/${CT_LIBC}.config"|;' \
              .defconfig
 else
     # remove any dangling files

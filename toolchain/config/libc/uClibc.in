@@ -42,13 +42,6 @@ config UCLIBC_MERGED_LINUXTHREADS
     def_bool y
     depends on UCLIBC_1_0_15_or_later
 
-config LIBC_UCLIBC_EXTRA_CFLAGS
-    string
-    prompt "Extra target CFLAGS"
-    default ""
-    help
-      Extra target CFLAGS to use when building.
-
 choice
     bool
     prompt "uClibc verbosity:"
@@ -114,6 +107,7 @@ config LIBC_UCLIBC_DEBUG_LEVEL
     default 0 if LIBC_UCLIBC_DEBUG_LEVEL_0
     default 1 if LIBC_UCLIBC_DEBUG_LEVEL_1
     default 2 if LIBC_UCLIBC_DEBUG_LEVEL_2
+    default 3 if LIBC_UCLIBC_DEBUG_LEVEL_3
 
 config LIBC_UCLIBC_CONFIG_FILE
     string
