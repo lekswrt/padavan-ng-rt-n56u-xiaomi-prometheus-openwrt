@@ -223,6 +223,9 @@ static ssize_t brport_show(struct kobject * kobj,
 	if (!brport_attr->show)
 		return -EINVAL;
 
+	if (!brport_attr->show)
+		return -EINVAL;
+
 	return brport_attr->show(p, buf);
 }
 
