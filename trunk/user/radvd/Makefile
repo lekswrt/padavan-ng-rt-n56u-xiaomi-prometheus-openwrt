@@ -17,6 +17,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
+	autoreconf -vif ; \
 	./configure \
 		--prefix= \
 		--host=$(HOST_TARGET) \

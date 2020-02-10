@@ -46,6 +46,11 @@ AM_CFLAGS = \
 	$(ENABLE_WARNINGS) \
 	$(DISABLE_WARNINGS)
 
+if HAVE_STACK_PROTECTOR
+AM_CFLAGS += \
+	-fstack-protector
+endif
+
 ### CPP is C PreProcessor ###
 
 AM_YFLAGS = -d
@@ -151,11 +156,14 @@ EXTRA_DIST = \
 	radvd.conf.example \
 	radvd.service.in \
 	radvdump.8.man \
-	redhat/radvd-tmpfs.conf \
-	redhat/radvd.conf.empty \
-	redhat/radvd.init \
-	redhat/radvd.spec \
-	redhat/radvd.sysconfig \
+	redhat/SysV/radvd-tmpfs.conf \
+	redhat/SysV/radvd.conf.empty \
+	redhat/SysV/radvd.init \
+	redhat/SysV/radvd.spec \
+	redhat/SysV/radvd.sysconfig \
+	redhat/systemd/radvd-tmpfs.conf \
+	redhat/systemd/radvd.service \
+	redhat/systemd/radvd.spec \
 	test/check.c \
 	test/print_safe_buffer.c \
 	test/print_safe_buffer.h \

@@ -158,7 +158,7 @@ static void update_iface_times(struct Interface *iface)
 
 	struct AdvPrefix *prefix = iface->AdvPrefixList;
 	while (prefix) {
-		if ((!prefix->DecrementLifetimesFlag || prefix->curr_preferredlft > 0)) {
+		if (!prefix->DecrementLifetimesFlag || prefix->curr_preferredlft > 0) {
 			if (!(iface->state_info.cease_adv && prefix->DeprecatePrefixFlag)) {
 				if (prefix->DecrementLifetimesFlag) {
 
@@ -289,7 +289,12 @@ static struct safe_buffer_list *add_auto_prefixes(struct safe_buffer_list *sbl, 
 
 		if (strncmp(ifa->ifa_name, ifname, IFNAMSIZ))
 			continue;
-
+		
+		if (ifa->ifa_addr == NULL) {
+			flog(LOG_WARNING, "ifa_addr == NULL for dev %s !? Ignoring in add_auto_prefixes", ifname);
+			continue;
+                }
+		
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 
@@ -328,7 +333,7 @@ static struct safe_buffer_list *add_ra_options_prefix(struct safe_buffer_list *s
 						      struct in6_addr const *dest)
 {
 	while (prefix) {
-		if ((!prefix->DecrementLifetimesFlag || prefix->curr_preferredlft > 0)) {
+		if (!prefix->DecrementLifetimesFlag || prefix->curr_preferredlft > 0) {
 			struct in6_addr zero = {};
 			if (prefix->if6to4[0] || prefix->if6[0] || 0 == memcmp(&prefix->Prefix, &zero, sizeof(zero))) {
 				if (prefix->if6to4[0]) {
@@ -527,8 +532,8 @@ static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sb
 
 		dnssl = dnssl->next;
 	}
-	return sbl;
 	safe_buffer_free(serialized_domains);
+	return sbl;
 }
 
 /*
@@ -619,9 +624,9 @@ static void add_ra_option_lowpanco(struct safe_buffer *sb, struct AdvLowpanCo co
 	co.nd_opt_6co_type = ND_OPT_6CO;
 	co.nd_opt_6co_len = 3;
 	co.nd_opt_6co_context_len = lowpanco->ContextLength;
-	co.nd_opt_6co_c = lowpanco->ContextCompressionFlag;
-	co.nd_opt_6co_cid = lowpanco->AdvContextID;
-	co.nd_opt_6co_valid_lifetime = lowpanco->AdvLifeTime;
+	co.nd_opt_6co_res_c_cid = ((lowpanco->ContextCompressionFlag ? 1 : 0) << 4)
+				| (lowpanco->AdvContextID & 0x0F);
+	co.nd_opt_6co_valid_lifetime = htons(lowpanco->AdvLifeTime);
 	co.nd_opt_6co_con_prefix = lowpanco->AdvContextPrefix;
 
 	safe_buffer_append(sb, &co, sizeof(co));
@@ -635,9 +640,9 @@ static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abr
 
 	abro.nd_opt_abro_type = ND_OPT_ABRO;
 	abro.nd_opt_abro_len = 3;
-	abro.nd_opt_abro_ver_low = abroo->Version[1];
-	abro.nd_opt_abro_ver_high = abroo->Version[0];
-	abro.nd_opt_abro_valid_lifetime = abroo->ValidLifeTime;
+	abro.nd_opt_abro_ver_low = htons(abroo->Version[1]);
+	abro.nd_opt_abro_ver_high = htons(abroo->Version[0]);
+	abro.nd_opt_abro_valid_lifetime = htons(abroo->ValidLifeTime);
 	abro.nd_opt_abro_6lbr_address = abroo->LBRaddress;
 
 	safe_buffer_append(sb, &abro, sizeof(abro));
@@ -786,18 +791,8 @@ static int send_ra(int sock, struct Interface *iface, struct in6_addr const *des
 			cur = cur->next;
 		}
 
-		if (option_count == 0 && total_seen_options > 0) {
-			// If option_count == 0 and total_seen_options==0 we make sure to
-			// send ONE RA out, so that clients get the RA header fields.
-		} else if (option_count == 0 && total_seen_options > 0) {
-			// None of the RA options are scheduled for this window.
-			dlog(LOG_DEBUG, 5,
-			     "No RA options scheduled in this pass, staying quiet; already sent at least one RA packet");
-			break;
-		}
-
 		// RA built, now send it.
-		dlog(LOG_DEBUG, 5, "sending RA to %s on %s (%s), %lu options (using %lu/%u bytes)", dest_text, iface->props.name,
+		dlog(LOG_DEBUG, 5, "sending RA to %s on %s (%s), %lu options (using %zd/%u bytes)", dest_text, iface->props.name,
 		     src_text, option_count, sb->used, iface->props.max_ra_option_size);
 		int err = really_send(sock, dest, &iface->props, sb);
 		if (err < 0) {
