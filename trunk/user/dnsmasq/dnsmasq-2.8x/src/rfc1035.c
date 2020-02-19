@@ -1615,6 +1615,8 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
 
 		      if ((serv->flags & (SERV_HAS_DOMAIN | SERV_NO_ADDR)) != SERV_HAS_DOMAIN)
 		        continue;
+		      
+		      if (NULL == serv->domain) continue;
 
 		      domainlen = strlen(serv->domain);
 		      if (domainlen == 0 || domainlen > namelen)
