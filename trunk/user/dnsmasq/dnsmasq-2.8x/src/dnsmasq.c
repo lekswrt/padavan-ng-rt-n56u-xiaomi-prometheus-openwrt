@@ -1,4 +1,4 @@
-/* dnsmasq is Copyright (c) 2000-2018 Simon Kelley
+/* dnsmasq is Copyright (c) 2000-2020 Simon Kelley
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -956,10 +956,11 @@ int main (int argc, char **argv)
     {
       struct tftp_prefix *p;
 
-      my_syslog(MS_TFTP | LOG_INFO, "TFTP %s%s %s", 
+      my_syslog(MS_TFTP | LOG_INFO, "TFTP %s%s %s %s", 
 		daemon->tftp_prefix ? _("root is ") : _("enabled"),
-		daemon->tftp_prefix ? daemon->tftp_prefix: "",
-		option_bool(OPT_TFTP_SECURE) ? _("secure mode") : "");
+		daemon->tftp_prefix ? daemon->tftp_prefix : "",
+		option_bool(OPT_TFTP_SECURE) ? _("secure mode") : "",
+		option_bool(OPT_SINGLE_PORT) ? _("single port mode") : "");
 
       if (tftp_prefix_missing)
 	my_syslog(MS_TFTP | LOG_WARNING, _("warning: %s inaccessible"), daemon->tftp_prefix);
@@ -977,7 +978,7 @@ int main (int argc, char **argv)
       
       if (max_fd < 0)
 	max_fd = 5;
-      else if (max_fd < 100)
+      else if (max_fd < 100 && !option_bool(OPT_SINGLE_PORT))
 	max_fd = max_fd/2;
       else
 	max_fd = max_fd - 20;
@@ -1107,7 +1108,7 @@ int main (int argc, char **argv)
 #endif
 
    
-      /* must do this just before select(), when we know no
+      /* must do this just before do_poll(), when we know no
 	 more calls to my_syslog() can occur */
       set_log_writer();
       
@@ -1670,11 +1671,12 @@ static int set_dns_listeners(time_t now)
 #ifdef HAVE_TFTP
   int  tftp = 0;
   struct tftp_transfer *transfer;
-  for (transfer = daemon->tftp_trans; transfer; transfer = transfer->next)
-    {
-      tftp++;
-      poll_listen(transfer->sockfd, POLLIN);
-    }
+  if (!option_bool(OPT_SINGLE_PORT))
+    for (transfer = daemon->tftp_trans; transfer; transfer = transfer->next)
+      {
+	tftp++;
+	poll_listen(transfer->sockfd, POLLIN);
+      }
 #endif
   
   /* will we be able to get memory? */
@@ -1706,6 +1708,7 @@ static int set_dns_listeners(time_t now)
 	    }
 
 #ifdef HAVE_TFTP
+      /* tftp == 0 in single-port mode. */
       if (tftp <= daemon->tftp_max && listener->tftpfd != -1)
 	poll_listen(listener->tftpfd, POLLIN);
 #endif
@@ -1858,8 +1861,26 @@ static void check_dns_listeners(time_t now)
 		  for (i = 0; i < MAX_PROCS; i++)
 		    if (daemon->tcp_pids[i] == 0 && daemon->tcp_pipes[i] == -1)
 		      {
+			char a;
+			
 			daemon->tcp_pids[i] = p;
 			daemon->tcp_pipes[i] = pipefd[0];
+#ifdef HAVE_LINUX_NETWORK
+			/* The child process inherits the netlink socket, 
+			   which it never uses, but when the parent (us) 
+			   uses it in the future, the answer may go to the 
+			   child, resulting in the parent blocking
+			   forever awaiting the result. To avoid this
+			   the child closes the netlink socket, but there's
+			   a nasty race, since the parent may use netlink
+			   before the child has done the close.
+
+			   To avoid this, the parent blocks here until a 
+			   single byte comes back up the pipe, which
+			   is sent by the child after it has closed the
+			   netlink socket. */
+			retry_send(read(pipefd[0], &a, 1));
+#endif
 			break;
 		      }
 		}
@@ -1891,9 +1912,15 @@ static void check_dns_listeners(time_t now)
 		 terminate the process. */
 	      if (!option_bool(OPT_DEBUG))
 		{
+		  char a = 0;
 		  alarm(CHILD_LIFETIME);
 		  close(pipefd[0]); /* close read end in child. */
 		  daemon->pipe_to_parent = pipefd[1];
+#ifdef HAVE_LINUX_NETWORK
+		  /* See comment above re netlink socket. */
+		  close(daemon->netlinkfd);
+		  retry_send(write(pipefd[1], &a, 1));
+#endif
 		}
 
 	      /* start with no upstream connections. */

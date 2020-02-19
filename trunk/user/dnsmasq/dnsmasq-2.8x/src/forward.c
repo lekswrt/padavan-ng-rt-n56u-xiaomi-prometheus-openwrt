@@ -1,4 +1,4 @@
-/* dnsmasq is Copyright (c) 2000-2018 Simon Kelley
+/* dnsmasq is Copyright (c) 2000-2020 Simon Kelley
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -125,7 +125,9 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
       {
 	unsigned int sflag = serv->addr.sa.sa_family == AF_INET ? F_IPV4 : F_IPV6; 
 	*type = SERV_FOR_NODOTS;
-	if (serv->flags & SERV_NO_ADDR)
+	if ((serv->flags & SERV_NO_REBIND) && norebind)
+	  *norebind = 1;
+	else if (serv->flags & SERV_NO_ADDR)
 	  flags = F_NXDOMAIN;
 	else if (serv->flags & SERV_LITERAL_ADDRESS)
 	  { 
@@ -150,38 +152,11 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
       }
     else if (serv->flags & SERV_HAS_DOMAIN)
       {
-	unsigned int domainlen = matchlen;
-	int serverhit = 0;
-
-#ifdef HAVE_REGEX
-	if (serv->flags & SERV_IS_REGEX)
-	  {
-	    int captcount = 0;
-	    if (pcre_fullinfo(serv->regex, serv->pextra, PCRE_INFO_CAPTURECOUNT, &captcount) == 0)
-	      {
-		/* C99 dyn-array, or alloca must be used */
-		int ovect[(captcount + 1) * 3];
-		if (pcre_exec(serv->regex, serv->pextra, qdomain, namelen, 0, 0, ovect, (captcount + 1) * 3) > 0)
-		  {
-		    domainlen = (unsigned int) (ovect[1] - ovect[0]);
-		    if (domainlen >= matchlen)
-		      serverhit = 1;
-		  }
-	      }
-	  }
-	else
-#endif
-	  {
-	    char *matchstart;
-	    domainlen = strlen(serv->domain);
-	    matchstart = qdomain + namelen - domainlen;
-	    if (namelen >= domainlen &&
-	        hostname_isequal(matchstart, serv->domain) &&
-	        (domainlen == 0 || namelen == domainlen || *(matchstart-1) == '.' ))
-	       serverhit = 1;
-	  }
-
-	if (serverhit)
+	unsigned int domainlen = strlen(serv->domain);
+	char *matchstart = qdomain + namelen - domainlen;
+	if (namelen >= domainlen &&
+	    hostname_isequal(matchstart, serv->domain) &&
+	    (domainlen == 0 || namelen == domainlen || *(matchstart-1) == '.' ))
 	  {
 	    if ((serv->flags & SERV_NO_REBIND) && norebind)	
 	      *norebind = 1;
@@ -208,11 +183,6 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
 		if (domainlen >= matchlen)
 		  {
 		    *type = serv->flags & (SERV_HAS_DOMAIN | SERV_USE_RESOLV | SERV_NO_REBIND | SERV_DO_DNSSEC);
-#ifdef HAVE_REGEX
-		    if (serv->flags & SERV_IS_REGEX)
-				*domain = qdomain;
-		    else
-#endif
 		    *domain = serv->domain;
 		    matchlen = domainlen;
 		    if (serv->flags & SERV_NO_ADDR)
@@ -271,27 +241,6 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
       *domain = NULL;
     }
   return  flags;
-}
-
-static int match_domain_for_forward(char *domain, struct server *serv)
-{
-  int ret_val = 0;
-  if(serv->flags & SERV_IS_REGEX)
-    {
-#ifdef HAVE_REGEX
-      int captcount = 0;
-      if (pcre_fullinfo(serv->regex, serv->pextra, PCRE_INFO_CAPTURECOUNT, &captcount) == 0)
-	{
-	  /* C99 dyn-array, or alloca must be used */
-	  int ovect[(captcount + 1) * 3];
-	  ret_val = pcre_exec(serv->regex, serv->pextra, domain,
-	                      strlen(domain), 0, 0, ovect, (captcount + 1) * 3) > 0;
-	}
-#endif
-    }
-  else
-    ret_val = hostname_isequal(domain, serv->domain);
-  return ret_val;
 }
 
 static int forward_query(int udpfd, union mysockaddr *udpaddr,
@@ -369,12 +318,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
 #endif
 
       /* retry on existing query, send to all available servers  */
-#ifdef HAVE_REGEX
-      if(forward->sentto->flags & SERV_IS_REGEX)
-          domain = daemon->namebuff;
-      else
-#endif
-          domain = forward->sentto->domain;
+      domain = forward->sentto->domain;
       forward->sentto->failed_queries++;
       if (!option_bool(OPT_ORDER))
 	{
@@ -511,7 +455,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
 	     must be NULL also. */
 	  
 	  if (type == (start->flags & SERV_TYPE) &&
-	      (type != SERV_HAS_DOMAIN || match_domain_for_forward(domain, start)) &&
+	      (type != SERV_HAS_DOMAIN || hostname_isequal(domain, start->domain)) &&
 	      !(start->flags & (SERV_LITERAL_ADDRESS | SERV_LOOP)))
 	    {
 	      int fd;
@@ -647,21 +591,6 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
       unsigned int matchlen = 0;
       for (ipset_pos = daemon->ipsets; ipset_pos; ipset_pos = ipset_pos->next) 
 	{
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-	  if (ipset_pos->domain_type & IPSET_IS_REGEX){
-		  int captcount = 0;
-		  if (pcre_fullinfo(ipset_pos->regex, ipset_pos->pextra, PCRE_INFO_CAPTURECOUNT, &captcount) == 0)
-		  {
-			  /* C99 dyn-array, or alloca must be used */
-			  int ovect[(captcount + 1) * 3];
-			  if (pcre_exec(ipset_pos->regex, ipset_pos->pextra, daemon->namebuff, namelen, 0, 0, ovect, (captcount + 1) * 3) > 0){
-				  sets = ipset_pos->sets;
-			  }
-		  }
-	  }else{
-#endif
-#endif
 	  unsigned int domainlen = strlen(ipset_pos->domain);
 	  char *matchstart = daemon->namebuff + namelen - domainlen;
 	  if (namelen >= domainlen && hostname_isequal(matchstart, ipset_pos->domain) &&
@@ -671,11 +600,6 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
 	      matchlen = domainlen;
 	      sets = ipset_pos->sets;
 	    }
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-	  }
-#endif
-#endif
 	}
     }
 #endif
@@ -952,7 +876,11 @@ void reply_query(int fd, int family, time_t now)
 		  fd = forward->rfd4->fd;
 		}
 	    }
-	
+
+#ifdef HAVE_DUMPFILE
+	  dump_packet(DUMP_SEC_QUERY, (void *)header, (size_t)plen, NULL, &start->addr);
+#endif
+
 	  while (retry_send(sendto(fd, (char *)header, plen, 0,
 				   &start->addr.sa,
 				   sa_len(&start->addr))));
@@ -1024,12 +952,12 @@ void reply_query(int fd, int family, time_t now)
   /* We tried resending to this server with a smaller maximum size and got an answer.
      Make that permanent. To avoid reduxing the packet size for a single dropped packet,
      only do this when we get a truncated answer, or one larger than the safe size. */
-  if (server && server->edns_pktsz > SAFE_PKTSZ && (forward->flags & FREC_TEST_PKTSZ) && 
+  if (forward->sentto->edns_pktsz > SAFE_PKTSZ && (forward->flags & FREC_TEST_PKTSZ) && 
       ((header->hb3 & HB3_TC) || n >= SAFE_PKTSZ))
     {
-      server->edns_pktsz = SAFE_PKTSZ;
-      server->pktsz_reduced = now;
-      prettyprint_addr(&server->addr, daemon->addrbuff);
+      forward->sentto->edns_pktsz = SAFE_PKTSZ;
+      forward->sentto->pktsz_reduced = now;
+      prettyprint_addr(&forward->sentto->addr, daemon->addrbuff);
       my_syslog(LOG_WARNING, _("reducing DNS packet size for nameserver %s to %d"), daemon->addrbuff, SAFE_PKTSZ);
     }
 
@@ -1051,7 +979,7 @@ void reply_query(int fd, int family, time_t now)
 	no_cache_dnssec = 1;
       
 #ifdef HAVE_DNSSEC
-      if (server && (server->flags & SERV_DO_DNSSEC) && 
+      if ((forward->sentto->flags & SERV_DO_DNSSEC) && 
 	  option_bool(OPT_DNSSEC_VALID) && !(forward->flags & FREC_CHECKING_DISABLED))
 	{
 	  int status = 0;
@@ -1081,7 +1009,7 @@ void reply_query(int fd, int family, time_t now)
 		    status = dnssec_validate_ds(now, header, n, daemon->namebuff, daemon->keyname, forward->class);
 		  else
 		    status = dnssec_validate_reply(now, header, n, daemon->namebuff, daemon->keyname, &forward->class, 
-						   !option_bool(OPT_DNSSEC_IGN_NS) && (server->flags & SERV_DO_DNSSEC),
+						   !option_bool(OPT_DNSSEC_IGN_NS) && (forward->sentto->flags & SERV_DO_DNSSEC),
 						   NULL, NULL, NULL);
 #ifdef HAVE_DUMPFILE
 		  if (status == STAT_BOGUS)
@@ -1125,7 +1053,8 @@ void reply_query(int fd, int family, time_t now)
 			 servers for domains are involved. */		      
 		      if (search_servers(now, NULL, F_DNSSECOK, daemon->keyname, &type, &domain, NULL) == 0)
 			{
-			  struct server *start = server, *new_server = NULL;
+			  struct server *start, *new_server = NULL;
+			  start = server = forward->sentto;
 			  
 			  while (1)
 			    {
@@ -1279,6 +1208,7 @@ void reply_query(int fd, int family, time_t now)
 	      bogusanswer = 1;
 	    }
 	}
+
 #endif
 
       /* restore CD bit to the value in the query */

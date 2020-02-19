@@ -1,4 +1,4 @@
-/* dnsmasq is Copyright (c) 2000-2018 Simon Kelley
+/* dnsmasq is Copyright (c) 2000-2020 Simon Kelley
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -129,14 +129,6 @@ HAVE_LOOP
 HAVE_INOTIFY
    use the Linux inotify facility to efficiently re-read configuration files.
 
-HAVE_REGEX
-   Define this if you want to link against lib pcre to get regex
-   support in "address=" matches
-
-HAVE_REGEX_IPSET
-   Define this if you want to link against lib pcre to get regex
-   support in "ipset=" matches
-
 NO_ID
    Don't report *.bind CHAOS info to clients, forward such requests upstream instead.
 NO_TFTP
@@ -193,8 +185,6 @@ RESOLVFILE
 /* #define HAVE_LIBIDN2 */
 /* #define HAVE_CONNTRACK */
 /* #define HAVE_DNSSEC */
-/* #define HAVE_REGEX */
-/* #define HAVE_REGEX_IPSET */
 
 
 /* Default locations for important system files. */
@@ -385,15 +375,6 @@ static char *compile_opts =
 "no-"
 #endif
 "i18n "
-#ifndef HAVE_REGEX
-"no-"
-#endif
-"regex"
-#if defined(HAVE_IPSET) && defined(HAVE_REGEX) && defined(HAVE_REGEX_IPSET)
-"(+ipset) "
-#else
-" "
-#endif
 #if defined(HAVE_LIBIDN2)
 "IDN2 "
 #else
