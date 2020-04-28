@@ -1,3 +1,15 @@
+dnsmasq (2.81-3) unstable; urgency=low
+
+   * Fixes to control file for bug 958100
+
+ -- Simon Kelley <simon@thekelleys.org.uk>  Sun, 19 Apr 2020 21:44:12 +0000
+
+dnsmasq (2.81-2) unstable; urgency=low
+
+   * Fix FTBFS on kFreeBSD. (closes: #958100)
+	
+ -- Simon Kelley <simon@thekelleys.org.uk>  Sat, 18 Apr 2020 18:34:15 +0000
+
 dnsmasq (2.81-1) unstable; urgency=low
 
    * New upstream.
@@ -10,8 +22,11 @@ dnsmasq (2.81-1) unstable; urgency=low
    * Fix RA problem with two interfaces on same net, but RA service on
      only one of the interfaces. (closes: #949565)
    * Fix breakage of dig +trace. (closes: #942363)
+   * Fix build faliure with newer Nettle libraries. (closes: #940985)
+   * Support runscript init-system (closes: #929884)
+   * Security fix for CVE-2019-14834 (closes: #948373)
 	
- -- Simon Kelley <simon@thekelleys.org.uk>  Mon, 27 Jan 2020 22:31:15 +0000
+ -- Simon Kelley <simon@thekelleys.org.uk>  Wed, 8 Apr 2020 17:33:15 +0000
 
 dnsmasq (2.80-1) unstable; urgency=low
 

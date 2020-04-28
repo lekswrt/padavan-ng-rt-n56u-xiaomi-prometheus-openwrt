@@ -93,10 +93,13 @@ int send_from(int fd, int nowild, char *packet, size_t len,
   
   while (retry_send(sendmsg(fd, &msg, 0)));
 
-  /* If interface is still in DAD, EINVAL results - ignore that. */
-  if (errno != 0 && errno != EINVAL)
+  if (errno != 0)
     {
-      my_syslog(LOG_ERR, _("failed to send packet: %s"), strerror(errno));
+#ifdef HAVE_LINUX_NETWORK
+      /* If interface is still in DAD, EINVAL results - ignore that. */
+      if (errno != EINVAL)
+	my_syslog(LOG_ERR, _("failed to send packet: %s"), strerror(errno));
+#endif
       return 0;
     }
   
@@ -152,38 +155,11 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
       }
     else if (serv->flags & SERV_HAS_DOMAIN)
       {
-	unsigned int domainlen = matchlen;
-	int serverhit = 0;
-
-#ifdef HAVE_REGEX
-	if (serv->flags & SERV_IS_REGEX)
-	  {
-	    int captcount = 0;
-	    if (pcre_fullinfo(serv->regex, serv->pextra, PCRE_INFO_CAPTURECOUNT, &captcount) == 0)
-	      {
-		/* C99 dyn-array, or alloca must be used */
-		int ovect[(captcount + 1) * 3];
-		if (pcre_exec(serv->regex, serv->pextra, qdomain, namelen, 0, 0, ovect, (captcount + 1) * 3) > 0)
-		  {
-		    domainlen = (unsigned int) (ovect[1] - ovect[0]);
-		    if (domainlen >= matchlen)
-		      serverhit = 1;
-		  }
-	      }
-	  }
-	else
-#endif
-	  {
-	    char *matchstart;
-	    domainlen = strlen(serv->domain);
-	    matchstart = qdomain + namelen - domainlen;
-	    if (namelen >= domainlen &&
-	        hostname_isequal(matchstart, serv->domain) &&
-	        (domainlen == 0 || namelen == domainlen || *(matchstart-1) == '.' ))
-	       serverhit = 1;
-	  }
-
-	if (serverhit)
+	unsigned int domainlen = strlen(serv->domain);
+	char *matchstart = qdomain + namelen - domainlen;
+	if (namelen >= domainlen &&
+	    hostname_isequal(matchstart, serv->domain) &&
+	    (domainlen == 0 || namelen == domainlen || *(matchstart-1) == '.' ))
 	  {
 	    if ((serv->flags & SERV_NO_REBIND) && norebind)	
 	      *norebind = 1;
@@ -210,11 +186,6 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
 		if (domainlen >= matchlen)
 		  {
 		    *type = serv->flags & (SERV_HAS_DOMAIN | SERV_USE_RESOLV | SERV_NO_REBIND | SERV_DO_DNSSEC);
-#ifdef HAVE_REGEX
-		    if (serv->flags & SERV_IS_REGEX)
-				*domain = qdomain;
-		    else
-#endif
 		    *domain = serv->domain;
 		    matchlen = domainlen;
 		    if (serv->flags & SERV_NO_ADDR)
@@ -273,27 +244,6 @@ static unsigned int search_servers(time_t now, union all_addr **addrpp, unsigned
       *domain = NULL;
     }
   return  flags;
-}
-
-static int match_domain_for_forward(char *domain, struct server *serv)
-{
-  int ret_val = 0;
-  if(serv->flags & SERV_IS_REGEX)
-    {
-#ifdef HAVE_REGEX
-      int captcount = 0;
-      if (pcre_fullinfo(serv->regex, serv->pextra, PCRE_INFO_CAPTURECOUNT, &captcount) == 0)
-	{
-	  /* C99 dyn-array, or alloca must be used */
-	  int ovect[(captcount + 1) * 3];
-	  ret_val = pcre_exec(serv->regex, serv->pextra, domain,
-	                      strlen(domain), 0, 0, ovect, (captcount + 1) * 3) > 0;
-	}
-#endif
-    }
-  else
-    ret_val = hostname_isequal(domain, serv->domain);
-  return ret_val;
 }
 
 static int forward_query(int udpfd, union mysockaddr *udpaddr,
@@ -371,12 +321,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
 #endif
 
       /* retry on existing query, send to all available servers  */
-#ifdef HAVE_REGEX
-      if(forward->sentto->flags & SERV_IS_REGEX)
-          domain = daemon->namebuff;
-      else
-#endif
-          domain = forward->sentto->domain;
+      domain = forward->sentto->domain;
       forward->sentto->failed_queries++;
       if (!option_bool(OPT_ORDER))
 	{
@@ -403,7 +348,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
       type &= ~SERV_DO_DNSSEC;      
 
       if (daemon->servers && !flags)
-	forward = get_new_frec(now, NULL, 0);
+	forward = get_new_frec(now, NULL, NULL);
       /* table full - flags == 0, return REFUSED */
       
       if (forward)
@@ -513,7 +458,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
 	     must be NULL also. */
 	  
 	  if (type == (start->flags & SERV_TYPE) &&
-	      (type != SERV_HAS_DOMAIN || match_domain_for_forward(domain, start)) &&
+	      (type != SERV_HAS_DOMAIN || hostname_isequal(domain, start->domain)) &&
 	      !(start->flags & (SERV_LITERAL_ADDRESS | SERV_LOOP)))
 	    {
 	      int fd;
@@ -649,21 +594,6 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
       unsigned int matchlen = 0;
       for (ipset_pos = daemon->ipsets; ipset_pos; ipset_pos = ipset_pos->next) 
 	{
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-	  if (ipset_pos->domain_type & IPSET_IS_REGEX){
-		  int captcount = 0;
-		  if (pcre_fullinfo(ipset_pos->regex, ipset_pos->pextra, PCRE_INFO_CAPTURECOUNT, &captcount) == 0)
-		  {
-			  /* C99 dyn-array, or alloca must be used */
-			  int ovect[(captcount + 1) * 3];
-			  if (pcre_exec(ipset_pos->regex, ipset_pos->pextra, daemon->namebuff, namelen, 0, 0, ovect, (captcount + 1) * 3) > 0){
-				  sets = ipset_pos->sets;
-			  }
-		  }
-	  }else{
-#endif
-#endif
 	  unsigned int domainlen = strlen(ipset_pos->domain);
 	  char *matchstart = daemon->namebuff + namelen - domainlen;
 	  if (namelen >= domainlen && hostname_isequal(matchstart, ipset_pos->domain) &&
@@ -673,11 +603,6 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
 	      matchlen = domainlen;
 	      sets = ipset_pos->sets;
 	    }
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-	  }
-#endif
-#endif
 	}
     }
 #endif
@@ -1114,7 +1039,9 @@ void reply_query(int fd, int family, time_t now)
 		  /* Find the original query that started it all.... */
 		  for (orig = forward; orig->dependent; orig = orig->dependent);
 		  
-		  if (--orig->work_counter == 0 || !(new = get_new_frec(now, NULL, 1)))
+		  /* Make sure we don't expire and free the orig frec during the
+		     allocation of a new one. */
+		  if (--orig->work_counter == 0 || !(new = get_new_frec(now, NULL, orig)))
 		    status = STAT_ABANDONED;
 		  else
 		    {
@@ -2071,7 +1998,7 @@ unsigned char *tcp_request(int confd, time_t now,
 		      
 		      /* server for wrong domain */
 		      if (type != (last_server->flags & SERV_TYPE) ||
-			  (type == SERV_HAS_DOMAIN && !match_domain_for_forward(domain, last_server)) ||
+			  (type == SERV_HAS_DOMAIN && !hostname_isequal(domain, last_server->domain)) ||
 			  (last_server->flags & (SERV_LITERAL_ADDRESS | SERV_LOOP)))
 			continue;
 
@@ -2326,9 +2253,10 @@ static void free_frec(struct frec *f)
    else return *wait zero if one available, or *wait is delay to
    when the oldest in-use record will expire. Impose an absolute
    limit of 4*TIMEOUT before we wipe things (for random sockets).
-   If force is set, always return a result, even if we have
-   to allocate above the limit. */
-struct frec *get_new_frec(time_t now, int *wait, int force)
+   If force is non-NULL, always return a result, even if we have
+   to allocate above the limit, and never free the record pointed
+   to by the force argument. */
+struct frec *get_new_frec(time_t now, int *wait, struct frec *force)
 {
   struct frec *f, *oldest, *target;
   int count;
@@ -2345,7 +2273,7 @@ struct frec *get_new_frec(time_t now, int *wait, int force)
 	    /* Don't free DNSSEC sub-queries here, as we may end up with
 	       dangling references to them. They'll go when their "real" query 
 	       is freed. */
-	    if (!f->dependent)
+	    if (!f->dependent && f != force)
 #endif
 	      {
 		if (difftime(now, f->time) >= 4*TIMEOUT)

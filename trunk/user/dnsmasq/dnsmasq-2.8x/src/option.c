@@ -166,6 +166,7 @@ struct myoption {
 #define LOPT_SHARED_NET    357
 #define LOPT_IGNORE_CLID   358
 #define LOPT_SINGLE_PORT   359
+#define LOPT_SCRIPT_TIME   360
  
 #ifdef HAVE_GETOPT_LONG
 static const struct option opts[] =  
@@ -237,7 +238,7 @@ static const struct myoption opts[] =
     { "caa-record", 1, 0 , LOPT_CAA },
     { "dns-rr", 1, 0, LOPT_RR },
     { "enable-dbus", 2, 0, '1' },
-    { "enable-ubus", 0, 0, LOPT_UBUS },
+    { "enable-ubus", 2, 0, LOPT_UBUS },
     { "bootp-dynamic", 2, 0, '3' },
     { "dhcp-mac", 1, 0, '4' },
     { "no-ping", 0, 0, '5' },
@@ -245,6 +246,7 @@ static const struct myoption opts[] =
     { "conf-dir", 1, 0, '7' },
     { "log-facility", 1, 0 ,'8' },
     { "leasefile-ro", 0, 0, '9' },
+    { "script-on-renewal", 0, 0, LOPT_SCRIPT_TIME},
     { "dns-forward-max", 1, 0, '0' },
     { "clear-on-reload", 0, 0, LOPT_RELOAD },
     { "dhcp-ignore-names", 2, 0, LOPT_NO_NAMES },
@@ -426,7 +428,7 @@ static struct {
   { 'z', OPT_NOWILD, NULL, gettext_noop("Bind only to interfaces in use."), NULL },
   { 'Z', OPT_ETHERS, NULL, gettext_noop("Read DHCP static host information from %s."), ETHERSFILE },
   { '1', ARG_ONE, "[=<busname>]", gettext_noop("Enable the DBus interface for setting upstream servers, etc."), NULL },
-  { LOPT_UBUS, OPT_UBUS, NULL, gettext_noop("Enable the UBus interface."), NULL },
+  { LOPT_UBUS, ARG_ONE, "[=<busname>]", gettext_noop("Enable the UBus interface."), NULL },
   { '2', ARG_DUP, "<interface>", gettext_noop("Do not provide DHCP on this interface, only provide DNS."), NULL },
   { '3', ARG_DUP, "[=tag:<tag>]...", gettext_noop("Enable dynamic address allocation for bootp."), NULL },
   { '4', ARG_DUP, "set:<tag>,<mac address>", gettext_noop("Map MAC address (with wildcards) to option set."), NULL },
@@ -515,6 +517,7 @@ static struct {
   { LOPT_RAPID_COMMIT, OPT_RAPID_COMMIT, NULL, gettext_noop("Enables DHCPv4 Rapid Commit option."), NULL },
   { LOPT_DUMPFILE, ARG_ONE, "<path>", gettext_noop("Path to debug packet dump file"), NULL },
   { LOPT_DUMPMASK, ARG_ONE, "<hex>", gettext_noop("Mask which packets to dump"), NULL },
+  { LOPT_SCRIPT_TIME, OPT_LEASE_RENEW, NULL, gettext_noop("Call dhcp-script when lease expiry changes."), NULL },
   { 0, 0, NULL, NULL, NULL }
 }; 
 
@@ -1033,6 +1036,7 @@ static void dhcp_config_free(struct dhcp_config *config)
       if (config->flags & CONFIG_CLID)
         free(config->clid);
 
+#ifdef HAVE_DHCP6
       if (config->flags & CONFIG_ADDR6)
 	{
 	  struct addrlist *addr, *tmp;
@@ -1043,6 +1047,7 @@ static void dhcp_config_free(struct dhcp_config *config)
 	      free(addr);
 	    }
 	}
+#endif
 
       free(config);
     }
@@ -1220,7 +1225,7 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
 	  } 
 	else if (c == '.')	
 	  {
-	    is_addr6 = is_dec = is_hex = 0;
+	    is_dec = is_hex = 0;
 	    dots++;
 	  }
 	else if (c == '-')
@@ -1255,6 +1260,12 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
 
       if (!found_colon)
 	is_addr6 = 0;
+
+#ifdef HAVE_DHCP6
+      /* NTP server option takes hex, addresses or FQDN */
+      if (is6 && new->opt == OPTION6_NTP_SERVER && !is_hex)
+	opt_len |= is_addr6 ? OT_ADDR_LIST : OT_RFC1035_NAME;
+#endif
      
       /* We know that some options take addresses */
       if (opt_len & OT_ADDR_LIST)
@@ -1516,8 +1527,9 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
 	    }
 	  else if (comma && (opt_len & OT_RFC1035_NAME))
 	    {
-	      unsigned char *p = NULL, *newp, *end;
+	      unsigned char *p = NULL, *q, *newp, *end;
 	      int len = 0;
+	      int header_size = (is6 && new->opt == OPTION6_NTP_SERVER) ? 4 : 0;
 	      arg = comma;
 	      comma = split(arg);
 	      
@@ -1527,7 +1539,7 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
 		  if (!dom)
 		    goto_err(_("bad domain in dhcp-option"));
 		    		  
-		  newp = opt_malloc(len + strlen(dom) + 2);
+		  newp = opt_malloc(len + header_size + strlen(dom) + 2);
 		  
 		  if (p)
 		    {
@@ -1536,8 +1548,14 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
 		    }
 		  
 		  p = newp;
-		  end = do_rfc1035_name(p + len, dom, NULL);
+		  q = p + len;
+		  end = do_rfc1035_name(q + header_size, dom, NULL);
 		  *end++ = 0;
+		  if (is6 && new->opt == OPTION6_NTP_SERVER)
+		    {
+		      PUTSHORT(NTP_SUBOPTION_SRV_FQDN, q);
+		      PUTSHORT(end - q - 2, q);
+		    }
 		  len = end - p;
 		  free(dom);
 
@@ -1863,7 +1881,15 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
       else
 	daemon->dbus_name = DNSMASQ_SERVICE;
       break;
-      
+
+    case LOPT_UBUS: /* --enable-ubus */
+      set_option_bool(OPT_UBUS);
+      if (arg)
+	daemon->ubus_name = opt_string_alloc(arg);
+      else
+	daemon->ubus_name = DNSMASQ_UBUS_NAME;
+      break;
+
     case '8': /* --log-facility */
       /* may be a filename */
       if (strchr(arg, '/') || strcmp (arg, "-") == 0)
@@ -2533,12 +2559,6 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	    while (rebind || (end = split_chr(arg, '/')))
 	      {
 		char *domain = NULL;
-		char *regex = NULL;
-		char *real_end = arg + strlen(arg);
-		if (*arg == ':' && *(real_end - 1) == ':'){
-			*(real_end - 1) = '\0';
-			regex = arg + 1;
-		}else{
 		/* elide leading dots - they are implied in the search algorithm */
 		while (*arg == '.') arg++;
 		/* # matches everything and becomes a zero length domain string */
@@ -2546,27 +2566,12 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		  domain = "";
 		else if (strlen (arg) != 0 && !(domain = canonicalise_opt(arg)))
 		  ret_err(gen_err);
-		}
 		serv = opt_malloc(sizeof(struct server));
 		memset(serv, 0, sizeof(struct server));
 		serv->next = newlist;
 		newlist = serv;
 		serv->domain = domain;
-		serv->flags = domain || regex ? SERV_HAS_DOMAIN : SERV_FOR_NODOTS;
-		if (regex){
-#ifdef HAVE_REGEX
-			const char *error;
-			int erroff;
-			serv->regex = pcre_compile(regex, 0, &error, &erroff, NULL);
-
-			if (!serv->regex)
-				ret_err(error);
-			serv->flags |= SERV_IS_REGEX;
-			serv->pextra = pcre_study(serv->regex, 0, &error);
-#else
-			ret_err("Using a regex while server was configured without regex support!");
-#endif
-		}
+		serv->flags = domain ? SERV_HAS_DOMAIN : SERV_FOR_NODOTS;
 		arg = end;
 		if (rebind)
 		  break;
@@ -2688,30 +2693,6 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	     while ((end = split_chr(arg, '/'))) 
 	       {
 		 char *domain = NULL;
-		 char *real_end = arg + strlen(arg);
-		 if (*arg == ':' && *(real_end - 1) == ':'){
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-			 const char *error;
-			 int erroff;
-			 char *regex = NULL;
-			 *(real_end - 1) = '\0';
-			 regex = arg + 1;
-
-			 ipsets->next = opt_malloc(sizeof(struct ipsets));
-			 ipsets = ipsets->next;
-			 memset(ipsets, 0, sizeof(struct ipsets));
-			 ipsets->regex = pcre_compile(regex, 0, &error, &erroff, NULL);
-
-			 if (!ipsets->regex)
-				 ret_err(error);
-			 ipsets->pextra = pcre_study(ipsets->regex, 0, &error);
-			 ipsets->domain_type = IPSET_IS_REGEX;
-#endif
-#else
-			 ret_err("Using a regex while server was configured without regex support!");
-#endif
-		 }else{
 		 /* elide leading dots - they are implied in the search algorithm */
 		 while (*arg == '.')
 		   arg++;
@@ -2724,12 +2705,6 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		 ipsets = ipsets->next;
 		 memset(ipsets, 0, sizeof(struct ipsets));
 		 ipsets->domain = domain;
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-		 ipsets->domain_type = IPSET_IS_DOMAIN;
-#endif
-#endif
-		 }
 		 arg = end;
 	       }
 	   } 
@@ -2738,11 +2713,6 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	     ipsets->next = opt_malloc(sizeof(struct ipsets));
 	     ipsets = ipsets->next;
 	     memset(ipsets, 0, sizeof(struct ipsets));
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-	     ipsets->domain_type = IPSET_IS_DOMAIN;
-#endif
-#endif
 	     ipsets->domain = "";
 	   }
 	 
@@ -3280,7 +3250,9 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	new->netid = NULL;
 	new->filter = NULL;
 	new->clid = NULL;
+#ifdef HAVE_DHCP6
 	new->addr6 = NULL;
+#endif
 
 	while (arg)
 	  {
@@ -3358,7 +3330,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 			
 			if (!atoi_check(pref, &new_addr->prefixlen) ||
 			    new_addr->prefixlen > 128 ||
-			    (((1<<(128-new_addr->prefixlen))-1) & addrpart) != 0)
+			    ((((u64)1<<(128-new_addr->prefixlen))-1) & addrpart) != 0)
 			  {
 			    dhcp_config_free(new);
 			    ret_err(_("bad IPv6 prefix"));
