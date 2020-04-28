@@ -2559,6 +2559,12 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	    while (rebind || (end = split_chr(arg, '/')))
 	      {
 		char *domain = NULL;
+		char *regex = NULL;
+		char *real_end = arg + strlen(arg);
+		if (*arg == ':' && *(real_end - 1) == ':'){
+			*(real_end - 1) = '\0';
+			regex = arg + 1;
+		}else{
 		/* elide leading dots - they are implied in the search algorithm */
 		while (*arg == '.') arg++;
 		/* # matches everything and becomes a zero length domain string */
@@ -2566,12 +2572,27 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		  domain = "";
 		else if (strlen (arg) != 0 && !(domain = canonicalise_opt(arg)))
 		  ret_err(gen_err);
+		}
 		serv = opt_malloc(sizeof(struct server));
 		memset(serv, 0, sizeof(struct server));
 		serv->next = newlist;
 		newlist = serv;
 		serv->domain = domain;
-		serv->flags = domain ? SERV_HAS_DOMAIN : SERV_FOR_NODOTS;
+		serv->flags = domain || regex ? SERV_HAS_DOMAIN : SERV_FOR_NODOTS;
+		if (regex){
+#ifdef HAVE_REGEX
+			const char *error;
+			int erroff;
+			serv->regex = pcre_compile(regex, 0, &error, &erroff, NULL);
+
+			if (!serv->regex)
+				ret_err(error);
+			serv->flags |= SERV_IS_REGEX;
+			serv->pextra = pcre_study(serv->regex, 0, &error);
+#else
+			ret_err("Using a regex while server was configured without regex support!");
+#endif
+		}
 		arg = end;
 		if (rebind)
 		  break;
@@ -2693,6 +2714,30 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	     while ((end = split_chr(arg, '/'))) 
 	       {
 		 char *domain = NULL;
+		 char *real_end = arg + strlen(arg);
+		 if (*arg == ':' && *(real_end - 1) == ':'){
+#ifdef HAVE_REGEX
+#ifdef HAVE_REGEX_IPSET
+			 const char *error;
+			 int erroff;
+			 char *regex = NULL;
+			 *(real_end - 1) = '\0';
+			 regex = arg + 1;
+
+			 ipsets->next = opt_malloc(sizeof(struct ipsets));
+			 ipsets = ipsets->next;
+			 memset(ipsets, 0, sizeof(struct ipsets));
+			 ipsets->regex = pcre_compile(regex, 0, &error, &erroff, NULL);
+
+			 if (!ipsets->regex)
+				 ret_err(error);
+			 ipsets->pextra = pcre_study(ipsets->regex, 0, &error);
+			 ipsets->domain_type = IPSET_IS_REGEX;
+#endif
+#else
+			 ret_err("Using a regex while server was configured without regex support!");
+#endif
+		 }else{
 		 /* elide leading dots - they are implied in the search algorithm */
 		 while (*arg == '.')
 		   arg++;
@@ -2705,6 +2750,12 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		 ipsets = ipsets->next;
 		 memset(ipsets, 0, sizeof(struct ipsets));
 		 ipsets->domain = domain;
+#ifdef HAVE_REGEX
+#ifdef HAVE_REGEX_IPSET
+		 ipsets->domain_type = IPSET_IS_DOMAIN;
+#endif
+#endif
+		 }
 		 arg = end;
 	       }
 	   } 
@@ -2713,6 +2764,11 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	     ipsets->next = opt_malloc(sizeof(struct ipsets));
 	     ipsets = ipsets->next;
 	     memset(ipsets, 0, sizeof(struct ipsets));
+#ifdef HAVE_REGEX
+#ifdef HAVE_REGEX_IPSET
+	     ipsets->domain_type = IPSET_IS_DOMAIN;
+#endif
+#endif
 	     ipsets->domain = "";
 	   }
 	 
