@@ -107,7 +107,7 @@ if test "$hardenbuild" -eq 1; then
 	    [AC_MSG_NOTICE([Setting $TESTFLAGS])], 
 	    [
 			CFLAGS="$OLDCFLAGS"
-			TESTFLAGS=""
+			TESTFLAGS="-fstack-protector --param=ssp-buffer-size=4"
 			CFLAGS="$CFLAGS $TESTFLAGS"
 			AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])], 
 			    [AC_MSG_NOTICE([Setting $TESTFLAGS])], 
@@ -341,14 +341,21 @@ AC_SUBST(DROPBEAR_PLUGIN)
 AC_ARG_ENABLE(fuzz,
 	[  --enable-fuzz           Build fuzzing. Not recommended for deployment.],
 	[
-		AC_DEFINE(DROPBEAR_FUZZ, 1, Fuzzing)
-		AC_MSG_NOTICE(Enabling fuzzing)
-		DROPBEAR_FUZZ=1
-		# libfuzzer needs linking with c++ libraries
-		AC_PROG_CXX
+		if test "x$enableval" = "xyes"; then
+            AC_DEFINE(DROPBEAR_FUZZ, 1, Fuzzing)
+            AC_MSG_NOTICE(Enabling fuzzing)
+            DROPBEAR_FUZZ=1
+            # libfuzzer needs linking with c++ libraries
+            AC_PROG_CXX
+        else
+            AC_DEFINE(DROPBEAR_FUZZ, 0, Fuzzing)
+            AC_MSG_NOTICE(Disabling fuzzing)
+            DROPBEAR_FUZZ=0
+        fi
 	],
 	[
 		AC_DEFINE(DROPBEAR_FUZZ, 0, Fuzzing)
+		AC_MSG_NOTICE(Disabling fuzzing)
 		DROPBEAR_FUZZ=0
 	]
 
@@ -873,4 +880,4 @@ AC_MSG_NOTICE([crypt() not available, dropbear server will not have password aut
 fi
 
 AC_MSG_NOTICE()
-AC_MSG_NOTICE([Now edit options.h to choose features.])
+AC_MSG_NOTICE([Now edit localoptions.h to choose features.])
