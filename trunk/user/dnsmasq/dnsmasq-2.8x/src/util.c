@@ -351,6 +351,8 @@ int hostname_isequal(const char *a, const char *b)
 {
   unsigned int c1, c2;
   
+  if(NULL == a || NULL == b) return (NULL == a && NULL == b);
+  
   do {
     c1 = (unsigned char) *a++;
     c2 = (unsigned char) *b++;
