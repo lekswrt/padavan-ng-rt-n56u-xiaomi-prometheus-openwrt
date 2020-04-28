@@ -327,8 +327,6 @@ case "$host" in
 		AC_DEFINE([TARGET_DARWIN], [1], [Are we running on Mac OS X?])
 		AC_DEFINE_UNQUOTED([TARGET_PREFIX], ["M"], [Target prefix])
 		have_tap_header="yes"
-		dnl some Mac OS X tendering (we use vararg macros...)
-		CPPFLAGS="$CPPFLAGS -no-cpp-precomp"
 		ac_cv_type_struct_in_pktinfo=no
 		;;
 	*-mingw*)
@@ -905,9 +903,12 @@ if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
 			EVP_MD_CTX_new \
 			EVP_MD_CTX_free \
 			EVP_MD_CTX_reset \
+			EVP_CIPHER_CTX_reset \
 			SSL_CTX_get_default_passwd_cb \
 			SSL_CTX_get_default_passwd_cb_userdata \
 			SSL_CTX_set_security_level \
+			X509_get0_notBefore \
+			X509_get0_notAfter \
 			X509_get0_pubkey \
 			X509_STORE_get0_objects \
 			X509_OBJECT_free \
@@ -1078,15 +1079,68 @@ dnl
 AC_ARG_VAR([LZ4_CFLAGS], [C compiler flags for lz4])
 AC_ARG_VAR([LZ4_LIBS], [linker flags for lz4])
 if test "$enable_lz4" = "yes" && test "$enable_comp_stub" = "no"; then
+    if test -z "${LZ4_CFLAGS}" -a -z "${LZ4_LIBS}"; then
+	# if the user did not explicitly specify flags, try to autodetect
+	PKG_CHECK_MODULES([LZ4],
+			  [liblz4 >= 1.7.1 liblz4 < 100],
+			  [have_lz4="yes"],
+			  [LZ4_LIBS="-llz4"] # If this fails, we will do another test next.
+					     # We also add set LZ4_LIBS otherwise the
+					     # linker will not know about the lz4 library
+	)
+    fi
 
     saved_CFLAGS="${CFLAGS}"
     saved_LIBS="${LIBS}"
     CFLAGS="${CFLAGS} ${LZ4_CFLAGS}"
     LIBS="${LIBS} ${LZ4_LIBS}"
 
-    AC_MSG_RESULT([		usable LZ4 library or header not found, using version in src/compat/compat-lz4.*])
-    AC_DEFINE([NEED_COMPAT_LZ4], [1], [use copy of LZ4 source in compat/])
-    LZ4_LIBS=""
+    # If pkgconfig check failed or LZ4_CFLAGS/LZ4_LIBS env vars
+    # are used, check the version directly in the LZ4 include file
+    if test "${have_lz4}" != "yes"; then
+	AC_CHECK_HEADERS([lz4.h],
+			 [have_lz4h="yes"],
+			 [])
+
+	if test "${have_lz4h}" = "yes" ; then
+	    AC_MSG_CHECKING([additionally if system LZ4 version >= 1.7.1])
+	    AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM([[
+#include <lz4.h>
+				 ]],
+				 [[
+/* Version encoding: MMNNPP (Major miNor Patch) - see lz4.h for details */
+#if LZ4_VERSION_NUMBER < 10701L
+#error LZ4 is too old
+#endif
+				 ]]
+				)],
+		[
+		    AC_MSG_RESULT([ok])
+		    have_lz4="yes"
+		],
+		[AC_MSG_RESULT([system LZ4 library is too old])]
+	    )
+	fi
+    fi
+
+    # Double check we have a few needed functions
+    if test "${have_lz4}" = "yes" ; then
+	AC_CHECK_LIB([lz4],
+		     [LZ4_compress_default],
+		     [],
+		     [have_lz4="no"])
+	AC_CHECK_LIB([lz4],
+		     [LZ4_decompress_safe],
+		     [],
+		     [have_lz4="no"])
+    fi
+
+    if test "${have_lz4}" != "yes" ; then
+	AC_MSG_RESULT([		usable LZ4 library or header not found, using version in src/compat/compat-lz4.*])
+	AC_DEFINE([NEED_COMPAT_LZ4], [1], [use copy of LZ4 source in compat/])
+	LZ4_LIBS=""
+    fi
     OPTIONAL_LZ4_CFLAGS="${LZ4_CFLAGS}"
     OPTIONAL_LZ4_LIBS="${LZ4_LIBS}"
     AC_DEFINE(ENABLE_LZ4, [1], [Enable LZ4 compression library])
@@ -1274,11 +1328,25 @@ if test "${enable_plugin_auth_pam}" = "yes"; then
 fi
 
 if test "${enable_async_push}" = "yes"; then
-	AC_CHECK_HEADERS(
-		[sys/inotify.h],
-		AC_DEFINE([ENABLE_ASYNC_PUSH], [1], [Enable async push]),
-		AC_MSG_ERROR([inotify.h not found.])
-	)
+	case "$host" in
+		*-*-freebsd*)
+			PKG_CHECK_MODULES(
+				[OPTIONAL_INOTIFY],
+				[libinotify],
+				[
+					AC_DEFINE([HAVE_SYS_INOTIFY_H])
+					AC_DEFINE([ENABLE_ASYNC_PUSH], [1], [Enable async push])
+				]
+			)
+		;;
+		*)
+			AC_CHECK_HEADERS(
+				[sys/inotify.h],
+				AC_DEFINE([ENABLE_ASYNC_PUSH], [1], [Enable async push]),
+				AC_MSG_ERROR([inotify.h not found.])
+			)
+		;;
+	esac
 fi
 
 CONFIGURE_DEFINES="`set | grep '^enable_.*=' ; set | grep '^with_.*='`"
@@ -1305,6 +1373,8 @@ AC_SUBST([OPTIONAL_LZ4_LIBS])
 AC_SUBST([OPTIONAL_SYSTEMD_LIBS])
 AC_SUBST([OPTIONAL_PKCS11_HELPER_CFLAGS])
 AC_SUBST([OPTIONAL_PKCS11_HELPER_LIBS])
+AC_SUBST([OPTIONAL_INOTIFY_CFLAGS])
+AC_SUBST([OPTIONAL_INOTIFY_LIBS])
 
 AC_SUBST([PLUGIN_AUTH_PAM_CFLAGS])
 AC_SUBST([PLUGIN_AUTH_PAM_LIBS])
@@ -1323,15 +1393,8 @@ AC_SUBST([sampledir])
 AC_SUBST([systemdunitdir])
 AC_SUBST([tmpfilesdir])
 
-VENDOR_SRC_ROOT="\$(abs_top_srcdir)/vendor/"
-VENDOR_DIST_ROOT="\$(abs_top_builddir)/vendor/dist"
-VENDOR_BUILD_ROOT="\$(abs_top_builddir)/vendor/.build"
-AC_SUBST([VENDOR_SRC_ROOT])
-AC_SUBST([VENDOR_BUILD_ROOT])
-AC_SUBST([VENDOR_DIST_ROOT])
-
-TEST_LDFLAGS="-lcmocka -L\$(abs_top_builddir)/vendor/dist/lib -Wl,-rpath,\$(abs_top_builddir)/vendor/dist/lib"
-TEST_CFLAGS="-I\$(top_srcdir)/include -I\$(abs_top_builddir)/vendor/dist/include"
+TEST_LDFLAGS="${OPTIONAL_CRYPTO_LIBS} ${OPTIONAL_PKCS11_HELPER_LIBS} -lcmocka -L\$(top_builddir)/vendor/dist/lib -Wl,-rpath,\$(top_builddir)/vendor/dist/lib"
+TEST_CFLAGS="${OPTIONAL_CRYPTO_CFLAGS} ${OPTIONAL_PKCS11_HELPER_CFLAGS} -I\$(top_srcdir)/include -I\$(top_builddir)/vendor/dist/include"
 
 AC_SUBST([TEST_LDFLAGS])
 AC_SUBST([TEST_CFLAGS])
@@ -1359,8 +1422,6 @@ AC_CONFIG_FILES([
 	build/msvc/Makefile
 	build/msvc/msvc-generate/Makefile
 	distro/Makefile
-	distro/rpm/Makefile
-	distro/rpm/openvpn.spec
 	distro/systemd/Makefile
 	include/Makefile
 	src/Makefile

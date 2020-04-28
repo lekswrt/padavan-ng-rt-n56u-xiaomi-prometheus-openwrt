@@ -2294,9 +2294,16 @@ do_deferred_options(struct context *c, const unsigned int found)
         {
             tls_poor_mans_ncp(&c->options, c->c2.tls_multi->remote_ciphername);
         }
-        /* Do not regenerate keys if server sends an extra push reply */
-        if (!session->key[KS_PRIMARY].crypto_options.key_ctx_bi.initialized
-            && !tls_session_update_crypto_params(session, &c->options, &c->c2.frame))
+        struct frame *frame_fragment = NULL;
+#ifdef ENABLE_FRAGMENT
+        if (c->options.ce.fragment)
+        {
+            frame_fragment = &c->c2.frame_fragment;
+        }
+#endif
+
+        if (!tls_session_update_crypto_params(session, &c->options, &c->c2.frame,
+                                              frame_fragment))
         {
             msg(D_TLS_ERRORS, "OPTIONS ERROR: failed to import crypto options");
             return false;
@@ -3035,6 +3042,7 @@ do_init_frame(struct context *c)
      */
     c->c2.frame_fragment = c->c2.frame;
     frame_subtract_extra(&c->c2.frame_fragment, &c->c2.frame_fragment_omit);
+    c->c2.frame_fragment_initial = c->c2.frame_fragment;
 #endif
 
 #if defined(ENABLE_FRAGMENT) && defined(ENABLE_OCC)
@@ -3101,12 +3109,10 @@ do_option_warnings(struct context *c)
     }
 
 #if P2MP_SERVER
-#if 0
     if (o->server_bridge_defined | o->server_bridge_proxy_dhcp)
     {
         msg(M_WARN, "NOTE: when bridging your LAN adapter with the TAP adapter, note that the new bridge adapter will often take on its own IP address that is different from what the LAN adapter was previously set to");
     }
-#endif
 
     if (o->mode == MODE_SERVER)
     {
@@ -3885,7 +3891,7 @@ init_management_callback_p2p(struct context *c)
 #ifdef ENABLE_MANAGEMENT
 
 void
-init_management(struct context *c)
+init_management(void)
 {
     if (!management)
     {

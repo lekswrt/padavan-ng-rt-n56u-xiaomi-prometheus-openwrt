@@ -256,11 +256,6 @@ int cipher_kt_block_size(const cipher_kt_t *cipher_kt);
 int cipher_kt_tag_size(const cipher_kt_t *cipher_kt);
 
 /**
- * Returns true if we consider this cipher to be insecure.
- */
-bool cipher_kt_insecure(const cipher_kt_t *cipher);
-
-/**
  * Returns the mode that the cipher runs in.
  *
  * @param cipher_kt     Static cipher parameters. May not be NULL.
@@ -312,7 +307,7 @@ bool cipher_kt_mode_aead(const cipher_kt_t *cipher);
 cipher_ctx_t *cipher_ctx_new(void);
 
 /**
- * Free a cipher context
+ * Cleanup and free a cipher context
  *
  * @param ctx           Cipher context.
  */
@@ -330,13 +325,6 @@ void cipher_ctx_free(cipher_ctx_t *ctx);
  */
 void cipher_ctx_init(cipher_ctx_t *ctx, const uint8_t *key, int key_len,
                      const cipher_kt_t *kt, int enc);
-
-/**
- * Cleanup the specified context.
- *
- * @param ctx   Cipher context to cleanup.
- */
-void cipher_ctx_cleanup(cipher_ctx_t *ctx);
 
 /**
  * Returns the size of the IV used by the cipher, in bytes, or 0 if no IV is

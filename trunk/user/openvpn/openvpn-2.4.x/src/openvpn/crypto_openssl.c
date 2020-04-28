@@ -254,7 +254,6 @@ const cipher_name_pair cipher_name_translation_table[] = {
     { "AES-128-GCM", "id-aes128-GCM" },
     { "AES-192-GCM", "id-aes192-GCM" },
     { "AES-256-GCM", "id-aes256-GCM" },
-    { "CHACHA20-POLY1305", "ChaCha20-Poly1305" },
 };
 const size_t cipher_name_translation_table_count =
     sizeof(cipher_name_translation_table) / sizeof(*cipher_name_translation_table);
@@ -272,6 +271,21 @@ cipher_name_cmp(const void *a, const void *b)
         translate_cipher_name_to_openvpn(EVP_CIPHER_name(*cipher_b));
 
     return strcmp(cipher_name_a, cipher_name_b);
+}
+
+static void
+print_cipher(const EVP_CIPHER *cipher)
+{
+    const char *var_key_size =
+        (EVP_CIPHER_flags(cipher) & EVP_CIPH_VARIABLE_LENGTH) ?
+        " by default" : "";
+    const char *ssl_only = cipher_kt_mode_cbc(cipher) ?
+                           "" : ", TLS client/server mode only";
+
+    printf("%s  (%d bit key%s, %d bit block%s)\n",
+           translate_cipher_name_to_openvpn(EVP_CIPHER_name(cipher)),
+           EVP_CIPHER_key_length(cipher) * 8, var_key_size,
+           cipher_kt_block_size(cipher) * 8, ssl_only);
 }
 
 void
@@ -316,7 +330,7 @@ show_available_ciphers(void)
     qsort(cipher_list, num_ciphers, sizeof(*cipher_list), cipher_name_cmp);
 
     for (i = 0; i < num_ciphers; i++) {
-        if (!cipher_kt_insecure(cipher_list[i]))
+        if (cipher_kt_block_size(cipher_list[i]) >= 128/8)
         {
             print_cipher(cipher_list[i]);
         }
@@ -325,7 +339,7 @@ show_available_ciphers(void)
     printf("\nThe following ciphers have a block size of less than 128 bits, \n"
            "and are therefore deprecated.  Do not use unless you have to.\n\n");
     for (i = 0; i < num_ciphers; i++) {
-        if (cipher_kt_insecure(cipher_list[i]))
+        if (cipher_kt_block_size(cipher_list[i]) < 128/8)
         {
             print_cipher(cipher_list[i]);
         }
@@ -599,16 +613,6 @@ cipher_kt_tag_size(const EVP_CIPHER *cipher_kt)
     }
 }
 
-bool
-cipher_kt_insecure(const EVP_CIPHER *cipher)
-{
-    return !(cipher_kt_block_size(cipher) >= 128 / 8
-#ifdef NID_chacha20_poly1305
-             || EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305
-#endif
-            );
-}
-
 int
 cipher_kt_mode(const EVP_CIPHER *cipher_kt)
 {
@@ -643,22 +647,10 @@ bool
 cipher_kt_mode_aead(const cipher_kt_t *cipher)
 {
 #ifdef HAVE_AEAD_CIPHER_MODES
-    if (cipher)
-    {
-        switch (EVP_CIPHER_nid(cipher))
-        {
-        case NID_aes_128_gcm:
-        case NID_aes_192_gcm:
-        case NID_aes_256_gcm:
-#ifdef NID_chacha20_poly1305
-        case NID_chacha20_poly1305:
-#endif
-            return true;
-        }
-    }
-#endif
-
+    return cipher && (cipher_kt_mode(cipher) == OPENVPN_MODE_GCM);
+#else
     return false;
+#endif
 }
 
 /*
@@ -687,7 +679,7 @@ cipher_ctx_init(EVP_CIPHER_CTX *ctx, const uint8_t *key, int key_len,
 {
     ASSERT(NULL != kt && NULL != ctx);
 
-    EVP_CIPHER_CTX_init(ctx);
+    EVP_CIPHER_CTX_reset(ctx);
     if (!EVP_CipherInit(ctx, kt, NULL, NULL, enc))
     {
         crypto_msg(M_FATAL, "EVP cipher init #1");
@@ -705,12 +697,6 @@ cipher_ctx_init(EVP_CIPHER_CTX *ctx, const uint8_t *key, int key_len,
 
     /* make sure we used a big enough key */
     ASSERT(EVP_CIPHER_CTX_key_length(ctx) <= key_len);
-}
-
-void
-cipher_ctx_cleanup(EVP_CIPHER_CTX *ctx)
-{
-    EVP_CIPHER_CTX_cleanup(ctx);
 }
 
 int

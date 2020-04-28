@@ -865,7 +865,7 @@ init_key_ctx(struct key_ctx *ctx, const struct key *key,
         dmsg(D_CRYPTO_DEBUG, "%s: CIPHER block_size=%d iv_size=%d",
              prefix, cipher_kt_block_size(kt->cipher),
              cipher_kt_iv_size(kt->cipher));
-        if (cipher_kt_insecure(kt->cipher))
+        if (cipher_kt_block_size(kt->cipher) < 128/8)
         {
             msg(M_WARN, "WARNING: INSECURE cipher with block size less than 128"
                 " bit (%d bit).  This allows attacks like SWEET32.  Mitigate by "
@@ -919,7 +919,6 @@ free_key_ctx(struct key_ctx *ctx)
 {
     if (ctx->cipher)
     {
-        cipher_ctx_cleanup(ctx->cipher);
         cipher_ctx_free(ctx->cipher);
         ctx->cipher = NULL;
     }
@@ -1824,33 +1823,6 @@ get_random(void)
         l = -l;
     }
     return l;
-}
-
-void
-print_cipher(const cipher_kt_t *cipher)
-{
-    const char *var_key_size = cipher_kt_var_key_size(cipher) ?
-        " by default" : "";
-
-    printf("%s  (%d bit key%s, ",
-           translate_cipher_name_to_openvpn(cipher_kt_name(cipher)),
-           cipher_kt_key_size(cipher) * 8, var_key_size);
-
-    if (cipher_kt_block_size(cipher) == 1)
-    {
-        printf("stream cipher");
-    }
-    else
-    {
-        printf("%d bit block", cipher_kt_block_size(cipher) * 8);
-    }
-
-    if (!cipher_kt_mode_cbc(cipher))
-    {
-        printf(", TLS client/server mode only");
-    }
-
-    printf(")\n");
 }
 
 static const cipher_name_pair *

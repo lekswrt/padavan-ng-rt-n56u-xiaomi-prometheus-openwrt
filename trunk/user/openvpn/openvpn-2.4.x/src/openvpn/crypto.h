@@ -465,9 +465,6 @@ void prng_bytes(uint8_t *output, int len);
 
 void prng_uninit(void);
 
-/** Print a cipher list entry */
-void print_cipher(const cipher_kt_t *cipher);
-
 void test_crypto(struct crypto_options *co, struct frame *f);
 
 

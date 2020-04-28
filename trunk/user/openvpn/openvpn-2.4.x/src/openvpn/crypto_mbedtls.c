@@ -39,7 +39,6 @@
 #include "errlevel.h"
 #include "basic.h"
 #include "buffer.h"
-#include "crypto.h"
 #include "integer.h"
 #include "crypto_backend.h"
 #include "otime.h"
@@ -139,6 +138,26 @@ const cipher_name_pair cipher_name_translation_table[] = {
 const size_t cipher_name_translation_table_count =
     sizeof(cipher_name_translation_table) / sizeof(*cipher_name_translation_table);
 
+static void
+print_cipher(const cipher_kt_t *info)
+{
+    if (info && (cipher_kt_mode_cbc(info)
+#ifdef HAVE_AEAD_CIPHER_MODES
+                 || cipher_kt_mode_aead(info)
+#endif
+                 ))
+    {
+        const char *ssl_only = cipher_kt_mode_cbc(info) ?
+                               "" : ", TLS client/server mode only";
+        const char *var_key_size = info->flags & MBEDTLS_CIPHER_VARIABLE_KEY_LEN ?
+                                   " by default" : "";
+
+        printf("%s  (%d bit key%s, %d bit block%s)\n",
+               cipher_kt_name(info), cipher_kt_key_size(info) * 8, var_key_size,
+               cipher_kt_block_size(info) * 8, ssl_only);
+    }
+}
+
 void
 show_available_ciphers(void)
 {
@@ -154,8 +173,7 @@ show_available_ciphers(void)
     while (*ciphers != 0)
     {
         const cipher_kt_t *info = mbedtls_cipher_info_from_type(*ciphers);
-        if (info && !cipher_kt_insecure(info)
-            && (cipher_kt_mode_aead(info) || cipher_kt_mode_cbc(info)))
+        if (info && cipher_kt_block_size(info) >= 128/8)
         {
             print_cipher(info);
         }
@@ -168,7 +186,7 @@ show_available_ciphers(void)
     while (*ciphers != 0)
     {
         const cipher_kt_t *info = mbedtls_cipher_info_from_type(*ciphers);
-        if (info && cipher_kt_insecure(info))
+        if (info && cipher_kt_block_size(info) < 128/8)
         {
             print_cipher(info);
         }
@@ -457,16 +475,6 @@ cipher_kt_tag_size(const mbedtls_cipher_info_t *cipher_kt)
     return 0;
 }
 
-bool
-cipher_kt_insecure(const mbedtls_cipher_info_t *cipher_kt)
-{
-    return !(cipher_kt_block_size(cipher_kt) >= 128 / 8
-#ifdef MBEDTLS_CHACHAPOLY_C
-             || cipher_kt->type == MBEDTLS_CIPHER_CHACHA20_POLY1305
-#endif
-             );
-}
-
 int
 cipher_kt_mode(const mbedtls_cipher_info_t *cipher_kt)
 {
@@ -490,11 +498,7 @@ cipher_kt_mode_ofb_cfb(const cipher_kt_t *cipher)
 bool
 cipher_kt_mode_aead(const cipher_kt_t *cipher)
 {
-    return cipher && (cipher_kt_mode(cipher) == OPENVPN_MODE_GCM
-#ifdef MBEDTLS_CHACHAPOLY_C
-                      || cipher_kt_mode(cipher) == MBEDTLS_MODE_CHACHAPOLY
-#endif
-                      );
+    return cipher && cipher_kt_mode(cipher) == OPENVPN_MODE_GCM;
 }
 
 
@@ -515,6 +519,7 @@ cipher_ctx_new(void)
 void
 cipher_ctx_free(mbedtls_cipher_context_t *ctx)
 {
+    mbedtls_cipher_free(ctx);
     free(ctx);
 }
 
@@ -538,12 +543,6 @@ cipher_ctx_init(mbedtls_cipher_context_t *ctx, const uint8_t *key, int key_len,
 
     /* make sure we used a big enough key */
     ASSERT(ctx->key_bitlen <= key_len*8);
-}
-
-void
-cipher_ctx_cleanup(mbedtls_cipher_context_t *ctx)
-{
-    mbedtls_cipher_free(ctx);
 }
 
 int
