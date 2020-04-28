@@ -106,7 +106,7 @@ modules_backports_install:
 #
 
 .PHONY: romfs
-romfs: romfs.subdirs modules_backports_install modules_install romfs.post
+romfs: romfs.subdirs modules_install modules_backports_install romfs.post
 
 .PHONY: romfs.subdirs
 romfs.subdirs:
