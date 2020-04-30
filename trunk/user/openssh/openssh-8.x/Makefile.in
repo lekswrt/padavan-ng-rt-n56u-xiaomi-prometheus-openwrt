@@ -231,7 +231,7 @@ ssh-pkcs11-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(P11HELPER_OBJS)
 	$(LD) -o $@ $(P11HELPER_OBJS) $(LDFLAGS) libssh.a -lopenbsd-compat $(LIBS)
 
 ssh-sk-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(SKHELPER_OBJS)
-	$(LD) -o $@ $(SKHELPER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(LIBFIDO2)
+	$(LD) -o $@ $(SKHELPER_OBJS) $(LDFLAGS) libssh.a -lopenbsd-compat $(LIBS) $(LIBFIDO2)
 
 ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHKEYSCAN_OBJS)
 	$(LD) -o $@ $(SSHKEYSCAN_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
