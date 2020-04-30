@@ -1,4 +1,4 @@
-SRC_NAME=curl-7.6X.X
+SRC_NAME=curl-7
 
 all: config_test
 	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
