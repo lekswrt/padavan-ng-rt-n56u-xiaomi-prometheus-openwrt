@@ -19,6 +19,7 @@ configure:
 	PKG_CONFIG_PATH=$(STAGEDIR)/lib/pkgconfig \
 	./configure \
 		--prefix=/usr \
+		--with-piddir=/var/run \
 		--sysconfdir=/etc/storage/ \
 		--libdir=$(STAGEDIR)/lib \
 		--host=$(HOST_TARGET) \
