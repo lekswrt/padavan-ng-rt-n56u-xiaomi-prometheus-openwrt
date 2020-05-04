@@ -17,6 +17,8 @@ configure:
 		--without-libidn \
 		--without-libidn2 \
 		--without-libunbound \
+		$(if $(CONFIG_FIRMWARE_INCLUDE_OPENSSL_EC),--enable-gost,--disable-gost) \
+		$(if $(CONFIG_FIRMWARE_INCLUDE_OPENSSL_EC),--enable-ecdsa,--disable-ecdsa) \
 		--disable-shared \
 		--host=$(HOST_TARGET) \
 		--build=$(HOST_BUILD) ; \
