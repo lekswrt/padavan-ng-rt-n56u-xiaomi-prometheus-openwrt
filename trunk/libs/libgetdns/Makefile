@@ -1,4 +1,6 @@
 SRC_NAME=getdns-1.6.0
+#PKG_CONFIG_SYSROOT_DIR=$(STAGEDIR)
+
 
 all: config_test
 	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
@@ -13,7 +15,10 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
+		--with-sysroot=$(STAGEDIR) \
 		--prefix=$(STAGEDIR) \
+		--with-ssl=$(STAGEDIR) \
+		--with-libyaml=$(STAGEDIR) \
 		--without-libidn \
 		--without-libidn2 \
 		--without-libunbound \
