@@ -57,6 +57,7 @@ clean:
 
 install:
 	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	mv -f $(STAGEDIR)/include/libxml2/* $(STAGEDIR)/include
 
 romfs:
 
