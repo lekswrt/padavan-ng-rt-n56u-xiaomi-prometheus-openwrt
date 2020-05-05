@@ -30,6 +30,7 @@ clean:
 
 install:
 	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	mv -f $(STAGEDIR)/include/tirpc/* $(STAGEDIR)/include
 
 romfs:
 	cp -fP $(DESTDIR)/lib/libtirpc.so* $(ROMFSDIR)/lib
