@@ -12,6 +12,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
+	autoreconf -f ; \
 	./configure \
 		--prefix=$(STAGEDIR) \
 		--enable-shared \
