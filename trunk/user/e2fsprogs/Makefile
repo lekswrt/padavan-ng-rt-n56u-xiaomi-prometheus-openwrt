@@ -17,7 +17,6 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
-	PKG_CONFIG_PATH=$(STAGEDIR)/lib/pkgconfig \
 	./configure \
 		--prefix= \
 		--disable-bmap-stats \
