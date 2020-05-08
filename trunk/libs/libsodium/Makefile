@@ -14,7 +14,7 @@ configure:
 	( cd $(SRC_NAME) ; \
 	autoreconf -f ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--disable-shared \
 		--enable-static \
 		--disable-ssp \
@@ -30,6 +30,6 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:

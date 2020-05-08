@@ -41,7 +41,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--cross-prefix=$(CROSS_COMPILE) \
 		--enable-cross-compile \
 		--arch=mips \
@@ -96,7 +96,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 ifeq ($(LIBS_BUILD_SHARED),y)

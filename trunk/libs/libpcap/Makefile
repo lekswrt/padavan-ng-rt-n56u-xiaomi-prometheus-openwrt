@@ -14,7 +14,7 @@ configure:
 	( cd $(SRC_NAME) ; \
 	ac_cv_netfilter_can_compile=no \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--disable-shared \
 		$(if $(CONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
 		--disable-yydebug \
@@ -39,7 +39,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR="" ;
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR) ;
 	rm -f $(DESTDIR)/lib/libpcap.so* ;
 
 romfs:

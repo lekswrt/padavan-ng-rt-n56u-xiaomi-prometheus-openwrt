@@ -15,7 +15,7 @@ configure:
 	autoreconf ; \
 	ac_cv_lib_rt_clock_gettime=no \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--disable-static \
 		--disable-log \
 		--disable-udev \
@@ -33,7 +33,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 	cp -fP $(DESTDIR)/lib/libusb-1.0.so* $(ROMFSDIR)/lib

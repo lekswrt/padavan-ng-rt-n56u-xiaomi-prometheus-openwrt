@@ -13,7 +13,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		$(if $(LIBS_BUILD_SHARED),--disable-static,--enable-static) \
 		$(if $(LIBS_BUILD_SHARED),--enable-shared,--disable-shared) \
 		--disable-readline \
@@ -34,7 +34,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 ifeq ($(LIBS_BUILD_SHARED),y)

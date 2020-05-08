@@ -14,7 +14,7 @@ configure:
 	( cd $(SRC_NAME) ; \
 	autoreconf -f ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--enable-static \
 		--enable-openssl-auto-load-config \
 		--disable-shared \
@@ -79,7 +79,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 

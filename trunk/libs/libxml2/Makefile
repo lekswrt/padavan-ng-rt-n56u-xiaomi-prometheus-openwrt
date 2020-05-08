@@ -13,7 +13,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--enable-static \
 		--disable-shared \
 		$(if $(CONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
@@ -56,7 +56,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 	mv -f $(STAGEDIR)/include/libxml2/* $(STAGEDIR)/include
 
 romfs:

@@ -13,7 +13,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--enable-static \
 		--disable-shared \
 		--disable-build-docs \
@@ -29,7 +29,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 

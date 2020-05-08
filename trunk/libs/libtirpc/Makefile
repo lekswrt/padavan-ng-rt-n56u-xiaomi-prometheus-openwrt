@@ -14,7 +14,7 @@ configure:
 	( cd $(SRC_NAME) ; \
 	autoreconf -f ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--enable-shared \
 		--disable-static \
 		--disable-gssapi \
@@ -30,7 +30,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 	mv -f $(STAGEDIR)/include/tirpc/* $(STAGEDIR)/include
 
 romfs:

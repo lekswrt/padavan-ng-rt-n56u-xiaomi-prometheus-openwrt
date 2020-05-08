@@ -13,7 +13,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--shared ; \
 	)
 
@@ -24,7 +24,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 	cp -fP $(DESTDIR)/lib/libz.so* $(ROMFSDIR)/lib

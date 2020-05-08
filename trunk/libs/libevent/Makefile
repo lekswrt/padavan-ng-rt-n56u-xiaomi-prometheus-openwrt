@@ -13,7 +13,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--disable-static \
 		--enable-shared \
 		--disable-debug-mode \
@@ -30,7 +30,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 	cp -fP $(DESTDIR)/lib/libevent-2.1.so* $(ROMFSDIR)/lib

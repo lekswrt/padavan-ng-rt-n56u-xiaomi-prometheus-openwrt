@@ -16,7 +16,7 @@ configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
 		--with-sysroot=$(STAGEDIR) \
-		--prefix=$(STAGEDIR) \
+		--prefix= \
 		--with-ssl=$(STAGEDIR) \
 		--with-libyaml=$(STAGEDIR) \
 		--without-libidn \
@@ -36,7 +36,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=$(STAGEDIR)
 
 romfs:
 #	cp -fP $(DESTDIR)/lib/libgetdns.so* $(ROMFSDIR)/lib
