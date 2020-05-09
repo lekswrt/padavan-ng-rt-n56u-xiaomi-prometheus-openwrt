@@ -55,7 +55,7 @@ configure:
 	./Configure \
 		linux-mips32 \
 		shared \
-		--prefix= \
+		--prefix=/ \
 		--openssldir=/etc/ssl \
 		$(COPTS) \
 		$(LOPTS) \

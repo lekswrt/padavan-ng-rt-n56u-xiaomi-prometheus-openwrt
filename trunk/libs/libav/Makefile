@@ -41,7 +41,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./configure \
-		--prefix= \
+		--prefix=/ \
 		--cross-prefix=$(CROSS_COMPILE) \
 		--enable-cross-compile \
 		--arch=mips \
