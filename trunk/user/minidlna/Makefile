@@ -24,7 +24,6 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	./autogen.sh ; \
-	ac_cv_lib_avformat_av_open_input_file=yes \
 	CFLAGS="$(DLNA_CFLAGS)" LDFLAGS="$(DLNA_LDFLAGS)" LIBS="$(DLNA_LIBS)" \
 	./configure \
 		--prefix=/usr \
