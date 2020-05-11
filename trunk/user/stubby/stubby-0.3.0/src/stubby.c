@@ -26,6 +26,7 @@
  */
 
 #include "config.h"
+#include "logger.h"
 #include <getdns/getdns.h>
 #include <getdns/getdns_extra.h>
 #include <stdint.h>
@@ -37,6 +38,7 @@
 #include <shlobj.h>
 #else
 #include <pwd.h>
+#include <syslog.h>
 #endif
 #include <signal.h>
 #include <limits.h>
@@ -96,8 +98,8 @@ static char *make_config_file_path(const char *dir, const char *fname)
 	                tsec_dEbUgSyM = (time_t) tv_dEbUgSyM.tv_sec; \
 	                gmtime_s(&tm_dEbUgSyM, (const time_t *) &tsec_dEbUgSyM); \
 	                strftime(buf_dEbUgSyM, 10, "%H:%M:%S", &tm_dEbUgSyM); \
-	                fprintf(stderr, "[%s.%.6d] ", buf_dEbUgSyM, (int)tv_dEbUgSyM.tv_usec); \
-	                fprintf(stderr, __VA_ARGS__); \
+	                fprint_log(stderr, "[%s.%.6d] ", buf_dEbUgSyM, (int)tv_dEbUgSyM.tv_usec); \
+	                fprint_log(stderr, __VA_ARGS__); \
 	        } while (0)
 
 static char *folder_config_file(int csidl)
@@ -132,8 +134,8 @@ char *system_config_file()
 	                gettimeofday(&tv_dEbUgSyM, NULL); \
 	                gmtime_r(&tv_dEbUgSyM.tv_sec, &tm_dEbUgSyM); \
 	                strftime(buf_dEbUgSyM, 10, "%H:%M:%S", &tm_dEbUgSyM); \
-	                fprintf(stderr, "[%s.%.6d] ", buf_dEbUgSyM, (int)tv_dEbUgSyM.tv_usec); \
-	                fprintf(stderr, __VA_ARGS__); \
+	                fprint_log(stderr, "[%s.%.6d] ", buf_dEbUgSyM, (int)tv_dEbUgSyM.tv_usec); \
+	                fprint_log(stderr, __VA_ARGS__); \
 	        } while (0)
 
 char *home_config_file()
@@ -181,42 +183,41 @@ static int dnssec_validation = 0;
 static void stubby_local_log(void *userarg, uint64_t system,
 	getdns_loglevel_type level, const char *fmt, ...);
 
-
 void
 print_usage(FILE *out)
 {
 	char *home_conf_fn = home_config_file();
 	char *system_conf_fn = system_config_file();
-	fprintf(out, "usage: " STUBBY_PACKAGE " [<option> ...] \\\n");
-	fprintf(out, "\t-C\t<filename>\n");
-	fprintf(out, "\t\tRead settings from config file <filename>\n");
-	fprintf(out, "\t\tThe getdns context will be configured with these settings\n");
-	fprintf(out, "\t\tThe file should be in YAML format with an extension of .yml.\n");
-	fprintf(out, "\t\t(The old JSON dict format (.conf) is also still supported when\n");
-	fprintf(out, "\t\tspecified on the command line.)\n");
-	fprintf(out, "\t\tBy default, the configuration file location is obtained\n");
-	fprintf(out, "\t\tby looking for YAML files in the following order:\n");
-	fprintf(out, "\t\t\t\"%s\"\n", home_conf_fn);
-	fprintf(out, "\t\t\t\"%s\"\n", system_conf_fn);
-	fprintf(out, "\t\tA default file (Using Strict mode) is installed as\n");
-	fprintf(out, "\t\t\t\"%s\"\n", system_conf_fn);
+	fprint_log(out, "usage: " STUBBY_PACKAGE " [<option> ...] \\\n");
+	fprint_log(out, "\t-C\t<filename>\n");
+	fprint_log(out, "\t\tRead settings from config file <filename>\n");
+	fprint_log(out, "\t\tThe getdns context will be configured with these settings\n");
+	fprint_log(out, "\t\tThe file should be in YAML format with an extension of .yml.\n");
+	fprint_log(out, "\t\t(The old JSON dict format (.conf) is also still supported when\n");
+	fprint_log(out, "\t\tspecified on the command line.)\n");
+	fprint_log(out, "\t\tBy default, the configuration file location is obtained\n");
+	fprint_log(out, "\t\tby looking for YAML files in the following order:\n");
+	fprint_log(out, "\t\t\t\"%s\"\n", home_conf_fn);
+	fprint_log(out, "\t\t\t\"%s\"\n", system_conf_fn);
+	fprint_log(out, "\t\tA default file (Using Strict mode) is installed as\n");
+	fprint_log(out, "\t\t\t\"%s\"\n", system_conf_fn);
 #if !defined(STUBBY_ON_WINDOWS) && !defined(GETDNS_ON_WINDOWS)
-	fprintf(out, "\t-g\tRun stubby in background (default is foreground)\n");
+	fprint_log(out, "\t-g\tRun stubby in background (default is foreground)\n");
 #endif
-	fprintf(out, "\t-h\tPrint this help\n");
-	fprintf(out, "\t-i\tValidate and print the configuration only. Useful to validate config file\n");
-	fprintf(out, "\t\tcontents. Note: does not attempt to bind to the listen addresses.\n");
-	fprintf(out, "\t-l\tEnable logging of all logs (same as -v 7)\n");
-	fprintf(out, "\t-v\tSpecify logging level (overrides -l option). Values are\n");
-	fprintf(out, "\t\t\t0: EMERG  - %s\n", GETDNS_LOG_EMERG_TEXT);
-	fprintf(out, "\t\t\t1: ALERT  - %s\n", GETDNS_LOG_ALERT_TEXT);
-	fprintf(out, "\t\t\t2: CRIT   - %s\n", GETDNS_LOG_CRIT_TEXT);
-	fprintf(out, "\t\t\t3: ERROR  - %s\n", GETDNS_LOG_ERR_TEXT);
-	fprintf(out, "\t\t\t4: WARN   - %s\n", GETDNS_LOG_WARNING_TEXT);
-	fprintf(out, "\t\t\t5: NOTICE - %s\n", GETDNS_LOG_NOTICE_TEXT);
-	fprintf(out, "\t\t\t6: INFO   - %s\n", GETDNS_LOG_INFO_TEXT);
-	fprintf(out, "\t\t\t7: DEBUG  - %s\n", GETDNS_LOG_DEBUG_TEXT);
-	fprintf(out, "\t-V\tPrint the " STUBBY_PACKAGE " version\n");
+	fprint_log(out, "\t-h\tPrint this help\n");
+	fprint_log(out, "\t-i\tValidate and print the configuration only. Useful to validate config file\n");
+	fprint_log(out, "\t\tcontents. Note: does not attempt to bind to the listen addresses.\n");
+	fprint_log(out, "\t-l\tEnable logging of all logs (same as -v 7)\n");
+	fprint_log(out, "\t-v\tSpecify logging level (overrides -l option). Values are\n");
+	fprint_log(out, "\t\t\t0: EMERG  - %s\n", GETDNS_LOG_EMERG_TEXT);
+	fprint_log(out, "\t\t\t1: ALERT  - %s\n", GETDNS_LOG_ALERT_TEXT);
+	fprint_log(out, "\t\t\t2: CRIT   - %s\n", GETDNS_LOG_CRIT_TEXT);
+	fprint_log(out, "\t\t\t3: ERROR  - %s\n", GETDNS_LOG_ERR_TEXT);
+	fprint_log(out, "\t\t\t4: WARN   - %s\n", GETDNS_LOG_WARNING_TEXT);
+	fprint_log(out, "\t\t\t5: NOTICE - %s\n", GETDNS_LOG_NOTICE_TEXT);
+	fprint_log(out, "\t\t\t6: INFO   - %s\n", GETDNS_LOG_INFO_TEXT);
+	fprint_log(out, "\t\t\t7: DEBUG  - %s\n", GETDNS_LOG_DEBUG_TEXT);
+	fprint_log(out, "\t-V\tPrint the " STUBBY_PACKAGE " version\n");
 	free(home_conf_fn);
 	free(system_conf_fn);
 }
@@ -224,7 +225,7 @@ print_usage(FILE *out)
 void
 print_version(FILE *out)
 {
-	fprintf(out, STUBBY_PACKAGE_STRING "\n");
+	fprint_log(out, STUBBY_PACKAGE_STRING "\n");
 }
 
 #ifndef GETDNS_RETURN_IO_ERROR
@@ -250,8 +251,8 @@ static getdns_return_t parse_config(const char *config_str, int yaml_config)
 			   runtime because it could change under us..... */
 			r = getdns_yaml2dict(config_str, NULL);
 			if (r == GETDNS_RETURN_NOT_IMPLEMENTED) {
-				fprintf(stderr, "Support for YAML configuration files not available because\n");
-				fprintf(stderr, "the version of getdns used was not compiled with YAML support.\n");
+				fprint_log(stderr, "Support for YAML configuration files not available because\n");
+				fprint_log(stderr, "the version of getdns used was not compiled with YAML support.\n");
 				return GETDNS_RETURN_NOT_IMPLEMENTED;
 			}
 		}
@@ -259,7 +260,7 @@ static getdns_return_t parse_config(const char *config_str, int yaml_config)
 		r = getdns_str2dict(config_str, &config_dict);
 	}
 	if (r) {
-		fprintf(stderr, "Could not parse config file %s, \"%s\"\n",
+		fprint_log(stderr, "Could not parse config file %s, \"%s\"\n",
 		    config_str, _getdns_strerror(r));
 		return r;
 	}
@@ -275,27 +276,27 @@ static getdns_return_t parse_config(const char *config_str, int yaml_config)
 		 */
 		if (!listen_dict &&
 		    !(listen_dict = getdns_dict_create())) {
-			fprintf(stderr, "Could not create "
+			fprint_log(stderr, "Could not create "
 					"listen_dict");
 			r = GETDNS_RETURN_MEMORY_ERROR;
 
 		} else if ((r = getdns_dict_set_list(
 		    listen_dict, "listen_list", list)))
-			fprintf(stderr, "Could not set listen_list");
+			fprint_log(stderr, "Could not set listen_list");
 
 		else if ((r = getdns_dict_get_list(
 		    listen_dict, "listen_list", &listen_list)))
-			fprintf(stderr, "Could not get listen_list");
+			fprint_log(stderr, "Could not get listen_list");
 
 		else if ((r = getdns_list_get_length(
 		    listen_list, &listen_count)))
-			fprintf(stderr, "Could not get listen_count");
+			fprint_log(stderr, "Could not get listen_count");
 
 		(void) getdns_dict_remove_name(
 		    config_dict, "listen_addresses");
 	}
 	if (!r && (r = getdns_context_config(context, config_dict))) {
-		fprintf(stderr, "Could not configure context with "
+		fprint_log(stderr, "Could not configure context with "
 		    "config dict: %s\n", _getdns_strerror(r));
 	}
 	getdns_dict_destroy(config_dict);
@@ -326,13 +327,13 @@ static getdns_return_t parse_config_file(const char *fn)
 	}
 	if (!(config_file = malloc(config_file_sz + 1))){
 		fclose(fh);
-		fprintf(stderr, "Could not allocate memory for \"%s\"\n", fn);
+		fprint_log(stderr, "Could not allocate memory for \"%s\"\n", fn);
 		return GETDNS_RETURN_MEMORY_ERROR;
 	}
 	rewind(fh);
 	read_sz = fread(config_file, 1, config_file_sz + 1, fh);
 	if (read_sz > (size_t)config_file_sz || ferror(fh) || !feof(fh)) {
-		fprintf( stderr, "An error occurred while reading \"%s\": %s\n"
+		fprint_log( stderr, "An error occurred while reading \"%s\": %s\n"
 		       , fn, strerror(errno));
 		fclose(fh);
 		free(config_file);
@@ -572,7 +573,7 @@ static void request_cb(
 		}
 	}
 	if ((r = getdns_reply(context, response, msg->request_id))) {
-		fprintf(stderr, "Could not reply: %s\n", _getdns_strerror(r));
+		fprint_log(stderr, "Could not reply: %s\n", _getdns_strerror(r));
 		/* Cancel reply */
 		(void) getdns_reply(context, NULL, msg->request_id);
 	}
@@ -637,7 +638,7 @@ static void incoming_request_handler(getdns_context *context,
 		}
 	}
 	if ((r = getdns_context_get_resolution_type(context, &msg->rt)))
-		fprintf(stderr, "Could get resolution type from context: %s\n",
+		fprint_log(stderr, "Could get resolution type from context: %s\n",
 		    _getdns_strerror(r));
 
 	if (msg->rt == GETDNS_RESOLUTION_STUB) {
@@ -670,28 +671,28 @@ static void incoming_request_handler(getdns_context *context,
 		    "/add_opt_parameters/options", list);
 
 	if ((r = getdns_dict_get_bindata(request,"/question/qname",&qname)))
-		fprintf(stderr, "Could not get qname from query: %s\n",
+		fprint_log(stderr, "Could not get qname from query: %s\n",
 		    _getdns_strerror(r));
 
 	else if ((r = getdns_convert_dns_name_to_fqdn(qname, &qname_str)))
-		fprintf(stderr, "Could not convert qname: %s\n",
+		fprint_log(stderr, "Could not convert qname: %s\n",
 		    _getdns_strerror(r));
 
 	else if ((r=getdns_dict_get_int(request,"/question/qtype",&qtype)))
-		fprintf(stderr, "Could get qtype from query: %s\n",
+		fprint_log(stderr, "Could get qtype from query: %s\n",
 		    _getdns_strerror(r));
 
 	else if ((r=getdns_dict_get_int(request,"/question/qclass",&qclass)))
-		fprintf(stderr, "Could get qclass from query: %s\n",
+		fprint_log(stderr, "Could get qclass from query: %s\n",
 		    _getdns_strerror(r));
 
 	else if ((r = getdns_dict_set_int(qext, "specify_class", qclass)))
-		fprintf(stderr, "Could set class from query: %s\n",
+		fprint_log(stderr, "Could set class from query: %s\n",
 		    _getdns_strerror(r));
 
 	else if ((r = getdns_general(context, qname_str, qtype,
 	    qext, msg, &transaction_id, request_cb)))
-		fprintf(stderr, "Could not schedule query: %s\n",
+		fprint_log(stderr, "Could not schedule query: %s\n",
 		    _getdns_strerror(r));
 	else {
 		DEBUG_SERVER("scheduled: %p %"PRIu64" for %s %d\n",
@@ -717,7 +718,7 @@ error:
 	} while(0);
 #endif
 	if ((r = getdns_reply(context, response, request_id))) {
-		fprintf(stderr, "Could not reply: %s\n",
+		fprint_log(stderr, "Could not reply: %s\n",
 		    _getdns_strerror(r));
 		/* Cancel reply */
 		getdns_reply(context, NULL, request_id);
@@ -749,8 +750,18 @@ static void stubby_log(void *userarg, uint64_t system,
 #endif
 	strftime(buf, 10, "%H:%M:%S", &tm);
 	(void)userarg; (void)system; (void)level;
-	(void) fprintf(stderr, "[%s.%.6d] STUBBY: ", buf, (int)tv.tv_usec);
-	(void) vfprintf(stderr, fmt, ap);
+#if !defined(STUBBY_ON_WINDOWS) && !defined(GETDNS_ON_WINDOWS)
+	if (run_in_foreground) {
+#endif
+	    (void) fprintf(stderr, "[%s.%.6d] STUBBY: ", buf, (int)tv.tv_usec);
+	    (void) vfprintf(stderr, fmt, ap);
+#if !defined(STUBBY_ON_WINDOWS) && !defined(GETDNS_ON_WINDOWS)
+	} else {
+	    openlog("stubby",LOG_PID,LOG_DAEMON);
+	    vsyslog(LOG_ERR, fmt, ap);
+	    closelog;
+	}
+#endif
 }
 
 void stubby_local_log(void *userarg, uint64_t system,
@@ -761,6 +772,20 @@ void stubby_local_log(void *userarg, uint64_t system,
 	stubby_log(userarg, system, level, fmt, args);
 	va_end(args);
 }
+
+#if !defined(STUBBY_ON_WINDOWS) && !defined(GETDNS_ON_WINDOWS)
+void fprint_log(FILE *stream, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	if (run_in_foreground) {
+	    (void) vfprintf(stream, fmt, args);
+	} else {
+	    stubby_log(NULL, GETDNS_LOG_UPSTREAM_STATS, GETDNS_LOG_ERR, fmt, args);
+	}
+	va_end(args);
+}
+#endif
 
 int
 main(int argc, char **argv)
@@ -802,7 +827,7 @@ main(int argc, char **argv)
 			if (log_level < 0 ||  log_level > 7 || *ep != '\0' || 
 			    (errno == ERANGE &&
 			    (log_level == LONG_MAX || log_level == LONG_MIN)) ) {
-				fprintf(stderr, "Log level '%s' is invalid or out of range (0-7)\n", optarg);
+				fprint_log(stderr, "Log level '%s' is invalid or out of range (0-7)\n", optarg);
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -819,7 +844,7 @@ main(int argc, char **argv)
 		       "Stubby version: %s\n", STUBBY_PACKAGE_STRING);
 
 	if ((r = getdns_context_create(&context, 1))) {
-		fprintf(stderr, "Create context failed: %s\n",
+		fprint_log(stderr, "Create context failed: %s\n",
 		        _getdns_strerror(r));
 		return r;
 	}
@@ -831,7 +856,7 @@ main(int argc, char **argv)
 	(void) parse_config(default_config, 0);
 	if (custom_config_fn) {
 		if ((r = parse_config_file(custom_config_fn))) {
-			fprintf(stderr, "Could not parse config file "
+			fprint_log(stderr, "Could not parse config file "
 			        "\"%s\": %s\n", custom_config_fn,
 			        _getdns_strerror(r));
 			return r;
@@ -839,37 +864,37 @@ main(int argc, char **argv)
 	} else {
 		conf_fn = home_config_file();
 		if (!conf_fn) {
-			fprintf(stderr, "Error getting user config file");
+			fprint_log(stderr, "Error getting user config file");
 			exit(EXIT_FAILURE);
 		}
 		r = parse_config_file(conf_fn);
 		if (r == GETDNS_RETURN_GOOD)
 			found_conf = 1;
 		else if (r != GETDNS_RETURN_IO_ERROR)
-			fprintf( stderr, "Error parsing config file "
+			fprint_log( stderr, "Error parsing config file "
 				 "\"%s\": %s\n", conf_fn
 				 , _getdns_strerror(r));
 		free(conf_fn);
 		if (!found_conf) {
 			conf_fn = system_config_file();
 			if (!conf_fn) {
-				fprintf(stderr, "Error getting system config file");
+				fprint_log(stderr, "Error getting system config file");
 				exit(EXIT_FAILURE);
 			}
 			r = parse_config_file(conf_fn);
 			if (r == GETDNS_RETURN_GOOD)
 				found_conf = 1;
 			else if (r != GETDNS_RETURN_IO_ERROR)
-				fprintf( stderr, "Error parsing config file "
+				fprint_log( stderr, "Error parsing config file "
 				         "\"%s\": %s\n", conf_fn
 				       , _getdns_strerror(r));
 			free(conf_fn);
 		}
 		if (!found_conf)
-			fprintf(stderr, "WARNING: No Stubby config file found... using minimal default config (Opportunistic Usage)\n");
+			fprint_log(stderr, "WARNING: No Stubby config file found... using minimal default config (Opportunistic Usage)\n");
 	}
 	if ((r = getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_STUB))) {
-		fprintf( stderr, "Error while trying to configure stubby for "
+		fprint_log( stderr, "Error while trying to configure stubby for "
 		                 "stub resolution only: %s\n", _getdns_strerror(r));
 		exit(EXIT_FAILURE);
 	}
@@ -930,9 +955,9 @@ main(int argc, char **argv)
 		}
 		api_information_str =
 		    getdns_pretty_print_dict(api_information);
-		fprintf(stdout, "%s\n", api_information_str);
+		fprint_log(stdout, "%s\n", api_information_str);
 		free(api_information_str);
-		fprintf(stderr, "Result: Config file syntax is valid.\n");
+		fprint_log(stderr, "Result: Config file syntax is valid.\n");
 	} else if (listen_count && (r = getdns_context_set_listen_addresses(
 	    context, listen_list, NULL, incoming_request_handler)))
 		perror("error: Could not bind on given addresses");
@@ -955,7 +980,7 @@ main(int argc, char **argv)
 			if (kill(running, 0) < 0 && errno == ESRCH)
 				break;
 
-			fprintf( stderr, "Not starting because a running "
+			fprint_log( stderr, "Not starting because a running "
 			        "stubby was found on pid: %d\n", running);
 			exit(EXIT_FAILURE);
 		} while(0);
@@ -970,10 +995,10 @@ main(int argc, char **argv)
 		} else if (pid) {
 			fh = fopen(STUBBYPIDFILE, "w");
 			if (fh) {
-				fprintf(fh, "%d", (int)pid);
+				fprint_log(fh, "Forked, pid: %d", (int)pid);
 				fclose(fh);
 			} else {
-				fprintf(stderr, "Could not write pid to "
+				fprint_log(stderr, "Could not write pid to "
 				        "\"%s\": %s\n", STUBBYPIDFILE,
 				        strerror(errno));
 				exit(EXIT_FAILURE);

@@ -78,7 +78,7 @@ int getopt(int nargc, char * const nargv[], const char *ostr)
       if (!*place)
         ++optind;
       if (opterr && *ostr != ':')
-        (void)printf("illegal option -- %c\n", optopt);
+        (void)fprint_log(stderr, "illegal option -- %c\n", optopt);
       return (BADCH);
   }
   if (*++oli != ':') {                    /* don't need argument */
@@ -94,7 +94,7 @@ int getopt(int nargc, char * const nargv[], const char *ostr)
       if (*ostr == ':')
         return (BADARG);
       if (opterr)
-        (void)printf("option requires an argument -- %c\n", optopt);
+        (void)fprint_log(stderr, "option requires an argument -- %c\n", optopt);
       return (BADCH);
     }
     else                            /* white space */
