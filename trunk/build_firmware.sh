@@ -514,10 +514,6 @@ if [ "$CONFIG_FIRMWARE_INCLUDE_EOIP" = "y" ] ; then
 	func_enable_kernel_param "CONFIG_NET_EOIP"
 fi
 
-if [ "$CONFIG_FIRMWARE_INCLUDE_STUBBY" = "y" ] ; then
-	CONFIG_FIRMWARE_INCLUDE_DNSCRYPT=n
-fi
-
 #######################################################################
 echo --------------------------MAKE-DEP--------------------------------
 make dep
