@@ -12,7 +12,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
-	autoreconf -f ; \
+	autoreconf -fi ; \
 	./configure \
 		--prefix= \
 		--disable-shared \
