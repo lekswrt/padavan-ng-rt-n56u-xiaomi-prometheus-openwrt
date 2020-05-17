@@ -10,6 +10,9 @@ if [ $? -ne 0 ] ; then
 fi
 export FAKEROOT=$FAKEROOT
 
+# Set toolchain default dir (may be redifined in ${ROOTDIR}/.config)
+export CONFIG_TOOLCHAIN_DIR="${ROOTDIR}../toolchain/out"
+
 kernel_id="3.4.x"
 kernel_cf=""
 kernel_tf=""
@@ -70,22 +73,18 @@ func_disable_busybox_param()
 }
 
 if [ ! -f "$ROOTDIR/.config" ] ; then
-	cp -fv "$ROOTDIR/configs/templates/n56u_dlna.config" "$ROOTDIR/.config"
-fi
-
-if [ ! -f "$ROOTDIR/.config" ] ; then
 	echo "Project config file .config not found! Terminate."
 	exit 1
 fi
 
+# load project root config
+. ${ROOTDIR}/.config
+
 # remove this later
-if [ ! -f "$ROOTDIR/../toolchain/out/mipsel-linux-uclibc/sysroot/lib/libuClibc-1.0.34.so" ] ; then
+if [ ! -f "${CONFIG_TOOLCHAIN_DIR}/mipsel-linux-uclibc/sysroot/lib/libuClibc-1.0.34.so" ] ; then
 	echo "Toolchain and uClibc are updated! Please recompile toolchain."
 	exit 1
 fi
-
-# load project root config
-. $ROOTDIR/.config
 
 if [ ! -d "$ROOTDIR/linux-$kernel_id" ] ; then
 	echo "Project Linux Kernel dir (linux-$kernel_id) not found! Terminate."

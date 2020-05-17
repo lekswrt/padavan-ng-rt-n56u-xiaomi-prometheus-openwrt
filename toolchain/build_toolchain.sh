@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export CONFIG_TOOLCHAIN_DIR='${CT_TOP_DIR}/out'
+. ../trunk/.config
+
 echo "================ START BUILDING TOOLCHAIN =============="
 
 if [ ! -f configure ]; then
@@ -18,7 +21,7 @@ fi
 if [ -d .build ]; then
 	echo "============== CLEANING OLD BUILD TREE ================="
 	./ct-ng clean
-	rm -rf out
+	rm -rf ${CONFIG_TOOLCHAIN_DIR}
 fi
 
 (./ct-ng mipsel-linux-uclibc && ./ct-ng build) || exit 1

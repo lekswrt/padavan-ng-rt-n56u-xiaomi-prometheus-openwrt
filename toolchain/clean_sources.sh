@@ -14,10 +14,6 @@ if [ -d dl ]; then
         rm -rf dl
 fi
 
-if [ -d out ]; then
-	rm -rf out
-fi
-
 # remove remaining
 rm -rf Makefile.in aclocal.m4 autom4te.cache config.h.in config/gen config/versions configure kconfig/Makefile.in maintainer/package-versions verbatim-data.mk
 
