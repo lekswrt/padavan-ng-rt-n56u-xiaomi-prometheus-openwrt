@@ -4,7 +4,7 @@ ROOTDIR=`pwd`
 export ROOTDIR=$ROOTDIR
 
 # Set toolchain default dir (may be redifined in ${ROOTDIR}/.config)
-export CONFIG_TOOLCHAIN_DIR="${ROOTDIR}../toolchain/out"
+export CONFIG_TOOLCHAIN_DIR="${ROOTDIR}/../toolchain/out"
 
 if [ ! -f "$ROOTDIR/.config" ] ; then
 	echo "Project config file .config not found! Terminate."
