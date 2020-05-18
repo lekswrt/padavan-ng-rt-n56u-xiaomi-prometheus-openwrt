@@ -1,7 +1,8 @@
 #!/bin/bash
 
-export CONFIG_TOOLCHAIN_DIR='${CT_TOP_DIR}/out'
-. ../trunk/.config
+export ROOTDIR=$ROOTDIR
+export CONFIG_TOOLCHAIN_DIR='${ROOTDIR}/out'
+[ -f FILENAME ] && . ../trunk/.config
 
 echo "================ START BUILDING TOOLCHAIN =============="
 
