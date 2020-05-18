@@ -11,7 +11,7 @@ fi
 export FAKEROOT=$FAKEROOT
 
 # Set toolchain default dir (may be redifined in ${ROOTDIR}/.config)
-export CONFIG_TOOLCHAIN_DIR="${ROOTDIR}../toolchain/out"
+export CONFIG_TOOLCHAIN_DIR="${ROOTDIR}/../toolchain/out"
 
 kernel_id="3.4.x"
 kernel_cf=""
