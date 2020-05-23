@@ -113,6 +113,7 @@ dir_$(OPENSSH_ENABLED)				+= openssh
 dir_$(DROPBEAR_ENABLED)				+= dropbear
 dir_$(CONFIG_FIRMWARE_INCLUDE_OPENVPN)		+= openvpn
 dir_$(CONFIG_FIRMWARE_INCLUDE_SSWAN)		+= strongswan
+dir_$(CONFIG_FIRMWARE_INCLUDE_WIREGUARD)	+= wireguard
 dir_$(CONFIG_FIRMWARE_INCLUDE_TCPDUMP)		+= tcpdump
 dir_$(CONFIG_FIRMWARE_INCLUDE_ADB)		+= adb
 
