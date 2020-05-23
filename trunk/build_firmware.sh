@@ -513,6 +513,12 @@ if [ "$CONFIG_FIRMWARE_INCLUDE_EOIP" = "y" ] ; then
 	func_enable_kernel_param "CONFIG_NET_EOIP"
 fi
 
+if [ "$CONFIG_FIRMWARE_INCLUDE_WIREGUARD" = "y" ] ; then
+	func_enable_kernel_param_as_m "CONFIG_WIREGUARD"
+	func_enable_kernel_param "CONFIG_WIREGUARD_DEBUG"
+fi
+
+
 #######################################################################
 echo --------------------------MAKE-DEP--------------------------------
 make dep
