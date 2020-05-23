@@ -25,7 +25,11 @@ static inline u32 rt6_get_cookie(const struct rt6_info *rt)
 }
 #endif
 #endif
+#ifndef ISPADAVAN
 #include <uapi/linux/in.h>
+#else
+#include <linux/in.h>
+#endif
 
 struct dst_cache_pcpu {
 	unsigned long refresh_ts;
