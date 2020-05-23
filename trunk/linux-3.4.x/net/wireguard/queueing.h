@@ -89,13 +89,16 @@ static inline bool wg_check_packet_protocol(struct sk_buff *skb)
 
 static inline void wg_reset_packet(struct sk_buff *skb)
 {
+#ifndef ISPADAVAN
 	const int pfmemalloc = skb->pfmemalloc;
-
+#endif
 	skb_scrub_packet(skb, true);
 	memset(&skb->headers_start, 0,
 	       offsetof(struct sk_buff, headers_end) -
 		       offsetof(struct sk_buff, headers_start));
+#ifndef ISPADAVAN
 	skb->pfmemalloc = pfmemalloc;
+#endif
 	skb->queue_mapping = 0;
 	skb->nohdr = 0;
 	skb->peeked = 0;
@@ -110,7 +113,9 @@ static inline void wg_reset_packet(struct sk_buff *skb)
 	skb_reset_network_header(skb);
 	skb_reset_transport_header(skb);
 	skb_probe_transport_header(skb);
+#ifndef ISPADAVAN
 	skb_reset_inner_headers(skb);
+#endif
 }
 
 static inline int wg_cpumask_choose_online(int *stored_cpu, unsigned int id)
