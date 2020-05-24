@@ -147,6 +147,7 @@ static inline u32 __compat_get_random_u32(void)
 {
 	static siphash_key_t key;
 	static u32 counter = 0;
+	unsigned int r;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	static bool has_seeded = false;
 	if (unlikely(!has_seeded)) {
@@ -156,7 +157,8 @@ static inline u32 __compat_get_random_u32(void)
 #else
 	get_random_once(&key, sizeof(key));
 #endif
-	return siphash_2u32(counter++, get_random_int(), &key);
+	get_random_bytes(&r, sizeof(r));
+	return siphash_2u32(counter++, r, &key);
 }
 #define get_random_u32 __compat_get_random_u32
 #endif
