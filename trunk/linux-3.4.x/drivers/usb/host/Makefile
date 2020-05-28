@@ -15,7 +15,7 @@ xhci-hcd-y := xhci.o xhci-mem.o
 xhci-hcd-y += xhci-ring.o xhci-hub.o xhci-dbg.o
 
 ifdef CONFIG_MTK_XHCI
-xhci-hcd-y += xhci-mtk/xhci-mtk.o xhci-mtk/xhci-mtk-power.o xhci-mtk/xhci-mtk-scheduler.o
+xhci-hcd-y += xhci-mtk/xhci-mtk.o xhci-mtk/xhci-mtk-scheduler.o
 else
 xhci-hcd-$(CONFIG_PCI)	+= xhci-pci.o
 endif

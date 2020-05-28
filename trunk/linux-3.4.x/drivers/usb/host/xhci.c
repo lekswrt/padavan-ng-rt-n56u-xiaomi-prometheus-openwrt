@@ -32,7 +32,6 @@
 
 #if defined (CONFIG_MTK_XHCI)
 #include "xhci-mtk/xhci-mtk-scheduler.h"
-#include "xhci-mtk/xhci-mtk-power.h"
 #include "xhci-mtk/xhci-mtk.h"
 #endif
 
@@ -719,7 +718,7 @@ int xhci_run(struct usb_hcd *hcd)
 				TRB_TYPE(TRB_NEC_GET_FW));
 
 #if defined (CONFIG_MTK_XHCI)
-	enableXhciAllPortPower(xhci);
+	mtk_xhci_enable_ports_power(xhci);
 #endif
 
 	xhci_dbg(xhci, "Finished xhci_run for USB2 roothub\n");
@@ -4412,7 +4411,7 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 	xhci_dbg(xhci, "Reset complete\n");
 
 #if defined (CONFIG_MTK_XHCI)
-	setInitialReg();
+	mtk_xhci_init_reg();
 #endif
 
 	temp = xhci_readl(xhci, &xhci->cap_regs->hcc_params);
