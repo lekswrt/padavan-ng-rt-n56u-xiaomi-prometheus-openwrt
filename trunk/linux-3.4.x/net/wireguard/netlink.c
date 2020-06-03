@@ -220,13 +220,7 @@ static int wg_get_device_dump(struct sk_buff *skb, struct netlink_callback *cb)
 	cb->seq = wg->device_update_gen;
 	next_peer_cursor = ctx->next_peer;
 
-	hdr = genlmsg_put(skb,
-#ifndef ISPADAVAN
-			  NETLINK_CB(cb->skb).portid,
-#else
-			  NETLINK_CB(cb->skb).pid,
-#endif
-			  cb->nlh->nlmsg_seq,
+	hdr = genlmsg_put(skb, NETLINK_CB(cb->skb).portid, cb->nlh->nlmsg_seq,
 			  &genl_family, NLM_F_MULTI, WG_CMD_GET_DEVICE);
 	if (!hdr)
 		goto out;
@@ -516,12 +510,11 @@ static int wg_set_device(struct sk_buff *skb, struct genl_info *info)
 		goto out;
 
 	ret = -EPERM;
-#ifndef ISPADAVAN
 	if ((info->attrs[WGDEVICE_A_LISTEN_PORT] ||
 	     info->attrs[WGDEVICE_A_FWMARK]) &&
 	    !ns_capable(wg->creating_net->user_ns, CAP_NET_ADMIN))
 		goto out;
-#endif
+
 	++wg->device_update_gen;
 
 	if (info->attrs[WGDEVICE_A_FWMARK]) {
@@ -643,9 +636,7 @@ __ro_after_init = {
 	.name = WG_GENL_NAME,
 	.version = WG_GENL_VERSION,
 	.maxattr = WGDEVICE_A_MAX,
-#ifndef ISPADAVAN
 	.module = THIS_MODULE,
-#endif
 #ifndef COMPAT_CANNOT_INDIVIDUAL_NETLINK_OPS_POLICY
 	.policy = device_policy,
 #endif
