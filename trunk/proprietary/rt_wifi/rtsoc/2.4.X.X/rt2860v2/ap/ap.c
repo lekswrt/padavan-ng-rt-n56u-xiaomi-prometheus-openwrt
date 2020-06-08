@@ -2590,7 +2590,7 @@ VOID DisableAPMIMOPS(
 	ULONG	TxPinCfg;
 
 	UCHAR	CentralChannel;
-	UINT32	Value=0;
+	UCHAR	Value=0;
 
 #ifdef RT305x
 	UCHAR 	RFValue=0;
