@@ -111,8 +111,9 @@
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0)
-#define prandom_seed(x)>			net_srandom(x)
+#ifndef ISPADAVAN
 #define prandom_u32()				net_random()
+#endif
 #define prandom_bytes(x, y)			get_random_bytes(x, y)
 #endif
 
