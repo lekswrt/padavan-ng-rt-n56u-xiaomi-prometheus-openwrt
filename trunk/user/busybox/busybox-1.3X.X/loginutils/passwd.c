@@ -23,7 +23,7 @@
 //config:	With this option passwd will refuse new passwords which are "weak".
 
 //applet:/* Needs to be run by root or be suid root - needs to change /etc/{passwd,shadow}: */
-//applet:IF_PASSWD(APPLET(passwd, BB_DIR_BIN, BB_SUID_REQUIRE))
+//applet:IF_PASSWD(APPLET(passwd, BB_DIR_USR_BIN, BB_SUID_REQUIRE))
 
 //kbuild:lib-$(CONFIG_PASSWD) += passwd.o
 
@@ -43,7 +43,7 @@
 static char* new_password(const struct passwd *pw, uid_t myuid, const char *algo)
 {
 	char salt[MAX_PW_SALT_LEN];
-	char *orig = (char*)"";
+	char *orig = NULL;
 	char *newp = NULL;
 	char *cp = NULL;
 	char *ret = NULL; /* failure so far */
@@ -51,7 +51,7 @@ static char* new_password(const struct passwd *pw, uid_t myuid, const char *algo
 	if (myuid != 0 && pw->pw_passwd[0]) {
 		char *encrypted;
 
-		orig = bb_ask_noecho_stdin("Old password: "); /* returns ptr to static */
+		orig = bb_ask_noecho_stdin("Old password: "); /* returns malloced str */
 		if (!orig)
 			goto err_ret;
 		encrypted = pw_encrypt(orig, pw->pw_passwd, 1); /* returns malloced str */
@@ -64,11 +64,11 @@ static char* new_password(const struct passwd *pw, uid_t myuid, const char *algo
 		if (ENABLE_FEATURE_CLEAN_UP)
 			free(encrypted);
 	}
-	newp = bb_ask_noecho_stdin("New password: "); /* returns ptr to static */
+	newp = bb_ask_noecho_stdin("New password: "); /* returns malloced str */
 	if (!newp)
 		goto err_ret;
 	if (ENABLE_FEATURE_PASSWD_WEAK_CHECK
-	 && obscure(orig, newp, pw)
+	 && obscure(orig, newp, pw) /* NB: passing NULL orig is ok */
 	 && myuid != 0
 	) {
 		goto err_ret; /* non-root is not allowed to have weak passwd */
@@ -187,10 +187,6 @@ int passwd_main(int argc UNUSED_PARAM, char **argv)
 		if (!newp) {
 			logmode = LOGMODE_STDIO;
 			bb_error_msg_and_die("password for %s is unchanged", name);
-		} else if (newp[0] == 0) {
-			logmode = LOGMODE_STDIO;
-			free(newp);
-			bb_perror_msg_and_die("password encryption failed");
 		}
 	} else if (opt & OPT_lock) {
 		if (!c)
@@ -232,7 +228,7 @@ int passwd_main(int argc UNUSED_PARAM, char **argv)
 	/* LOGMODE_BOTH */
 	if (rc < 0)
 		bb_error_msg_and_die("can't update password file %s", filename);
-	bb_error_msg("password for %s changed by %s", name, myname);
+	bb_info_msg("password for %s changed by %s", name, myname);
 
 	/*if (ENABLE_FEATURE_CLEAN_UP) free(newp); - can't, it may be non-malloced */
  skip:

@@ -825,12 +825,9 @@ static void timestamp_and_log(int pri, char *msg, int len)
 	 && msg[9] == ':' && msg[12] == ':' && msg[15] == ' '
 	) {
 		if (!(option_mask32 & OPT_timestamp)) {
-			/* use message timestamp */
-			//timestamp = msg;
-			//now = 0;
-			// patch -use local time anyway
+			// patch - use local time anyway
 			time(&now);
-			timestamp = ctime(&now) + 4;
+			timestamp = ctime(&now) + 4; /* skip day of week */
 		}
 		msg += 16;
 	}
@@ -1101,7 +1098,7 @@ static void do_syslogd(void)
 	} /* while (!bb_got_signal) */
 
 	timestamp_and_log_internal("syslogd exiting");
-	remove_pidfile(CONFIG_PID_FILE_PATH "/syslogd.pid");
+	remove_pidfile_std_path_and_ext("syslogd");
 	ipcsyslog_cleanup();
 	if (option_mask32 & OPT_kmsg)
 		kmsg_cleanup();
@@ -1167,7 +1164,7 @@ int syslogd_main(int argc UNUSED_PARAM, char **argv)
 	}
 
 	//umask(0); - why??
-	write_pidfile(CONFIG_PID_FILE_PATH "/syslogd.pid");
+	write_pidfile_std_path_and_ext("syslogd");
 
 	do_syslogd();
 	/* return EXIT_SUCCESS; */

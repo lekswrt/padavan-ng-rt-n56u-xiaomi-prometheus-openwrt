@@ -54,7 +54,7 @@
 //config:	date -s (and other commands like touch -d) use more sensible
 //config:	formats (for one, ISO format YYYY-MM-DD hh:mm:ss.ssssss).
 //config:
-//config:	With this option off, 'date DATE' is 'date -s DATE' support
+//config:	With this option off, 'date DATE' and 'date -s DATE' support
 //config:	the same format. With it on, 'date DATE' additionally supports
 //config:	MMDDhhmm[[YY]YY][.ss] format.
 
@@ -121,9 +121,8 @@
 //usage:     "\n	-d,--date TIME	Display TIME, not 'now'"
 //usage:	)
 //usage:	IF_FEATURE_DATE_ISOFMT(
-//usage:     "\n	-D FMT		Use FMT for -d TIME conversion"
+//usage:     "\n	-D FMT		Use FMT (strptime format) for -d TIME conversion"
 //usage:	)
-//usage:     "\n	-k		Set Kernel timezone from localtime and exit"
 //usage:     "\n"
 //usage:     "\nRecognized TIME formats:"
 //usage:     "\n	hh:mm[:ss]"
@@ -140,8 +139,9 @@
 
 #include "libbb.h"
 #include "common_bufsiz.h"
-#include <sys/time.h>
-#include <sys/syscall.h>
+#if ENABLE_FEATURE_DATE_NANO
+# include <sys/syscall.h>
+#endif
 
 enum {
 	OPT_RFC2822   = (1 << 0), /* R */
@@ -149,9 +149,8 @@ enum {
 	OPT_UTC       = (1 << 2), /* u */
 	OPT_DATE      = (1 << 3), /* d */
 	OPT_REFERENCE = (1 << 4), /* r */
-	OPT_KERNELTZ  = (1 << 5), /* k */
-	OPT_TIMESPEC  = (1 << 6) * ENABLE_FEATURE_DATE_ISOFMT, /* I */
-	OPT_HINT      = (1 << 7) * ENABLE_FEATURE_DATE_ISOFMT, /* D */
+	OPT_TIMESPEC  = (1 << 5) * ENABLE_FEATURE_DATE_ISOFMT, /* I */
+	OPT_HINT      = (1 << 6) * ENABLE_FEATURE_DATE_ISOFMT, /* D */
 };
 
 #if ENABLE_LONG_OPTS
@@ -163,7 +162,6 @@ static const char date_longopts[] ALIGN1 =
 	/*	"universal\0" No_argument       "u" */
 		"date\0"      Required_argument "d"
 		"reference\0" Required_argument "r"
-		"set-kernel-tz\0" No_argument   "k"
 		;
 #endif
 
@@ -183,8 +181,6 @@ static void maybe_set_utc(int opt)
 int date_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
 int date_main(int argc UNUSED_PARAM, char **argv)
 {
-	time_t tt;
-	struct timezone tz;
 	struct timespec ts;
 	struct tm tm_time;
 	char buf_fmt_dt2str[64];
@@ -197,7 +193,7 @@ int date_main(int argc UNUSED_PARAM, char **argv)
 	char *isofmt_arg = NULL;
 
 	opt = getopt32long(argv, "^"
-			"Rs:ud:r:k"
+			"Rs:ud:r:"
 			IF_FEATURE_DATE_ISOFMT("I::D:")
 			"\0"
 			"d--s:s--d"
@@ -259,31 +255,6 @@ int date_main(int argc UNUSED_PARAM, char **argv)
 	}
 	if (*argv)
 		bb_show_usage();
-
-	/* Setting of kernel timezone was requested */
-	if (opt & OPT_KERNELTZ) {
-		tt = time(NULL);
-		localtime_r(&tt, &tm_time);
-
-		/* workaround warp_clock() on first invocation */
-		memset(&tz, 0, sizeof(tz));
-		syscall(SYS_settimeofday, NULL, &tz);
-
-		memset(&tz, 0, sizeof(tz));
-#ifdef __USE_MISC
-		tz.tz_minuteswest = -(tm_time.tm_gmtoff / 60);
-#else
-		tz.tz_minuteswest = -(tm_time.__tm_gmtoff / 60);
-#endif
-
-		if (syscall(SYS_settimeofday, NULL, &tz))
-		{
-			bb_perror_msg("can't set kernel time zone");
-			return EXIT_FAILURE;
-		}
-
-		return EXIT_SUCCESS;
-	}
 
 	/* Now we have parsed all the information except the date format
 	 * which depends on whether the clock is being set or read */

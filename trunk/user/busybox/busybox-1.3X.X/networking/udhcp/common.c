@@ -54,6 +54,8 @@ const struct dhcp_optflag dhcp_optflags[] = {
 	{ OPTION_STRING                           , 0x43 }, /* DHCP_BOOT_FILE     */
 //TODO: not a string, but a set of LASCII strings:
 //	{ OPTION_STRING                           , 0x4D }, /* DHCP_USER_CLASS    */
+	{ OPTION_STRING                           , 0x64 }, /* DHCP_PCODE         */
+	{ OPTION_STRING                           , 0x65 }, /* DHCP_TCODE         */
 #if ENABLE_FEATURE_UDHCP_RFC3397
 	{ OPTION_DNS_STRING | OPTION_LIST         , 0x77 }, /* DHCP_DOMAIN_SEARCH */
 	{ OPTION_SIP_SERVERS                      , 0x78 }, /* DHCP_SIP_SERVERS   */
@@ -124,6 +126,8 @@ const char dhcp_option_strings[] ALIGN1 =
 	"tftp" "\0"             /* DHCP_TFTP_SERVER_NAME*/
 	"bootfile" "\0"         /* DHCP_BOOT_FILE       */
 //	"userclass" "\0"        /* DHCP_USER_CLASS      */
+	"tzstr" "\0"            /* DHCP_PCODE           */
+	"tzdbstr" "\0"          /* DHCP_TCODE           */
 #if ENABLE_FEATURE_UDHCP_RFC3397
 	"search" "\0"           /* DHCP_DOMAIN_SEARCH   */
 // doesn't work in udhcpd.conf since OPTION_SIP_SERVERS
@@ -138,10 +142,7 @@ const char dhcp_option_strings[] ALIGN1 =
 	"pxeconffile" "\0"      /* DHCP_PXE_CONF_FILE   */
 	"pxepathprefix" "\0"    /* DHCP_PXE_PATH_PREFIX */
 	"reboottime" "\0"       /* DHCP_REBOOT_TIME     */
-#if ENABLE_FEATURE_UDHCP_RFC5969
-	"ip6rd" "\0"            /* DHCP_COMCAST_6RD     */
 	"ip6rd" "\0"            /* DHCP_6RD             */
-#endif
 	"msstaticroutes" "\0"   /* DHCP_MS_STATIC_ROUTES*/
 	"wpad" "\0"             /* DHCP_WPAD            */
 	;
@@ -193,7 +194,7 @@ static void log_option(const char *pfx, const uint8_t *opt)
 	if (dhcp_verbose >= 2) {
 		char buf[256 * 2 + 2];
 		*bin2hex(buf, (void*) (opt + OPT_DATA), opt[OPT_LEN]) = '\0';
-		bb_error_msg("%s: 0x%02x %s", pfx, opt[OPT_CODE], buf);
+		bb_info_msg("%s: 0x%02x %s", pfx, opt[OPT_CODE], buf);
 	}
 }
 #else
@@ -308,7 +309,7 @@ uint8_t* FAST_FUNC udhcp_get_option32(struct dhcp_packet *packet, int code)
 {
 	uint8_t *r = udhcp_get_option(packet, code);
 	if (r) {
-		if (r[-1] != 4)
+		if (r[-OPT_DATA + OPT_LEN] != 4)
 			r = NULL;
 	}
 	return r;
@@ -400,23 +401,6 @@ int FAST_FUNC udhcp_str2nip(const char *str, void *arg)
 	return 1;
 }
 
-/* Convert IPv6 address into string */
-int FAST_FUNC sprint_nip6(char *dest, const uint8_t *ip6)
-{
-	int i, len = 0;
-
-	for (i = 0; i < 16; i += 2)
-	{
-		if (i > 0)
-			dest[len++] = ':';
-		bin2hex(dest + len, (const char * )&ip6[i], 2);
-		len += 4;
-	}
-	dest[len] = '\0';
-
-	return len;
-}
-
 /* udhcp_str2optset:
  * Parse string option representation to binary form and add it to opt_list.
  * Called to parse "udhcpc -x OPTNAME:OPTVAL"
@@ -445,6 +429,7 @@ static NOINLINE void attach_option(
 		if (errno)
 			bb_error_msg_and_die("malformed hex string '%s'", buffer);
 		length = end - allocated;
+		buffer = allocated;
 	}
 #if ENABLE_FEATURE_UDHCP_RFC3397
 	if ((optflag->flags & OPTION_TYPE_MASK) == OPTION_DNS_STRING) {
@@ -464,15 +449,14 @@ static NOINLINE void attach_option(
 			new->data = xmalloc(length + OPT_DATA);
 			new->data[OPT_CODE] = optflag->code;
 			new->data[OPT_LEN] = length;
-			memcpy(new->data + OPT_DATA, (allocated ? allocated : buffer),
-					length);
+			memcpy(new->data + OPT_DATA, buffer, length);
 		} else {
 			new->data = xmalloc(length + D6_OPT_DATA);
 			new->data[D6_OPT_CODE] = optflag->code >> 8;
 			new->data[D6_OPT_CODE + 1] = optflag->code & 0xff;
 			new->data[D6_OPT_LEN] = length >> 8;
 			new->data[D6_OPT_LEN + 1] = length & 0xff;
-			memcpy(new->data + D6_OPT_DATA, (allocated ? allocated : buffer),
+			memcpy(new->data + D6_OPT_DATA, buffer,
 					length);
 		}
 
@@ -495,6 +479,8 @@ static NOINLINE void attach_option(
 			/* actually 255 is ok too, but adding a space can overlow it */
 
 			existing->data = xrealloc(existing->data, OPT_DATA + 1 + old_len + length);
+// So far dhcp_optflags[] has no OPTION_STRING[_HOST] | OPTION_LIST items
+#if 0
 			if ((optflag->flags & OPTION_TYPE_MASK) == OPTION_STRING
 			 || (optflag->flags & OPTION_TYPE_MASK) == OPTION_STRING_HOST
 			) {
@@ -502,7 +488,9 @@ static NOINLINE void attach_option(
 				existing->data[OPT_DATA + old_len] = ' ';
 				old_len++;
 			}
-			memcpy(existing->data + OPT_DATA + old_len, (allocated ? allocated : buffer), length);
+#endif
+
+			memcpy(existing->data + OPT_DATA + old_len, buffer, length);
 			existing->data[OPT_LEN] = old_len + length;
 		} /* else, ignore the data, we could put this in a second option in the future */
 	} /* else, ignore the new data */
@@ -576,7 +564,7 @@ int FAST_FUNC udhcp_str2optset(const char *const_str, void *arg,
 			if (retval)
 				retval = udhcp_str2nip(val, buffer + 4);
 			break;
-case_OPTION_STRING:
+ case_OPTION_STRING:
 		case OPTION_STRING:
 		case OPTION_STRING_HOST:
 #if ENABLE_FEATURE_UDHCP_RFC3397
@@ -669,4 +657,23 @@ case_OPTION_STRING:
 	} while (retval && (optflag->flags & OPTION_LIST));
 
 	return retval;
+}
+
+/* note: ip is a pointer to an IPv6 in network order, possibly misaliged */
+int FAST_FUNC sprint_nip6(char *dest, /*const char *pre,*/ const uint8_t *ip)
+{
+	char hexstrbuf[16 * 2];
+	bin2hex(hexstrbuf, (void*)ip, 16);
+	return sprintf(dest, /* "%s" */
+		"%.4s:%.4s:%.4s:%.4s:%.4s:%.4s:%.4s:%.4s",
+		/* pre, */
+		hexstrbuf + 0 * 4,
+		hexstrbuf + 1 * 4,
+		hexstrbuf + 2 * 4,
+		hexstrbuf + 3 * 4,
+		hexstrbuf + 4 * 4,
+		hexstrbuf + 5 * 4,
+		hexstrbuf + 6 * 4,
+		hexstrbuf + 7 * 4
+	);
 }

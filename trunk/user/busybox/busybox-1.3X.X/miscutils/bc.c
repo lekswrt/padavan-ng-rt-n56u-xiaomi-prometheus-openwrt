@@ -997,10 +997,12 @@ static ERRORFUNC int bc_error_bad_character(char c)
 		IF_ERROR_RETURN_POSSIBLE(return) bc_error("NUL character");
 	IF_ERROR_RETURN_POSSIBLE(return) bc_error_fmt("bad character '%c'", c);
 }
+#if ENABLE_BC
 static ERRORFUNC int bc_error_bad_function_definition(void)
 {
 	IF_ERROR_RETURN_POSSIBLE(return) bc_error_at("bad function definition");
 }
+#endif
 static ERRORFUNC int bc_error_bad_expression(void)
 {
 	IF_ERROR_RETURN_POSSIBLE(return) bc_error_at("bad expression");
@@ -1273,14 +1275,12 @@ static int bc_map_insert(BcVec *v, const void *ptr, size_t *i)
 	return 1; // "was inserted"
 }
 
-#if ENABLE_BC
 static size_t bc_map_find_exact(const BcVec *v, const void *ptr)
 {
 	size_t i = bc_map_find_ge(v, ptr);
 	if (i >= v->len) return BC_VEC_INVALID_IDX;
 	return bc_id_cmp(ptr, bc_vec_item(v, i)) ? BC_VEC_INVALID_IDX : i;
 }
-#endif
 
 static void bc_num_setToZero(BcNum *n, size_t scale)
 {
@@ -4973,7 +4973,9 @@ static void dc_parse_string(void)
 	xc_parse_pushInst_and_Index(XC_INST_STR, len);
 	bc_vec_push(&G.prog.strs, &str);
 
-	// Explanation needed here
+	// Add an empty function so that if zdc_program_execStr ever needs to
+	// parse the string into code (from the 'x' command) there's somewhere
+	// to store the bytecode.
 	xc_program_add_fn();
 	p->func = xc_program_func(p->fidx);
 
@@ -5454,11 +5456,13 @@ static void xc_program_printString(const char *str)
 			char *n;
 
 			c = *str++;
-			n = strchr(esc, c); // note: c can be NUL
-			if (!n) {
+			n = strchr(esc, c); // note: if c is NUL, n = \0 at end of esc
+			if (!n || !c) {
 				// Just print the backslash and following character
 				bb_putchar('\\');
 				++G.prog.nchars;
+				// But if we're at the end of the string, stop
+				if (!c) break;
 			} else {
 				if (n - esc == 0) // "\n" ?
 					G.prog.nchars = SIZE_MAX;
@@ -6398,7 +6402,11 @@ static BC_STATUS zdc_program_asciify(void)
 	str = xzalloc(2);
 	str[0] = c;
 	//str[1] = '\0'; - already is
-	bc_vec_push(&G.prog.strs, &str);
+	idx = bc_vec_push(&G.prog.strs, &str);
+	// Add an empty function so that if zdc_program_execStr ever needs to
+	// parse the string into code (from the 'x' command) there's somewhere
+	// to store the bytecode.
+	xc_program_add_fn();
  dup:
 	res.t = XC_RESULT_STR;
 	res.d.id.idx = idx;
@@ -6521,7 +6529,7 @@ static BC_STATUS zdc_program_execStr(char *code, size_t *bgn, bool cond)
 			if (s || !BC_PROG_STR(n)) goto exit;
 			sidx = n->rdx;
 		} else
-			goto exit;
+			goto exit_nopop;
 	}
 
 	fidx = sidx + BC_PROG_REQ_FUNCS;
@@ -6561,6 +6569,7 @@ static BC_STATUS zdc_program_execStr(char *code, size_t *bgn, bool cond)
 	RETURN_STATUS(BC_STATUS_SUCCESS);
  exit:
 	bc_vec_pop(&G.prog.results);
+ exit_nopop:
 	RETURN_STATUS(s);
 }
 #define zdc_program_execStr(...) (zdc_program_execStr(__VA_ARGS__) COMMA_SUCCESS)
@@ -7502,4 +7511,3 @@ int dc_main(int argc UNUSED_PARAM, char **argv)
 #endif
 
 #endif // DC_BIG
-

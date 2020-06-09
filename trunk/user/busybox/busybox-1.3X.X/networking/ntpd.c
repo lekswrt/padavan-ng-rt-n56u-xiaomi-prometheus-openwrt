@@ -73,7 +73,7 @@
 //kbuild:lib-$(CONFIG_NTPD) += ntpd.o
 
 //usage:#define ntpd_trivial_usage
-//usage:	"[-dnqNwt"IF_FEATURE_NTPD_SERVER("l] [-I IFACE")"] [-S PROG]"
+//usage:	"[-dnqNwt"IF_FEATURE_NTPD_SERVER("l -I IFACE")"] [-S PROG]"
 //usage:	IF_NOT_FEATURE_NTP_AUTH(" [-p PEER]...")
 //usage:	IF_FEATURE_NTP_AUTH(" [-k KEYFILE] [-p [keyno:N:]PEER]...")
 //usage:#define ntpd_full_usage "\n\n"
@@ -178,12 +178,11 @@
  */
 #define STEP_THRESHOLD     1
 /* Slew threshold (sec): adjtimex() won't accept offsets larger than this.
- * Using exact power of 2 (1/8) results in smaller code
+ * Using exact power of 2 (1/8, 1/2 etc) results in smaller code
  */
-#define SLEW_THRESHOLD 0.125
-//^^^^^^^^^^^^^^^^^^^^^^^^^^ TODO: man adjtimex about tmx.offset:
-// "Since Linux 2.6.26, the supplied value is clamped to the range (-0.5s, +0.5s)"
-// - can use this larger value instead?
+#define SLEW_THRESHOLD   0.5
+// ^^^^ used to be 0.125.
+// Since Linux 2.6.26 (circa 2006), kernel accepts (-0.5s, +0.5s) range
 
 /* Stepout threshold (sec). std ntpd uses 900 (11 mins (!)) */
 //UNUSED: #define WATCH_THRESHOLD  128
@@ -378,7 +377,7 @@ enum {
 	/* Insert new options above this line. */
 	/* Non-compat options: */
 	OPT_w = (1 << (4+ENABLE_FEATURE_NTP_AUTH)),
-	OPT_t = (1 << 5),
+	OPT_t = (1 << (5+ENABLE_FEATURE_NTP_AUTH)),
 	OPT_p = (1 << (6+ENABLE_FEATURE_NTP_AUTH)),
 	OPT_S = (1 << (7+ENABLE_FEATURE_NTP_AUTH)),
 	OPT_l = (1 << (8+ENABLE_FEATURE_NTP_AUTH)) * ENABLE_FEATURE_NTPD_SERVER,
@@ -1133,7 +1132,7 @@ step_time(double offset)
 	}
 	tval = tvn.tv_sec;
 	strftime_YYYYMMDDHHMMSS(buf, sizeof(buf), &tval);
-	bb_error_msg("setting time to %s.%06u (offset %+fs)", buf, (unsigned)tvn.tv_usec, offset);
+	bb_info_msg("setting time to %s.%06u (offset %+fs)", buf, (unsigned)tvn.tv_usec, offset);
 	//maybe? G.FREQHOLD_cnt = 0;
 
 	/* Correct various fields which contain time-relative values: */
@@ -2141,7 +2140,7 @@ recv_and_process_peer_pkt(peer_t *p)
 
 	p->reachable_bits |= 1;
 	if ((MAX_VERBOSE && G.verbose) || (option_mask32 & OPT_w)) {
-		bb_error_msg("reply from %s: offset:%+f delay:%f status:0x%02x strat:%d refid:0x%08x rootdelay:%f reach:0x%02x",
+		bb_info_msg("reply from %s: offset:%+f delay:%f status:0x%02x strat:%d refid:0x%08x rootdelay:%f reach:0x%02x",
 			p->p_dotted,
 			offset,
 			p->p_raw_delay,
@@ -2594,6 +2593,10 @@ static NOINLINE void ntp_init(char **argv)
 		/* -l but no peers: "stratum 1 server" mode */
 		G.stratum = 1;
 	}
+
+	if (!(opts & OPT_n)) /* only if backgrounded: */
+		write_pidfile_std_path_and_ext("ntpd");
+
 	/* If network is up, syncronization occurs in ~10 seconds.
 	 * We give "ntpd -q" 10 seconds to get first reply,
 	 * then another 50 seconds to finish syncing.
@@ -2649,8 +2652,6 @@ int ntpd_main(int argc UNUSED_PARAM, char **argv)
 	 * since last reply does not come back instantaneously.
 	 */
 	cnt = G.peer_cnt * (INITIAL_SAMPLES + 1);
-
-	write_pidfile(CONFIG_PID_FILE_PATH "/ntpd.pid");
 
 	while (!bb_got_signal) {
 		llist_t *item;
@@ -2823,7 +2824,7 @@ int ntpd_main(int argc UNUSED_PARAM, char **argv)
 		}
 	} /* while (!bb_got_signal) */
 
-	remove_pidfile(CONFIG_PID_FILE_PATH "/ntpd.pid");
+	remove_pidfile_std_path_and_ext("ntpd");
 	kill_myself_with_sig(bb_got_signal);
 }
 
