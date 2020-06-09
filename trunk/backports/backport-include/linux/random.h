@@ -3,6 +3,8 @@
 #include_next <linux/random.h>
 #include <linux/version.h>
 
+#define ISPADAVAN
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0) && LINUX_VERSION_CODE < KERNEL_VERSION(3,4,10)) || \
     (LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0) && LINUX_VERSION_CODE < KERNEL_VERSION(3,2,27)) || \
     LINUX_VERSION_CODE < KERNEL_VERSION(3,0,41)
@@ -15,7 +17,9 @@ static inline void add_device_randomness(const void *buf, unsigned int size)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0)
 /* backports 496f2f9 */
 #define prandom_seed(_seed)		srandom32(_seed)
+#ifndef ISPADAVAN
 #define prandom_u32()			random32()
+#endif
 #define prandom_u32_state(_state)	prandom32(_state)
 /* backport 6582c665d6b882dad8329e05749fbcf119f1ab88 */
 #define prandom_bytes LINUX_BACKPORT(prandom_bytes)
