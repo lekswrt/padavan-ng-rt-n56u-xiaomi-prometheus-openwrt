@@ -33,4 +33,5 @@ clean:
 	rm config_done
 
 romfs:
+	$(ROMFSINST) /usr/sbin/stubby_start.sh
 	$(ROMFSINST) $(SRC_NAME)/src/stubby /usr/sbin/stubby
