@@ -315,7 +315,7 @@ static getdns_return_t parse_config_file(const char *fn)
 		return GETDNS_RETURN_IO_ERROR;
 
 	if (fseek(fh, 0,SEEK_END) == -1) {
-		perror("fseek");
+		fprint_log(stderr, "fseek: %s\n", strerror(errno))
 		fclose(fh);
 		return GETDNS_RETURN_IO_ERROR;
 	}
@@ -960,7 +960,7 @@ main(int argc, char **argv)
 		fprint_log(stderr, "Result: Config file syntax is valid.\n");
 	} else if (listen_count && (r = getdns_context_set_listen_addresses(
 	    context, listen_list, NULL, incoming_request_handler)))
-		perror("error: Could not bind on given addresses");
+		fprint_log(stderr, "Could not bind on given addresses: %s\n", strerror(errno))
 	else
 #if !defined(STUBBY_ON_WINDOWS) && !defined(GETDNS_ON_WINDOWS)
 	     if (!run_in_foreground) {
@@ -989,13 +989,13 @@ main(int argc, char **argv)
 
 		pid = fork();
 		if (pid == -1) {
-			perror("Could not fork of stubby daemon\n");
+			fprint_log(stderr, "Could not fork of stubby daemon: %s\n", strerror(errno));
 			r = GETDNS_RETURN_GENERIC_ERROR;
 
 		} else if (pid) {
 			fh = fopen(STUBBYPIDFILE, "w");
 			if (fh) {
-				fprint_log(fh, "Forked, pid: %d", (int)pid);
+				fprint_log(stderr, "Forked, pid: %d", (int)pid);
 				fclose(fh);
 			} else {
 				fprint_log(stderr, "Could not write pid to "
