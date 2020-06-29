@@ -315,7 +315,7 @@ static getdns_return_t parse_config_file(const char *fn)
 		return GETDNS_RETURN_IO_ERROR;
 
 	if (fseek(fh, 0,SEEK_END) == -1) {
-		fprint_log(stderr, "fseek: %s\n", strerror(errno))
+		fprint_log(stderr, "fseek: %s\n", strerror(errno));
 		fclose(fh);
 		return GETDNS_RETURN_IO_ERROR;
 	}
@@ -960,7 +960,7 @@ main(int argc, char **argv)
 		fprint_log(stderr, "Result: Config file syntax is valid.\n");
 	} else if (listen_count && (r = getdns_context_set_listen_addresses(
 	    context, listen_list, NULL, incoming_request_handler)))
-		fprint_log(stderr, "Could not bind on given addresses: %s\n", strerror(errno))
+		fprint_log(stderr, "Could not bind on given addresses: %s\n", strerror(errno));
 	else
 #if !defined(STUBBY_ON_WINDOWS) && !defined(GETDNS_ON_WINDOWS)
 	     if (!run_in_foreground) {
