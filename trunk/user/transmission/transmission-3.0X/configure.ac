@@ -654,7 +654,6 @@ AC_CONFIG_FILES([Makefile
                  daemon/Makefile
                  extras/Makefile
                  libtransmission/Makefile
-                 utils/Makefile
                  third-party/Makefile
                  third-party/dht/Makefile
                  third-party/libb64/Makefile

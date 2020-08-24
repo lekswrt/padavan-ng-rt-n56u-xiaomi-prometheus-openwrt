@@ -19,7 +19,6 @@ SUBDIRS = \
   extras \
   third-party \
   libtransmission \
-  utils \
   $(DAEMON_DIR) \
   $(CLI_DIR) \
   $(GTK_DIR) \
