@@ -163,7 +163,7 @@ static void __compat_iptunnel_xmit(struct rtable *rt, struct sk_buff *skb,
 	iph->daddr	=	dst;
 	iph->saddr	=	src;
 	iph->ttl	=	ttl;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 53)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 53)) && !defined(ISPADAVAN)
 	__ip_select_ident(iph, &rt->dst, (skb_shinfo(skb)->gso_segs ?: 1) - 1);
 #else
 	__ip_select_ident(iph, skb_shinfo(skb)->gso_segs ?: 1);

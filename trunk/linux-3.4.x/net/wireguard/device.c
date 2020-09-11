@@ -285,7 +285,9 @@ static void wg_setup(struct net_device *dev)
 	dev->features |= NETIF_F_LLTX;
 	dev->features |= WG_NETDEV_FEATURES;
 	dev->hw_features |= WG_NETDEV_FEATURES;
+#ifndef ISPADAVAN
 	dev->hw_enc_features |= WG_NETDEV_FEATURES;
+#endif
 	dev->mtu = ETH_DATA_LEN - overhead;
 #ifndef COMPAT_CANNOT_USE_MAX_MTU
 	dev->max_mtu = round_down(INT_MAX, MESSAGE_PADDING_MULTIPLE) - overhead;

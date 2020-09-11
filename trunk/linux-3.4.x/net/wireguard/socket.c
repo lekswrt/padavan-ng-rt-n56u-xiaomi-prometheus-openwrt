@@ -194,7 +194,9 @@ int wg_socket_send_buffer_to_peer(struct wg_peer *peer, void *buffer,
 		return -ENOMEM;
 
 	skb_reserve(skb, SKB_HEADER_LEN);
+#ifndef ISPADAVAN
 	skb_set_inner_network_header(skb, 0);
+#endif
 	skb_put_data(skb, buffer, len);
 	return wg_socket_send_skb_to_peer(peer, skb, ds);
 }
@@ -217,7 +219,9 @@ int wg_socket_send_buffer_as_reply_to_skb(struct wg_device *wg,
 	if (unlikely(!skb))
 		return -ENOMEM;
 	skb_reserve(skb, SKB_HEADER_LEN);
+#ifndef ISPADAVAN
 	skb_set_inner_network_header(skb, 0);
+#endif
 	skb_put_data(skb, buffer, len);
 
 	if (endpoint.addr.sa_family == AF_INET)
@@ -334,7 +338,9 @@ static void sock_free(struct sock *sock)
 {
 	if (unlikely(!sock))
 		return;
+#ifndef ISPADAVAN
 	sk_clear_memalloc(sock);
+#endif
 	udp_tunnel_sock_release(sock->sk_socket);
 }
 
@@ -342,7 +348,9 @@ static void set_sock_opts(struct socket *sock)
 {
 	sock->sk->sk_allocation = GFP_ATOMIC;
 	sock->sk->sk_sndbuf = INT_MAX;
+#ifndef ISPADAVAN
 	sk_set_memalloc(sock->sk);
+#endif
 }
 
 int wg_socket_init(struct wg_device *wg, u16 port)

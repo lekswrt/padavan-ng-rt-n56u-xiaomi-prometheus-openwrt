@@ -74,7 +74,9 @@ static inline bool wg_check_packet_protocol(struct sk_buff *skb)
 
 static inline void wg_reset_packet(struct sk_buff *skb, bool encapsulating)
 {
+#ifndef ISPADAVAN
 	const int pfmemalloc = skb->pfmemalloc;
+#endif
 	u32 hash = skb->hash;
 	u8 l4_hash = skb->l4_hash;
 	u8 sw_hash = skb->sw_hash;
@@ -83,7 +85,9 @@ static inline void wg_reset_packet(struct sk_buff *skb, bool encapsulating)
 	memset(&skb->headers_start, 0,
 	       offsetof(struct sk_buff, headers_end) -
 		       offsetof(struct sk_buff, headers_start));
+#ifndef ISPADAVAN
 	skb->pfmemalloc = pfmemalloc;
+#endif
 	if (encapsulating) {
 		skb->hash = hash;
 		skb->l4_hash = l4_hash;
@@ -103,7 +107,9 @@ static inline void wg_reset_packet(struct sk_buff *skb, bool encapsulating)
 	skb_reset_network_header(skb);
 	skb_reset_transport_header(skb);
 	skb_probe_transport_header(skb);
+#ifndef ISPADAVAN
 	skb_reset_inner_headers(skb);
+#endif
 }
 
 static inline int wg_cpumask_choose_online(int *stored_cpu, unsigned int id)
