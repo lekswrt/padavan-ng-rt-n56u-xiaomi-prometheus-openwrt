@@ -2,7 +2,7 @@
 
 export ROOTDIR=$ROOTDIR
 export CONFIG_TOOLCHAIN_DIR='${ROOTDIR}/out'
-[ -f FILENAME ] && . ../trunk/.config
+[ -f ../trunk/.config ] && . ../trunk/.config
 
 echo "================ START BUILDING TOOLCHAIN =============="
 
