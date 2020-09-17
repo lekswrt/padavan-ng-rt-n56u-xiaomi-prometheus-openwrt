@@ -187,7 +187,7 @@ static const char *const dl_error_names[] = {
  */
 static void *
 internal_function
-_dl_tls_symaddr(struct link_map *map, const Elf32_Addr st_value)
+_dl_tls_symaddr(struct link_map *map, const ElfW(Addr) st_value)
 {
 # ifndef DONT_USE_TLS_INDEX
 	tls_index tmp =
@@ -736,7 +736,7 @@ static void *do_dlsym(void *vhandle, const char *name, void *caller_address)
 	if (sym_ref.sym && (ELF_ST_TYPE(sym_ref.sym->st_info) == STT_TLS) && (sym_ref.tpnt)) {
 		/* The found symbol is a thread-local storage variable.
 		Return its address for the current thread.  */
-		ret = _dl_tls_symaddr ((struct link_map *)sym_ref.tpnt, (Elf32_Addr)ret);
+		ret = _dl_tls_symaddr ((struct link_map *)sym_ref.tpnt, (ElfW(Addr))ret);
 	}
 #endif
 

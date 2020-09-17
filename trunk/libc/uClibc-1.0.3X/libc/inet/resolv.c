@@ -1178,8 +1178,8 @@ int __dns_lookup(const char *name,
 		struct resolv_answer *a)
 {
 	/* Protected by __resolv_lock: */
-//	static int last_ns_num = 0;
-//	static uint16_t last_id = 1;
+	static int last_ns_num = 0;
+	static uint16_t last_id = 1;
 
 	int i, j, fd, rc;
 	int packet_len;
@@ -1258,12 +1258,12 @@ int __dns_lookup(const char *name,
 		}
 		/* first time? pick starting server etc */
 		if (local_ns_num < 0) {
-			local_id = 1;
+			local_id = last_id;
 /*TODO: implement /etc/resolv.conf's "options rotate"
  (a.k.a. RES_ROTATE bit in _res.options)
 			local_ns_num = 0;
 			if (_res.options & RES_ROTATE) */
-			local_ns_num = 0;
+				local_ns_num = last_ns_num;
 			retries_left = __nameservers * __resolv_attempts;
 		}
 		if (local_ns_num >= __nameservers)
@@ -1271,8 +1271,8 @@ int __dns_lookup(const char *name,
 		local_id++;
 		local_id &= 0xffff;
 		/* write new values back while still under lock */
-//		last_id = local_id;
-//		last_ns_num = local_ns_num;
+		last_id = local_id;
+		last_ns_num = local_ns_num;
 		/* struct copy */
 		/* can't just take a pointer, __nameserver[x]
 		 * is not safe to use outside of locks */

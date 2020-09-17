@@ -128,7 +128,7 @@ export RUNTIME_PREFIX DEVEL_PREFIX KERNEL_HEADERS MULTILIB_DIR
 # Now config hard core
 MAJOR_VERSION := 1
 MINOR_VERSION := 0
-SUBLEVEL      := 34
+SUBLEVEL      := 35
 EXTRAVERSION  :=
 VERSION       := $(MAJOR_VERSION).$(MINOR_VERSION).$(SUBLEVEL)
 ABI_VERSION   := $(MAJOR_VERSION)
@@ -288,7 +288,7 @@ OPTIMIZATION += $(CFLAG_-fstrict-aliasing)
 
 # Why -funsigned-char: I hunted a bug related to incorrect
 # sign extension of 'char' type for 10 hours straight. Not fun.
-CPU_CFLAGS-y := -funsigned-char -fno-builtin
+CPU_CFLAGS-y := -funsigned-char -fno-builtin -fcommon
 
 $(eval $(call check-gcc-var,-fno-asm))
 CPU_CFLAGS-y += $(CFLAG_-fno-asm)
