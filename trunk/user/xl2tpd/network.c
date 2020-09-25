@@ -807,6 +807,7 @@ int connect_pppol2tp(struct tunnel *t) {
             if (fd2 < 0) {
                 l2tp_log (LOG_WARNING, "%s: Unable to allocate PPPoL2TP socket.\n",
                      __FUNCTION__);
+                close(fd2);
                 return -EINVAL;
             }
             flags = fcntl(fd2, F_GETFL);
