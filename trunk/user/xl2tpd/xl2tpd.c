@@ -393,7 +393,6 @@ int start_pppd (struct call *c, struct ppp_opts *opts)
        if (fd2 < 0) {
            l2tp_log (LOG_WARNING, "%s: Unable to allocate PPPoL2TP socket.\n",
                 __FUNCTION__);
-           close(fd2);
            return -EINVAL;
        }
        flags = fcntl(fd2, F_GETFL);
@@ -669,8 +668,6 @@ void destroy_tunnel (struct tunnel *t)
         close (t->udp_fd);
     route_del(&t->rt);
     free (t);
-    if(me->oldptyconf)
-        free(me->oldptyconf);
     free (me);
 }
 
