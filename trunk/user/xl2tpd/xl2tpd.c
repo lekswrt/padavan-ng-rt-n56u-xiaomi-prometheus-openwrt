@@ -52,20 +52,19 @@ struct tunnel_list tunnels;
 int rand_source;
 int ppd = 1;                    /* Packet processing delay */
 int control_fd = -1;            /* descriptor of control area */
-char *args;
 
-char *dial_no_tmp;              /* jz: Dialnumber for Outgoing Call */
+static char *dial_no_tmp;              /* jz: Dialnumber for Outgoing Call */
 int switch_io = 0;              /* jz: Switch for Incoming or Outgoing Call */
 
 static void open_controlfd(void);
 
-volatile sig_atomic_t sigterm_received;
-volatile sig_atomic_t sigint_received;
-volatile sig_atomic_t sigchld_received;
-volatile sig_atomic_t sigusr1_received;
-volatile sig_atomic_t sighup_received;
+static volatile sig_atomic_t sigterm_received;
+static volatile sig_atomic_t sigint_received;
+static volatile sig_atomic_t sigchld_received;
+static volatile sig_atomic_t sigusr1_received;
+static volatile sig_atomic_t sighup_received;
 
-void init_tunnel_list (struct tunnel_list *t)
+static void init_tunnel_list (struct tunnel_list *t)
 {
     t->head = NULL;
     t->count = 0;
@@ -73,7 +72,7 @@ void init_tunnel_list (struct tunnel_list *t)
 }
 
 /* Now sends to syslog instead - MvO */
-void show_status (void)
+static void show_status (void)
 {
     struct schedule_entry *se;
     struct tunnel *t;
@@ -178,7 +177,7 @@ void show_status (void)
     l2tp_log (LOG_WARNING, "================================\n");
 }
 
-void null_handler(int sig)
+static void null_handler(int sig)
 {
 	UNUSED(sig);
        /* FIXME
@@ -187,13 +186,13 @@ void null_handler(int sig)
         */
 }
 
-void status_handler (int sig)
+static void status_handler (int sig)
 {
     UNUSED(sig);
     show_status ();
 }
 
-void child_handler (int sig)
+static void child_handler (int sig)
 {
     UNUSED(sig);
     /*
@@ -270,7 +269,7 @@ void child_handler (int sig)
     }
 }
 
-void death_handler (int signal)
+static void death_handler (int signal)
 {
     /*
        * If we get here, somebody terminated us with a kill or a control-c.
@@ -316,31 +315,31 @@ void death_handler (int signal)
     exit (1);
 }
 
-void sigterm_handler(int sig)
+static void sigterm_handler(int sig)
 {
     UNUSED(sig);
     sigterm_received = 1;
 }
 
-void sigint_handler(int sig)
+static void sigint_handler(int sig)
 {
     UNUSED(sig);
     sigint_received = 1;
 }
 
-void sigchld_handler(int sig)
+static void sigchld_handler(int sig)
 {
     UNUSED(sig);
     sigchld_received = 1;
 }
 
-void sigusr1_handler(int sig)
+static void sigusr1_handler(int sig)
 {
     UNUSED(sig);
     sigusr1_received = 1;
 }
 
-void sighup_handler(int sig)
+static void sighup_handler(int sig)
 {
     UNUSED(sig);
     sighup_received = 1;
@@ -422,18 +421,18 @@ int start_pppd (struct call *c, struct ppp_opts *opts)
        stropt[pos++] = strdup ("plugin");
        stropt[pos++] = strdup ("pppol2tp.so");
        stropt[pos++] = strdup ("pppol2tp");
-       stropt[pos] = malloc (10);
-       snprintf (stropt[pos], 10, "%d", fd2);
+       stropt[pos] = malloc (11);
+       snprintf (stropt[pos], 11, "%d", fd2);
         pos++;
        if (c->container->lns) {
         stropt[pos++] = strdup ("pppol2tp_lns_mode");
         stropt[pos++] = strdup ("pppol2tp_tunnel_id");
-        stropt[pos] = malloc (10);
-        snprintf (stropt[pos], 10, "%d", c->container->ourtid);
+        stropt[pos] = malloc (11);
+        snprintf (stropt[pos], 11, "%d", c->container->ourtid);
             pos++;
         stropt[pos++] = strdup ("pppol2tp_session_id");
-        stropt[pos] = malloc (10);
-        snprintf (stropt[pos], 10, "%d", c->ourcid);
+        stropt[pos] = malloc (11);
+        snprintf (stropt[pos], 11, "%d", c->ourcid);
             pos++;
        }
     }
@@ -684,7 +683,7 @@ void schedule_redial(struct lac *lac)
 }
 
 
-struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
+static struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
                           struct lns *lns)
 {
     /*
@@ -745,7 +744,7 @@ struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
     return tmp->container;
 }
 
-void magic_lac_tunnel (void *data)
+static void magic_lac_tunnel (void *data)
 {
     struct lac *lac;
     lac = (struct lac *) data;
@@ -771,7 +770,7 @@ void magic_lac_tunnel (void *data)
     }
 }
 
-struct call *lac_call (int tid, struct lac *lac, struct lns *lns)
+static struct call *lac_call (int tid, struct lac *lac, struct lns *lns)
 {
     struct tunnel *t = tunnels.head;
     struct call *tmp;
@@ -838,7 +837,7 @@ void magic_lac_dial (void *data)
     lac_call (lac->t->ourtid, lac, NULL);
 }
 
-void lac_hangup (int cid)
+static void lac_hangup (int cid)
 {
     struct tunnel *t = tunnels.head;
     struct call *tmp;
@@ -865,7 +864,7 @@ void lac_hangup (int cid)
     return;
 }
 
-void lac_disconnect (int tid)
+static void lac_disconnect (int tid)
 {
     struct tunnel *t = tunnels.head;
     while (t)
@@ -937,7 +936,7 @@ struct tunnel *new_tunnel ()
     return tmp;
 }
 
-void write_res (FILE* res_file, const char *fmt, ...)
+static void write_res (FILE* res_file, const char *fmt, ...)
 {
     if (!res_file || ferror (res_file) || feof (res_file))
         return;
@@ -947,7 +946,7 @@ void write_res (FILE* res_file, const char *fmt, ...)
     va_end (args);
 }
 
-int parse_one_line_lac (char* bufp, struct lac *tc)
+static int parse_one_line_lac (char* bufp, struct lac *tc)
 {
     /* FIXME: I should check for incompatible options */
     char *s, *d, *t;
@@ -1355,7 +1354,7 @@ void do_control ()
     open_controlfd();
 }
 
-void usage(void) {
+static void usage(void) {
     printf("\nxl2tpd version:  %s\n", SERVER_VERSION);
     printf("Usage: xl2tpd [-c <config file>] [-s <secret file>] [-p <pid file>]\n"
             "              [-C <control file>] [-D] [-l] [-q <tos decimal value for control>]\n"
@@ -1364,7 +1363,7 @@ void usage(void) {
     exit(1);
 }
 
-void init_args(int argc, char *argv[])
+static void init_args(int argc, char *argv[])
 {
     int i=0;
 
@@ -1459,7 +1458,7 @@ void init_args(int argc, char *argv[])
 }
 
 
-void daemonize() {
+static void daemonize() {
     int pid=0;
     int i;
 
@@ -1557,7 +1556,7 @@ static void open_controlfd()
     }
 }
 
-void init (int argc,char *argv[])
+static void init (int argc,char *argv[])
 {
     struct lac *lac;
     struct utsname uts;
