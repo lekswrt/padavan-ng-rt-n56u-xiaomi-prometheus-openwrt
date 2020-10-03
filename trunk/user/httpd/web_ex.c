@@ -2220,7 +2220,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int wid_5g = 0;
 #endif
-
+#if defined (USE_SFE)
+	int has_sfe = 1;
+#else
+	int has_sfe = 0;
+#endif
 	websWrite(wp,
 		"function found_utl_hdparm() { return %d;}\n"
 		"function found_app_ovpn() { return %d;}\n"
@@ -2292,7 +2296,8 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function support_5g_stream_tx() { return %d;}\n"
 		"function support_5g_stream_rx() { return %d;}\n"
 		"function support_2g_stream_tx() { return %d;}\n"
-		"function support_2g_stream_rx() { return %d;}\n",
+		"function support_2g_stream_rx() { return %d;}\n"
+		"function support_sfe() { return %d;}\n",
 		has_ipv6,
 		has_ipv6_ppe,
 		has_ipv4_ppe,
@@ -2320,7 +2325,8 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		BOARD_NUM_ANT_5G_TX,
 		BOARD_NUM_ANT_5G_RX,
 		BOARD_NUM_ANT_2G_TX,
-		BOARD_NUM_ANT_2G_RX
+		BOARD_NUM_ANT_2G_RX,
+		has_sfe
 	);
 
 	return 0;

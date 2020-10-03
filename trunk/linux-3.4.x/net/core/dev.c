@@ -2250,7 +2250,7 @@ int dev_hard_start_xmit(struct sk_buff *skb, struct net_device *dev,
 		 */
 		if (dev->priv_flags & IFF_XMIT_DST_RELEASE)
 			skb_dst_drop(skb);
-
+#ifndef CONFIG_SHORTCUT_FE
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 		if (!list_empty(&ptype_all) &&
 					!(skb->imq_flags & IMQ_F_ENQUEUE))
@@ -2258,6 +2258,22 @@ int dev_hard_start_xmit(struct sk_buff *skb, struct net_device *dev,
 		if (!list_empty(&ptype_all))
 #endif
 			dev_queue_xmit_nit(skb, dev);
+#endif
+
+#ifdef CONFIG_SHORTCUT_FE
+	/* If this skb has been fast forwarded then we don't want it to
+	 * go to any taps (by definition we're trying to bypass them).
+	 */
+	if (!skb->fast_forwarded) {
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+		if (!list_empty(&ptype_all) &&
+					!(skb->imq_flags & IMQ_F_ENQUEUE))
+#else
+		if (!list_empty(&ptype_all))
+#endif
+			dev_queue_xmit_nit(skb, dev);
+}
+#endif
 
 		features = netif_skb_features(skb);
 
@@ -3443,6 +3459,11 @@ void netdev_rx_handler_unregister(struct net_device *dev)
 }
 EXPORT_SYMBOL_GPL(netdev_rx_handler_unregister);
 
+#ifdef CONFIG_SHORTCUT_FE
+int (*athrs_fast_nat_recv)(struct sk_buff *skb) __rcu __read_mostly;
+EXPORT_SYMBOL_GPL(athrs_fast_nat_recv);
+#endif
+
 static int __netif_receive_skb(struct sk_buff *skb)
 {
 	struct packet_type *ptype, *pt_prev;
@@ -3452,6 +3473,9 @@ static int __netif_receive_skb(struct sk_buff *skb)
 	bool deliver_exact = false;
 	int ret = NET_RX_DROP;
 	__be16 type;
+#ifdef CONFIG_SHORTCUT_FE 
+	int (*fast_recv)(struct sk_buff *skb);
+#endif
 
 	net_timestamp_check(!netdev_tstamp_prequeue, skb);
 
@@ -3462,6 +3486,15 @@ static int __netif_receive_skb(struct sk_buff *skb)
 	skb_reset_network_header(skb);
 	skb_reset_transport_header(skb);
 	skb_reset_mac_len(skb);
+#ifdef CONFIG_SHORTCUT_FE
+	fast_recv = rcu_dereference(athrs_fast_nat_recv);
+	if (fast_recv) {
+		if (fast_recv(skb)) {
+			rcu_read_unlock();
+			return NET_RX_SUCCESS;
+		}
+	}
+#endif
 
 	pt_prev = NULL;
 

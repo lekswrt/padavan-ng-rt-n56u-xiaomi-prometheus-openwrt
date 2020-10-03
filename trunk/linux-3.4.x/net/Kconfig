@@ -253,6 +253,9 @@ config BQL
 config HAVE_BPF_JIT
 	bool
 
+config SHORTCUT_FE
+	bool "Enables kernel network stack path for Shortcut Forwarding Engine"
+
 config BPF_JIT
 	bool "enable BPF Just In Time compiler"
 	depends on HAVE_BPF_JIT
