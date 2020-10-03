@@ -1430,7 +1430,7 @@ static void fast_classifier_sync_rule(struct sfe_connection_sync *sis)
 	/*
 	 * Look up conntrack connection
 	 */
-	h = nf_conntrack_find_get(&init_net, SFE_NF_CT_DEFAULT_ZONE, &tuple);
+	h = nf_conntrack_find_get(&init_net, &tuple);
 	if (unlikely(!h)) {
 		DEBUG_TRACE("no connection found\n");
 		return;
