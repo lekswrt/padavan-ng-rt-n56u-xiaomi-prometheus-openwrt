@@ -128,7 +128,7 @@ export RUNTIME_PREFIX DEVEL_PREFIX KERNEL_HEADERS MULTILIB_DIR
 # Now config hard core
 MAJOR_VERSION := 1
 MINOR_VERSION := 0
-SUBLEVEL      := 35
+SUBLEVEL      := 36
 EXTRAVERSION  :=
 VERSION       := $(MAJOR_VERSION).$(MINOR_VERSION).$(SUBLEVEL)
 ABI_VERSION   := $(MAJOR_VERSION)
@@ -144,7 +144,7 @@ SHARED_LIBNAME := $(LIBC).so.$(ABI_VERSION)
 
 UCLIBC_LDSO_NAME := ld-uClibc
 ARCH_NATIVE_BIT := 32
-ifneq ($(findstring  $(TARGET_ARCH) , hppa64 ia64 powerpc64 s390x sparc64 x86_64 ),)
+ifneq ($(findstring  $(TARGET_ARCH) , hppa64 ia64 powerpc64 s390x sparc64 x86_64 kvx ),)
 UCLIBC_LDSO_NAME := ld64-uClibc
 ARCH_NATIVE_BIT := 64
 else
@@ -463,6 +463,10 @@ ifeq ($(TARGET_ARCH),csky)
 
 	CPU_CFLAGS-$(ARCH_LITTLE_ENDIAN)	+= -mlittle-endian
 	CPU_CFLAGS-$(ARCH_BIG_ENDIAN)		+= -mbig-endian
+endif
+
+ifeq ($(TARGET_ARCH),kvx)
+	CPU_CFLAGS-$(CONFIG_KVX) += -march=kvx
 endif
 
 ifeq ($(TARGET_ARCH),m68k)

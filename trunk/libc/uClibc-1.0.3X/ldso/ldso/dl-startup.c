@@ -310,11 +310,13 @@ DL_START(unsigned long args)
 					symbol_addr = 0;
 					sym = NULL;
 					if (symtab_index) {
-						char *strtab;
 						ElfW(Sym) *symtab;
+#if !defined(EARLY_STDERR_SPECIAL) && defined(__SUPPORT_LD_DEBUG_EARLY__)
+						char *strtab;
+						strtab = (char *) tpnt->dynamic_info[DT_STRTAB];
+#endif
 
 						symtab = (ElfW(Sym) *) tpnt->dynamic_info[DT_SYMTAB];
-						strtab = (char *) tpnt->dynamic_info[DT_STRTAB];
 						sym = &symtab[symtab_index];
 						symbol_addr = (unsigned long) DL_RELOC_ADDR(load_addr, sym->st_value);
 #if !defined(EARLY_STDERR_SPECIAL)
