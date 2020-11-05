@@ -157,10 +157,6 @@ extern int capget(cap_user_header_t header, cap_user_data_t data);
 #include <priv.h>
 #endif
 
-#ifdef HAVE_REGEX
-#include <pcre.h>
-#endif
-
 #ifdef HAVE_DNSSEC
 #  include <nettle/nettle-meta.h>
 #endif
@@ -533,7 +529,6 @@ union mysockaddr {
 #define SERV_LOOP           8192  /* server causes forwarding loop */
 #define SERV_DO_DNSSEC     16384  /* Validate DNSSEC when using this server */
 #define SERV_GOT_TCP       32768  /* Got some data from the TCP connection */
-#define SERV_IS_REGEX      65536  /* server entry is a regex */
 
 struct serverfd {
   int fd;
@@ -560,30 +555,12 @@ struct server {
   u32 uid;
 #endif
   struct server *next; 
-#ifdef HAVE_REGEX
-  pcre *regex;
-  pcre_extra *pextra;
-#endif
 };
-
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-	#define IPSET_IS_DOMAIN 0x01
-	#define IPSET_IS_REGEX 0x02
-#endif
-#endif
 
 struct ipsets {
   char **sets;
   char *domain;
   struct ipsets *next;
-#ifdef HAVE_REGEX
-#ifdef HAVE_REGEX_IPSET
-  pcre *regex;
-  pcre_extra *pextra;
-  unsigned char domain_type;
-#endif
-#endif
 };
 
 struct irec {
@@ -595,7 +572,8 @@ struct irec {
 };
 
 struct listener {
-  int fd, tcpfd, tftpfd, family;
+  int fd, tcpfd, tftpfd, used;
+  union mysockaddr addr;
   struct irec *iface; /* only sometimes valid for non-wildcard */
   struct listener *next;
 };
@@ -964,6 +942,7 @@ struct shared_network {
 #define CONTEXT_OLD            (1u<<16)
 #define CONTEXT_V6             (1u<<17)
 #define CONTEXT_RA_OFF_LINK    (1u<<18)
+#define CONTEXT_SETLEASE       (1u<<19)
 
 struct ping_result {
   struct in_addr addr;
