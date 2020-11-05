@@ -64,7 +64,9 @@ struct script_data
 #ifdef HAVE_TFTP
   off_t file_len;
 #endif
+#ifdef HAVE_IPV6
   struct in6_addr addr6;
+#endif
 #ifdef HAVE_DHCP6
   int vendorclass_count;
   unsigned int iaid;
@@ -303,8 +305,10 @@ int create_helper(int event_fd, int err_fd, uid_t uid, gid_t gid, long max_fd)
     
       if (!is6)
 	inet_ntop(AF_INET, &data.addr, daemon->addrbuff, ADDRSTRLEN);
+#ifdef HAVE_IPV6
       else
 	inet_ntop(AF_INET6, &data.addr6, daemon->addrbuff, ADDRSTRLEN);
+#endif
 
 #ifdef HAVE_TFTP
       /* file length */
@@ -825,8 +829,10 @@ void queue_tftp(off_t file_len, char *filename, union mysockaddr *peer)
 
   if ((buf->flags = peer->sa.sa_family) == AF_INET)
     buf->addr = peer->in.sin_addr;
+#ifdef HAVE_IPV6
   else
     buf->addr6 = peer->in6.sin6_addr;
+#endif
 
   memcpy((unsigned char *)(buf+1), filename, filename_len);
   
@@ -848,8 +854,10 @@ void queue_arp(int action, unsigned char *mac, int maclen, int family, union all
   buf->hwaddr_type =  ARPHRD_ETHER; 
   if ((buf->flags = family) == AF_INET)
     buf->addr = addr->addr4;
+#ifdef HAVE_IPV6
   else
     buf->addr6 = addr->addr6;
+#endif
   
   memcpy(buf->hwaddr, mac, maclen);
   

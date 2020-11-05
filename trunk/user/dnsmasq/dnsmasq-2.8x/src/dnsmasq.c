@@ -1818,9 +1818,11 @@ static void check_dns_listeners(time_t now)
 		{
 		  union all_addr addr;
 		  
+#ifdef HAVE_IPV6
 		  if (tcp_addr.sa.sa_family == AF_INET6)
 		    addr.addr6 = tcp_addr.in6.sin6_addr;
 		  else
+#endif
 		    addr.addr4 = tcp_addr.in.sin_addr;
 		  
 		  for (iface = daemon->interfaces; iface; iface = iface->next)
