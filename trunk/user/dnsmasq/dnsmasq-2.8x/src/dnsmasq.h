@@ -130,7 +130,9 @@ typedef unsigned long long u64;
 #include <net/if_arp.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#ifdef HAVE_IPV6
 #include <netinet/ip6.h>
+#endif
 #include <netinet/ip_icmp.h>
 #include <netinet/tcp.h>
 #include <sys/uio.h>
@@ -167,8 +169,6 @@ extern int capget(cap_user_header_t header, cap_user_data_t data);
 
 /* daemon is function in the C library.... */
 #define daemon dnsmasq_daemon
-
-#define ADDRSTRLEN INET6_ADDRSTRLEN
 
 /* Async event queue */
 struct event_desc {
@@ -294,7 +294,9 @@ struct event_desc {
 */
 union all_addr {
   struct in_addr addr4;
+#ifdef HAVE_IPV6
   struct in6_addr addr6;
+#endif
   struct {
     union {
       struct crec *cache;
@@ -423,7 +425,9 @@ struct host_record {
     struct name_list *next;
   } *names;
   struct in_addr addr;
+#ifdef HAVE_IPV6
   struct in6_addr addr6;
+#endif
   struct host_record *next;
 };
 
@@ -507,7 +511,9 @@ struct crec {
 union mysockaddr {
   struct sockaddr sa;
   struct sockaddr_in in;
+#if defined(HAVE_IPV6)
   struct sockaddr_in6 in6;
+#endif
 };
 
 /* bits in flag param to IPv6 callbacks from iface_enumerate() */
@@ -689,7 +695,9 @@ struct frec {
   union all_addr dest;
   struct server *sentto; /* NULL means free */
   struct randfd *rfd4;
+#ifdef HAVE_IPV6
   struct randfd *rfd6;
+#endif
   unsigned int iface;
   unsigned short orig_id, new_id;
   int log_id, fd, forwardall, flags;
@@ -906,7 +914,9 @@ struct dhcp_bridge {
 struct cond_domain {
   char *domain, *prefix;
   struct in_addr start, end;
+#ifdef HAVE_IPV6
   struct in6_addr start6, end6;
+#endif
   int is6, indexed;
   struct cond_domain *next;
 }; 
@@ -1218,7 +1228,9 @@ void blockdata_free(struct blockdata *blocks);
 
 /* domain.c */
 char *get_domain(struct in_addr addr);
+#ifdef HAVE_IPV6
 char *get_domain6(struct in6_addr *addr);
+#endif
 int is_name_synthetic(int flags, char *name, union all_addr *addr);
 int is_rev_synth(int flag, union all_addr *addr, char *name);
 
@@ -1299,9 +1311,11 @@ int hostname_issubdomain(char *a, char *b);
 time_t dnsmasq_time(void);
 int netmask_length(struct in_addr mask);
 int is_same_net(struct in_addr a, struct in_addr b, struct in_addr mask);
+#ifdef HAVE_IPV6
 int is_same_net6(struct in6_addr *a, struct in6_addr *b, int prefixlen);
 u64 addr6part(struct in6_addr *addr);
 void setaddr6part(struct in6_addr *addr, u64 host);
+#endif
 int retry_send(ssize_t rc);
 void prettyprint_time(char *buf, unsigned int t);
 int prettyprint_addr(union mysockaddr *addr, char *buf);
@@ -1383,7 +1397,9 @@ int loopback_exception(int fd, int family, union all_addr *addr, char *name);
 int label_exception(int index, int family, union all_addr *addr);
 int fix_fd(int fd);
 int tcp_interface(int fd, int af);
+#ifdef HAVE_IPV6
 int set_ipv6pktinfo(int fd);
+#endif
 #ifdef HAVE_DHCP6
 void join_multicast(int dienow);
 #endif
