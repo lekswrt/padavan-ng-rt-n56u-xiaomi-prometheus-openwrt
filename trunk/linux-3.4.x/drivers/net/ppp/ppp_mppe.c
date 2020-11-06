@@ -385,7 +385,7 @@ mppe_compress(void *arg, unsigned char *ibuf, unsigned char *obuf,
 		/* Drop the packet if we should encrypt it, but can't. */
 		printk(KERN_DEBUG "mppe_compress[%d]: osize too small! "
 		       "(have: %d need: %d)\n", state->unit,
-		       osize, osize + MPPE_OVHD + 2);
+		       osize, isize + MPPE_OVHD + 2);
 		return -1;
 	}
 
