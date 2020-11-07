@@ -1066,7 +1066,7 @@ NDIS_STATUS IgmpPktClone(
 	SST Sst = SST_ASSOC;
 	UCHAR PsMode = PWR_ACTIVE;
 	UCHAR Rate;
-	unsigned long IrqFlags;
+	ULONG IrqFlags = 0;
 	INT MacEntryIdx;
 	BOOLEAN bContinue;
 	PUCHAR pMemberAddr = NULL;
@@ -1125,12 +1125,16 @@ NDIS_STATUS IgmpPktClone(
 			
 			if (PsMode == PWR_SAVE)
 			{
-				APInsertPsQueue(pAd, pSkbClone, pMacEntry, QueIdx);
+				APInsertPsQueue(pAd, pSkbClone, pMacEntry, QueIdx, MCAST_WCID);
 			}
 			else
 			{
-				/* insert the pkt to TxSwQueue. */
-				if (pAd->TxSwQueue[QueIdx].Number >= pAd->TxSwQMaxLen)
+#ifdef DATA_QUEUE_RESERVE 
+					if (!(RTMP_GET_PACKET_DHCP(pPacket) || RTMP_GET_PACKET_EAPOL(pPacket) /* || RTMP_GET_PACKET_ICMP(pPacket) */)
+						&& (pAd->TxSwQueue[QueIdx].Number >= (pAd->TxSwQMaxLen - pAd->TxRsvLen)))
+#else /* DATA_QUEUE_RESERVE */
+					if (pAd->TxSwQueue[QueIdx].Number >= pAd->TxSwQMaxLen)
+#endif /* !DATA_QUEUE_RESERVE */
 				{
 #ifdef BLOCK_NET_IF
 					StopNetIfQueue(pAd, QueIdx, pSkbClone);

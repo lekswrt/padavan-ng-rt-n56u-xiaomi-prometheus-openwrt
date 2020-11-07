@@ -30,11 +30,10 @@
 
 
 #ifdef DOT11_N_SUPPORT
+#ifdef DOT11N_DRAFT3
 
 int DetectOverlappingPeriodicRound;
 
-
-#ifdef DOT11N_DRAFT3
 VOID Bss2040CoexistTimeOut(
 	IN PVOID SystemSpecific1, 
 	IN PVOID FunctionContext, 
@@ -62,10 +61,6 @@ VOID Bss2040CoexistTimeOut(
 		SendBSS2040CoexistMgmtAction(pAd, MCAST_WCID, apidx, 0);
 	
 }
-#endif /* DOT11N_DRAFT3 */
-
-#endif /* DOT11_N_SUPPORT */
-
 
 VOID APDetectOverlappingExec(
 	IN PVOID SystemSpecific1, 
@@ -73,7 +68,6 @@ VOID APDetectOverlappingExec(
 	IN PVOID SystemSpecific2, 
 	IN PVOID SystemSpecific3) 
 {
-#ifdef DOT11_N_SUPPORT
 	PRTMP_ADAPTER	pAd = (RTMP_ADAPTER *)FunctionContext;
 
 	if (DetectOverlappingPeriodicRound == 0)
@@ -99,8 +93,9 @@ VOID APDetectOverlappingExec(
 		}
 		DetectOverlappingPeriodicRound--;
 	}
-#endif /* DOT11_N_SUPPORT */
 }
+#endif /* DOT11N_DRAFT3 */
+#endif /* DOT11_N_SUPPORT */
 
 
 /*
@@ -116,6 +111,7 @@ VOID APDetectOverlappingExec(
 VOID APMlmePeriodicExec(
     PRTMP_ADAPTER pAd)
 {
+	INT i;
     /* 
 		Reqeust by David 2005/05/12
 		It make sense to disable Adjust Tx Power on AP mode, since we can't 
@@ -177,6 +173,17 @@ VOID APMlmePeriodicExec(
 		/* one second timer */
 	    MacTableMaintenance(pAd);
 
+	    /* increase block count every secons for time limit probe temp limit function */
+	    for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
+		if (pAd->ApCfg.MBSSID[i].TmpBlockAfterKickTimes != 0 && pAd->ApCfg.MBSSID[i].TmpBlockAfterKickCount < pAd->ApCfg.MBSSID[i].TmpBlockAfterKickTimes) {
+		    if (!MAC_ADDR_EQUAL(pAd->ApCfg.MBSSID[i].TmpBlockAfterKickMac, ZERO_MAC_ADDR))
+			pAd->ApCfg.MBSSID[i].TmpBlockAfterKickCount++;
+		} else {
+		    /* cleanup blocked mac address */
+		    NdisZeroMemory(pAd->ApCfg.MBSSID[i].TmpBlockAfterKickMac, MAC_ADDR_LEN);
+		}
+	    }
+
 #ifdef FPGA_MODE
 		if (pAd->fpga_tr_stop)
 		{
@@ -214,7 +221,11 @@ VOID APMlmePeriodicExec(
 	CliWds_ProxyTabMaintain(pAd);
 #endif /* CLIENT_WDS */
 	}
-	
+
+#ifdef AP_SCAN_SUPPORT
+	AutoChannelSelCheck(pAd);
+#endif /* AP_SCAN_SUPPORT */
+
 	APUpdateCapabilityAndErpIe(pAd);
 
 #ifdef APCLI_SUPPORT
@@ -291,6 +302,10 @@ VOID APMlmePeriodicExec(
 		}
 #endif /* A_BAND_SUPPORT */
 
+#ifdef DOT11R_FT_SUPPORT
+	FT_R1KHInfoMaintenance(pAd);
+#endif /* DOT11R_FT_SUPPORT */
+
 	/* resume Improved Scanning*/
 	if ((pAd->ApCfg.bImprovedScan) &&
 		(!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_BSS_SCAN_IN_PROGRESS)) &&
@@ -316,7 +331,52 @@ VOID APMlmePeriodicExec(
 		DBGPRINT(RT_DEBUG_TRACE, ("bImprovedScan ............. Resume for bImprovedScan, SCAN_PENDING .............. \n"));
 	}
 
+#ifdef DOT11K_RRM_SUPPORT
+	if (!ApScanRunning(pAd)) {
+	    BOOLEAN ReadyScan = TRUE;
+	    BOOLEAN PeriodicScan = TRUE;
 
+#ifdef APCLI_SUPPORT
+	    UCHAR idx;
+
+	    for (idx = 0; idx < MAX_APCLI_NUM; idx++) {
+		PAPCLI_STRUCT  pApCliEntry = &pAd->ApCfg.ApCliTab[idx];
+
+		if (pApCliEntry && pApCliEntry->Enable == TRUE)
+			    PeriodicScan = FALSE;
+	    }
+#endif
+	    /* hw not ready or disabled - skip scan */
+	    if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_BSS_SCAN_IN_PROGRESS) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_SUSPEND) ||
+		    !RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_START_UP)) {
+		PeriodicScan = FALSE;
+		ReadyScan = FALSE;
+	    }
+
+	    /* after boot need force first scan at 15sec */
+	    if (ReadyScan && ((PeriodicScan && pAd->Mlme.OneSecPeriodicRound % 240 == 0) ||
+		    (pAd->Mlme.OneSecPeriodicRound % 15 == 0 && pAd->CommonCfg.RRMFirstScan == TRUE)))
+	    {
+		    if (pAd->MacTab.Size == 0 || pAd->CommonCfg.RRMFirstScan == TRUE) {
+			INT needscan = 0;
+			for (i = 0; i < MAX_MBSSID_NUM(pAd); i++) {
+				if (pAd->OpMode == OPMODE_AP && IS_RRM_ENABLE(pAd, i))
+					needscan = 1;
+			}
+			if (needscan == 1) {
+				DBGPRINT(RT_DEBUG_TRACE, ("RRM: rescan every 240sec for update neighbour info\n"));
+				pAd->ApCfg.bImprovedScan = FALSE;
+				pAd->CommonCfg.RRMFirstScan = FALSE;
+				ApSiteSurvey(pAd, NULL, SCAN_ACTIVE, FALSE);
+			}
+		    }
+	    }
+	}
+#endif /* DOT11K_RRM_SUPPORT */
 }
 
 
@@ -564,8 +624,10 @@ VOID APAsicEvaluateRxAnt(
 VOID APAsicRxAntEvalTimeout(
 	PRTMP_ADAPTER	pAd) 
 {
-	CHAR			larger = -127, rssi0, rssi1, rssi2;
-
+	CHAR			rssi0, rssi1, rssi2;
+#ifdef DOT11N_SS3_SUPPORT
+	CHAR			larger = -127;
+#endif
 #ifdef RALINK_ATE
 	if (ATE_ON(pAd))
 		return;

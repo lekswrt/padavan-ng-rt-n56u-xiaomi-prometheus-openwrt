@@ -380,6 +380,21 @@ static VOID ApCliMlmeAssocReqAction(
 		}
 
 #ifdef DOT11_N_SUPPORT
+		/*	
+			WFA recommend to restrict the encryption type in 11n-HT mode.
+			So, the WEP and TKIP are not allowed in HT rate.
+		*/
+		if (pAd->CommonCfg.HT_DisallowTKIP &&
+			IS_INVALID_HT_SECURITY(pApCliEntry->WepStatus))
+		{
+			/* Force to None-HT mode due to WiFi 11n policy */
+			pApCliEntry->ApCliMlmeAux.HtCapabilityLen = 0;
+#ifdef DOT11_VHT_AC
+			pApCliEntry->ApCliMlmeAux.vht_cap_len = 0;
+#endif /* DOT11_VHT_AC */
+			DBGPRINT(RT_DEBUG_TRACE, ("%s : Force AP-client as Non-HT mode\n", __FUNCTION__));
+		}
+
 		/* HT */
 		if ((pApCliEntry->ApCliMlmeAux.HtCapabilityLen > 0) && 
 			WMODE_CAP_N(pAd->CommonCfg.PhyMode))
@@ -409,19 +424,24 @@ static VOID ApCliMlmeAssocReqAction(
 				(pAd->CommonCfg.Channel > 14) &&
 				(pApCliEntry->ApCliMlmeAux.vht_cap_len))
 			{
-#ifdef DISANLE_VHT80_256_QAM
+#ifdef CONFIG_DISABLE_VHT80_256_QAM
 				if ((pApCliEntry->ApCliMlmeAux.vht_op.vht_op_info.ch_width == VHT_BW_80) &&
 					(pAd->CommonCfg.disable_vht_256QAM & DISABLE_VHT80_256_QAM))
 				{
 					pApCliEntry->ApCliMlmeAux.vht_max_mcs_cap = VHT_MCS_CAP_7;
 				}
 				else
-#endif /* DISANLE_VHT80_256_QAM */
+#endif /* DISABLE_VHT80_256_QAM */
 				{
 					pApCliEntry->ApCliMlmeAux.vht_max_mcs_cap = VHT_MCS_CAP_9;
 				}
 
 				FrameLen += build_vht_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen), SUBTYPE_ASSOC_REQ, pApCliEntry->ApCliMlmeAux.vht_max_mcs_cap);
+
+            			/* For VHT40 ApClient, Add the OP Noitfy IE to notify rootAP the STA current BW */
+            			if ((pAd->CommonCfg.HtCapability.HtCapInfo.ChannelWidth == BW_40) &&
+					(pAd->CommonCfg.vht_bw == VHT_BW_2040))
+                		    FrameLen += build_vht_op_mode_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen));
 			}
 #endif /* DOT11_VHT_AC */
 
@@ -859,6 +879,9 @@ static VOID ApCliPeerAssocRspAction(
 			}
 			else
 			{
+				if(Status == MLME_ASSOC_REJ_DATA_RATE)
+					printk("APCLI_ASSOC - receive ASSOC_RSP reject - AP not support reqested rates or modes\n");
+
 				ApCliCtrlMsg.Status = Status;
 				MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_ASSOC_RSP,
 					sizeof(APCLI_CTRL_MSG_STRUCT), &ApCliCtrlMsg, ifIndex);

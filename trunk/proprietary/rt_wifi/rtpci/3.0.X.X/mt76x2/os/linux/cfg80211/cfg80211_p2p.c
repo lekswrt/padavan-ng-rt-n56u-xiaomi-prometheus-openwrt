@@ -117,7 +117,7 @@ VOID CFG80211RemainOnChannelTimeout(
 
 		pCfg80211_ctrl->Cfg80211RocTimerRunning = FALSE;
 		DBGPRINT(RT_DEBUG_TRACE, ("CFG80211_ROC: RemainOnChannelTimeout -- FINISH\n"));
-	}		
+	}
 }
 
 /* Set a given time on specific channel to listen action Frame */

@@ -26,12 +26,6 @@
 
 #include "rt_config.h"
 
-#define TYPE_FUNC
-#define FT_FUNC_SIMULATION
-
-#ifdef FT_FUNC_SIMULATION
-#endif /* FT_FUNC_SIMULATION */
-
 /* ----- Private Variable ----- */
 #ifdef FT_FUNC_SIMULATION
 static UCHAR gFT_MAC_STA[ETH_ALEN] = { 0x00, 0x0e, 0x2e, 0x82, 0xe7, 0x6d };

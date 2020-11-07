@@ -26,13 +26,20 @@ CH_FREQ_MAP CH_HZ_ID_MAP[]=
 			{40, 5200},
 			{44, 5220},
 			{48, 5240},
+			{50, 5250},        
 			{52, 5260},
+			{54, 5270},         
 			{56, 5280},
+			{58, 5290},        
 			{60, 5300},
+			{62, 5310},			
 			{64, 5320},
 			{149, 5745},
+			{151, 5755},             
 			{153, 5765},
+			{155, 5775},			
 			{157, 5785},
+			{159, 5795},			
 			{161, 5805},
 			{165, 5825},
 			{167, 5835},
@@ -42,16 +49,27 @@ CH_FREQ_MAP CH_HZ_ID_MAP[]=
 						
 			/* HiperLAN2 */
 			{100, 5500},
+			{102, 5510},			
 			{104, 5520},
+			{106, 5530},			
 			{108, 5540},
+			{110, 5550},		
 			{112, 5560},
+			{114, 5570},
 			{116, 5580},
+			{118, 5590},			
 			{120, 5600},
+			{122, 5610},			
 			{124, 5620},
+			{126, 5630},			
 			{128, 5640},
 			{132, 5660},
+			{134, 5670},			
 			{136, 5680},
+			{138, 5690},			
 			{140, 5700},
+			{142, 5710},	
+			{144, 5720},            
 						
 			/* Japan MMAC */
 			{34, 5170},
@@ -231,9 +249,10 @@ CH_DESC Country_Region6_ChDesc_5GHZ[] =
 
 CH_DESC Country_Region7_ChDesc_5GHZ[] =
 {
-	{36, 8, CHANNEL_DEFAULT_PROP},
-	{100, 11, CHANNEL_DEFAULT_PROP},
-	{149, 7, CHANNEL_DEFAULT_PROP},
+	{36, 4, CHANNEL_DEFAULT_PROP},
+	{52, 4, CHANNEL_DEFAULT_PROP},
+	{132, 4, CHANNEL_DEFAULT_PROP},
+	{149, 5, CHANNEL_DEFAULT_PROP},
 	{}
 };
 
@@ -275,26 +294,27 @@ CH_DESC Country_Region11_ChDesc_5GHZ[] =
 	{}		
 };
 
+/* for FCC capable of using 144 , mapping of Country_Region1 */
 CH_DESC Country_Region12_ChDesc_5GHZ[] =
 {
 	{36, 8, CHANNEL_DEFAULT_PROP},
-	{100, 11, CHANNEL_DEFAULT_PROP},
+	{100, 12, CHANNEL_DEFAULT_PROP},
 	{}
 };
-
+/* for FCC capable of using 144 , mapping of Country_Region7 */
 CH_DESC Country_Region13_ChDesc_5GHZ[] =
 {
-	{52, 4, CHANNEL_DEFAULT_PROP},
-	{100, 11, CHANNEL_DEFAULT_PROP},
-	{149, 4, CHANNEL_DEFAULT_PROP},
+	{36, 8, CHANNEL_DEFAULT_PROP},
+	{100, 12, CHANNEL_DEFAULT_PROP},
+	{149, 5, CHANNEL_DEFAULT_PROP},
 	{}	
 };
-
+/* for FCC capable of using 144 , mapping of Country_Region9 */
 CH_DESC Country_Region14_ChDesc_5GHZ[] =
 {
 	{36, 8, CHANNEL_DEFAULT_PROP},
 	{100, 5, CHANNEL_DEFAULT_PROP},
-	{136, 2, CHANNEL_DEFAULT_PROP},
+	{132, 4, CHANNEL_DEFAULT_PROP},
 	{149, 5, CHANNEL_DEFAULT_PROP},
 	{}	
 };
@@ -331,7 +351,7 @@ CH_DESC Country_Region19_ChDesc_5GHZ[] =
 {
 	{56, 3, CHANNEL_DEFAULT_PROP},
 	{100, 11, CHANNEL_DEFAULT_PROP},
-	{149, 5, CHANNEL_DEFAULT_PROP},
+	{149, 4, CHANNEL_DEFAULT_PROP},
 	{}
 };
 
@@ -625,7 +645,7 @@ CH_DESP Country_CA_ChDesp[] =
 	{ 1,   11, 27, BOTH, FALSE},	/*2402~2472MHz, Ch 1~11,   Max BW: 40 */
 	{ 36,   4, 17, IDOR, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */ 
 	{ 52,   4, 20, BOTH, TRUE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
-	{ 100, 11, 20, BOTH, TRUE}, 	/*5490~5710MHz, Ch 100~140, Max BW: 40 */
+	{ 100, 12, 20, BOTH, TRUE}, 	/*5490~5710MHz, Ch 100~144, Max BW: 40 */
 	{ 149,  5, 30, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 40 */
 	{ 0},               	    	/* end*/
 };
@@ -747,8 +767,8 @@ CH_DESP Country_EE_ChDesp[] =
 CH_DESP Country_FI_ChDesp[] =
 {
 	{ 1,   13, 20, BOTH, FALSE},	/*2402~2482MHz, Ch 1~13,   Max BW: 40 */
-	{ 36,   4, 20, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
-	{ 52,   4, 20, BOTH, TRUE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
+	{ 36,   4, 23, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
+	{ 52,   4, 23, BOTH, TRUE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
 	{ 100, 11, 27, BOTH, TRUE}, 	/*5490~5710MHz, Ch 100~140, Max BW: 40 */
 	{ 0},               	    	/* end*/
 };
@@ -773,8 +793,8 @@ CH_DESP Country_GE_ChDesp[] =
 CH_DESP Country_DE_ChDesp[] =
 {
 	{ 1,   13, 20, BOTH, FALSE},	/*2400~2483.5MHz, Ch 1~13,   Max BW: 40 */
-	{ 36,   4, 20, IDOR, FALSE},	/*5150~5250MHz, Ch 36~48, Max BW: 40 */
-	{ 52,   4, 20, IDOR, TRUE}, 	/*5250~5350MHz, Ch 52~64, Max BW: 40 */
+	{ 36,   4, 23, IDOR, FALSE},	/*5150~5250MHz, Ch 36~48, Max BW: 40 */
+	{ 52,   4, 23, IDOR, TRUE}, 	/*5250~5350MHz, Ch 52~64, Max BW: 40 */
 	{ 100, 11, 27, BOTH, TRUE}, 	/*5470~5725MHz, Ch 100~140, Max BW: 40 */
 	{ 0},               	    	/* end*/
 };
@@ -1227,10 +1247,11 @@ CH_DESP Country_RO_ChDesp[] =
 /*Russian Federation*/		
 CH_DESP Country_RU_ChDesp[] =
 {
-	{ 1,   13, 20, BOTH, FALSE},	/*2402~2482MHz, Ch 1~13,   Max BW: 40 */
-	{ 36,   4, 20, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
-	{ 52,   4, 20, BOTH, FALSE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
-	{ 149,  5, 30, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 40 */
+	{ 1,   14, 20, BOTH, FALSE},	/* 2.4 G, ch 1~14*/
+	{ 36,   4, 23, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
+	{ 52,   4, 23, BOTH, FALSE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
+	{ 132,  4, 23, BOTH, FALSE}, 	/*5650~5710MHz, Ch 132~144, Max BW: 40 */
+	{ 149,  5, 23, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 40 */
 	{ 0},               	    	/* end*/
 };
 /*Saint Barth'elemy*/		
@@ -1401,12 +1422,12 @@ CH_DESP Country_GB_ChDesp[] =
 /*United States*/		
 CH_DESP Country_US_ChDesp[] =
 {
-	{ 1,   11, 27, BOTH, FALSE},	/*2402~2472MHz, Ch 1~11,   Max BW: 40 */
-	{ 36,   4, 17, IDOR, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
-	{ 52,   4, 20, BOTH, TRUE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
-	{ 100,  5, 20, BOTH, TRUE}, 	/*5490~5600MHz, Ch 100~116, Max BW: 40 */
-	{ 132,  3, 20, BOTH, TRUE}, 	/*5650~5710MHz, Ch 132~140, Max BW: 40 */
-	{ 149,  5, 30, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 40 */
+	{ 1,   11, 20, BOTH, FALSE},	/*2402~2472MHz, Ch 1~11,   Max BW: 40 */
+	{ 36,   4, 23, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
+	{ 52,   4, 23, BOTH, TRUE}, 	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
+	{ 100,  5, 23, BOTH, TRUE}, 	/*5490~5600MHz, Ch 100~116, Max BW: 40 */
+	{ 132,  4, 23, BOTH, TRUE}, 	/*5650~5710MHz, Ch 132~144, Max BW: 40 */
+	{ 149,  5, 23, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 40 */
 	{ 0},               	    	/* end*/
 };		
 /*Uruguay*/		
@@ -1462,7 +1483,7 @@ CH_DESP Country_ZW_ChDesp[] =
 CH_DESP Country_EU_ChDesp[] =
 {
 	{ 1,   13, 20, BOTH, FALSE},	/* 2.4 G, ch 1~13 */
-	{ 36,   4, 17, BOTH, FALSE},	/* 5G band 1, ch 36~48*/
+	{ 36,   4, 23, BOTH, FALSE},	/* 5G band 1, ch 36~48*/
 	{ 0},               	    	/* end*/
 };
 /*North America*/		
@@ -1476,9 +1497,8 @@ CH_DESP Country_NA_ChDesp[] =
 /*World Wide*/		
 CH_DESP Country_WO_ChDesp[] =
 {
-	{ 1,   13, 20, BOTH, FALSE},	/* 2.4 G, ch 1~13*/
-	{ 36,   4, 17, BOTH, FALSE},	/* 5G band 1, ch 36~48*/
-	{ 149,	5, 22, BOTH, FALSE},	/* 5G band 4, ch 149~165*/
+	{ 1,   13, 20, BOTH, FALSE},	/*2402~2482MHz, Ch 1~13,   Max BW: 40 */
+	{ 149,  5, 30, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 20 */		
 	{ 0},               	    	/* end*/
 };
 
@@ -1574,7 +1594,7 @@ CH_REGION ChRegion[] =
 	{"PR", CE, Country_PR_ChDesp, TRUE}, /* Puerto Rico */			
 	{"QA", CE, Country_QA_ChDesp, TRUE}, /* Qatar */			
 	{"RO", CE, Country_RO_ChDesp, TRUE}, /* Romania */			
-	{"RU", CE, Country_RU_ChDesp, FALSE}, /* Russian Federation */			
+	{"RU", FCC, Country_RU_ChDesp, FALSE}, /* Russian Federation */			
 	{"BL", CE, Country_BL_ChDesp, TRUE}, /* Saint Barth'elemy */			
 	{"SA", CE, Country_SA_ChDesp, TRUE}, /* Saudi Arabia */			
 	{"SG", CE, Country_SG_ChDesp, TRUE}, /* Singapore */			
@@ -1623,9 +1643,9 @@ static PCH_REGION GetChRegion(
 		loop++;
 	}
 
-	/* Default: use WO*/
+	/* Default: use RU */
 	if (pChRegion == NULL)
-		pChRegion = GetChRegion("WO");
+		pChRegion = GetChRegion("RU");
 
 	return pChRegion;
 }
@@ -1670,6 +1690,7 @@ static UCHAR FillChList(
         }
 /*New FCC spec restrict the used channel under DFS */
 #ifdef CONFIG_AP_SUPPORT	
+#ifdef DFS_SUPPORT
 		if ((pAd->CommonCfg.bIEEE80211H == 1) &&
 			(pAd->CommonCfg.RDDurRegion == FCC) &&
 			(pAd->Dot11_H.bDFSIndoor == 1))
@@ -1685,6 +1706,7 @@ static UCHAR FillChList(
 				continue;
 		}
 
+#endif /* DFS_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 		for (l=0; l<MAX_NUM_OF_CHANNELS; l++)
 		{
@@ -1708,6 +1730,10 @@ static UCHAR FillChList(
 #ifdef DOT11_N_SUPPORT
 		if (N_ChannelGroupCheck(pAd, pAd->ChannelList[j].Channel))
 			pAd->ChannelList[j].Flags |= CHANNEL_40M_CAP;
+#ifdef DOT11_VHT_AC
+		if (vht80_channel_group(pAd, pAd->ChannelList[j].Channel))
+			pAd->ChannelList[j].Flags |= CHANNEL_80M_CAP;
+#endif /* DOT11_VHT_AC */
 #endif /* DOT11_N_SUPPORT */
 
 #ifdef RT_CFG80211_SUPPORT
@@ -1833,7 +1859,7 @@ VOID BuildBeaconChList(
 				continue;
 		}
 
-		if ((pChDesp[i].Geography == BOTH) ||
+		if ((pChDesp[i].Geography == BOTH) || (pAd->CommonCfg.Geography == BOTH) ||
 			(pChDesp[i].Geography == pAd->CommonCfg.Geography))
 		{
 			MakeOutgoingFrame(pBuf + *pBufLen,		&TmpLen,
@@ -1940,7 +1966,7 @@ COUNTRY_PROP CountryProp[]=
 	{"PR", CE, TRUE }, /* Puerto Rico */			
 	{"QA", CE, TRUE }, /* Qatar */			
 	{"RO", CE, TRUE }, /* Romania */			
-	{"RU", CE, FALSE }, /* Russian Federation */			
+	{"RU", FCC, FALSE }, /* Russian Federation */			
 	{"BL", CE, TRUE }, /* Saint Barth'elemy */			
 	{"SA", CE, TRUE }, /* Saudi Arabia */			
 	{"SG", CE, TRUE }, /* Singapore */			
@@ -1990,9 +2016,9 @@ static PCOUNTRY_PROP GetCountryProp(
 		loop++;
 	}
 
-	/* Default: use WO*/
+	/* Default: use RU */
 	if (pCountryProp == NULL)
-		pCountryProp = GetCountryProp("WO");
+		pCountryProp = GetCountryProp("RU");
 
 	return pCountryProp;
 }
@@ -2009,7 +2035,7 @@ BOOLEAN GetEDCCASupport(
 	
 	pChReg = GetChRegion(pAd->CommonCfg.CountryCode);
 
-	if ((pChReg->DfsType == CE) && (pChReg->edcca_on == TRUE) )
+	if ((pChReg->DfsType != FCC) && (pChReg->edcca_on == TRUE) )
 	{
 		// actually need to check PM's table in CE country
 		ret = TRUE;
@@ -2019,7 +2045,7 @@ BOOLEAN GetEDCCASupport(
 	
 	pCountryProp = GetCountryProp(pAd->CommonCfg.CountryCode);
 
-	if ((pCountryProp->DfsType == CE) && (pCountryProp->edcca_on == TRUE))
+	if ((pCountryProp->DfsType != FCC) && (pCountryProp->edcca_on == TRUE))
 	{
 		// actually need to check PM's table in CE country
 		ret = TRUE;
@@ -2112,6 +2138,7 @@ INT get_vht_neighbor_index(IN UCHAR channel)
 			__FUNCTION__, channel));
 		return (MAX_NUM_OF_CHANNELS+1);
 	}
+	return 0;
 }
 
 BOOLEAN AC_ChannelGroupCheck(
@@ -2124,26 +2151,29 @@ BOOLEAN AC_ChannelGroupCheck(
 		52, 56, 60, 64,
 		100, 104, 108, 112,
 		116, 120, 124, 128,
+		132, 136, 140, 144,
 		149, 153, 157, 161
 	};
 	UINT8	num_ch = sizeof(vht_ch_group)/sizeof(UCHAR);
 	UINT8	idx;
 	UCHAR 	region = GetCountryRegionFromCountryCode(pAd);
+
 	if (Channel > 14)
 	{ /* 5G Band */
 		for (idx=0; idx<num_ch; idx++) {
-			if (Channel == vht_ch_group[idx]) {
-				if (((region == CE || region == JAP) && vht_ch_group[idx] >= 132) || ((region == FCC) && vht_ch_group[idx] >= 116 && vht_ch_group[idx] <= 128))
-				{
-					continue;
-				}
-				else
-				{
-					/* in BW_80 channel group */
-					RetVal = TRUE;
-					break;
-				}
+		    if (Channel == vht_ch_group[idx]) {
+			if (region == JAP && (vht_ch_group[idx] >= 132 && vht_ch_group[idx] <= 144))
+			{
+				/* prevent using 132~144 while Region is JAP */
+				continue;
 			}
+			else
+			{
+				/* in BW_80 channel group */
+				RetVal = TRUE;
+				break;
+			}
+		    }
 		}
 	}
 
@@ -2159,17 +2189,13 @@ BOOLEAN N_ChannelGroupCheck(
 	
 	if (Channel > 14)
 	{
-		if ((Channel == 36) || (Channel == 44) || (Channel == 52) 
-				|| (Channel == 60) || (Channel == 100) || (Channel == 108) 
-				|| (Channel == 116) || (Channel == 124) || (Channel == 132) 
-				|| (Channel == 149) || (Channel == 157))
+		if ((Channel == 36) || (Channel == 44) || (Channel == 52) || (Channel == 60) || (Channel == 100) || (Channel == 108) ||
+		    (Channel == 116) || (Channel == 124) || (Channel == 132) || (Channel == 140)|| (Channel == 149) || (Channel == 157))
 		{
 			RetVal = TRUE;
 		}
-		else if ((Channel == 40) || (Channel == 48) || (Channel == 56) 
-				|| (Channel == 64) || (Channel == 104) || (Channel == 112) 
-				|| (Channel == 120) || (Channel == 128) || (Channel == 136) 
-				|| (Channel == 153) || (Channel == 161))
+		else if ((Channel == 40) || (Channel == 48) || (Channel == 56) || (Channel == 64) || (Channel == 104) || (Channel == 112) ||
+				(Channel == 120) || (Channel == 128) || (Channel == 136) || (Channel == 144) || (Channel == 153) || (Channel == 161))
 		{
 			RetVal = TRUE;
 		}
@@ -2216,9 +2242,14 @@ VOID N_ChannelCheck(RTMP_ADAPTER *pAd)
 			116, EXTCHA_ABOVE, 120, EXTCHA_BELOW,
 			124, EXTCHA_ABOVE, 128, EXTCHA_BELOW,
 			132, EXTCHA_ABOVE, 136, EXTCHA_BELOW,
+			140, EXTCHA_ABOVE, 144, EXTCHA_BELOW,
 			149, EXTCHA_ABOVE, 153, EXTCHA_BELOW, 
 			157, EXTCHA_ABOVE, 161, EXTCHA_BELOW,
 			0, 0};
+
+	/* channel is not set yet (e.g. AutoChannelSelect > 0) */
+	if (Channel == 0)
+		return;
 
 	if (WMODE_CAP_N(pAd->CommonCfg.PhyMode) &&
 		(pAd->CommonCfg.RegTransmitSetting.field.BW  >= BW_40))
@@ -2228,14 +2259,18 @@ VOID N_ChannelCheck(RTMP_ADAPTER *pAd)
 			idx = 0;
 			while(wfa_ht_ch_ext[idx] != 0) {
 				if (wfa_ht_ch_ext[idx] == Channel) {
-					pAd->CommonCfg.AddHTInfo.AddHtInfo.ExtChanOffset = 
 					pAd->CommonCfg.RegTransmitSetting.field.EXTCHA = wfa_ht_ch_ext[idx + 1];
 					break;
 				}
 				idx += 2;
-			};
-			if (wfa_ht_ch_ext[idx] == 0)
+			}
+			if (wfa_ht_ch_ext[idx] == 0) {
 				pAd->CommonCfg.RegTransmitSetting.field.BW  = BW_20;
+#ifdef DOT11_VHT_AC
+				if (WMODE_CAP_AC(pAd->CommonCfg.PhyMode) && (pAd->CommonCfg.vht_bw > VHT_BW_2040))
+					pAd->CommonCfg.vht_bw = VHT_BW_2040;
+#endif /* DOT11_VHT_AC */
+			}
 		}
 		else
 		{
@@ -2301,7 +2336,7 @@ UINT8 GetCuntryMaxTxPwr(
 	}
 
 	if (i == pAd->ChannelListNum)
-		return 0xff;
+		return DEFAULT_MAX_TX_POWER;
 #ifdef SINGLE_SKU
 	if (pAd->CommonCfg.bSKUMode == TRUE)
 	{
@@ -2329,11 +2364,16 @@ UINT8 GetCuntryMaxTxPwr(
 			return (pAd->ChannelList[i].MaxTxPwr - pAd->CommonCfg.AntGain - deltaTxStreamPwr);
 		}
 		else
-			return 0xff;
+			return DEFAULT_MAX_TX_POWER;
 	}
 	else
 #endif /* SINGLE_SKU */
-		return pAd->ChannelList[i].MaxTxPwr;
+	{
+		if (pAd->ChannelList[i].MaxTxPwr >= 14)
+			return pAd->ChannelList[i].MaxTxPwr;
+		else
+			return DEFAULT_MAX_TX_POWER;
+	}
 }
 
 

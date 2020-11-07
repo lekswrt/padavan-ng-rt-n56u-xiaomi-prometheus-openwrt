@@ -184,7 +184,8 @@ VOID InsertChannelRepIE(
 	OUT PUCHAR pFrameBuf,
 	OUT PULONG pFrameLen,
 	IN PSTRING pCountry,
-	IN UINT8 RegulatoryClass);
+	IN UINT8 RegulatoryClass,
+	IN UINT8 *ChReptList);
 
 VOID InsertTpcReportIE(
 	IN PRTMP_ADAPTER pAd,

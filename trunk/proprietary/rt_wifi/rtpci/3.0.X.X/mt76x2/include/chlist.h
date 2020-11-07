@@ -82,6 +82,7 @@ typedef struct _COUNTRY_PROP {
 #define SINGLE_SKU_TABLE_OFDM_LENGTH	8
 #define SINGLE_SKU_TABLE_HT_LENGTH	16
 #define SINGLE_SKU_TABLE_VHT_LENGTH	10 /* VHT80 MCS 0 ~ 9 */
+#define SINGLE_SKU_TABLE_STBC_LENGTH	10
 
 // TODO: shiang-usw, need to re-organize these for MT7610/MT7601/MT7620!!
 typedef struct _CH_POWER_{

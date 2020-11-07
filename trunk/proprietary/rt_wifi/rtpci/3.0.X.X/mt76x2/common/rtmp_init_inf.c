@@ -98,9 +98,31 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 {
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)pAdSrc;
 	NDIS_STATUS Status;
-	
+
 	if (!pAd)
 		return FALSE;
+
+	/* reset Adapter flags*/
+	RTMP_CLEAR_FLAGS(pAd);
+
+#ifdef CONFIG_AP_SUPPORT
+	/* Init BssTab & ChannelInfo tabbles for auto channel select.*/
+	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+	{
+		AutoChBssTableInit(pAd);
+		ChannelInfoInit(pAd);
+	}
+#endif /* CONFIG_AP_SUPPORT */
+#ifdef CUSTOMER_DCC_FEATURE
+	/* init rate multiplication and shift factor table */
+	InitRateMultiplicationAndShiftFactor(pAd);
+#endif
+
+#ifdef DOT11_N_SUPPORT
+	/* Allocate BA Reordering memory*/
+	if (ba_reordering_resource_init(pAd, MAX_REORDERING_MPDU_NUM) != TRUE)		
+		goto err1;
+#endif /* DOT11_N_SUPPORT */
 
 	if (rtmp_asic_top_init(pAd) != TRUE)
 		goto err1;
@@ -123,33 +145,12 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 	}
 #endif /* RTMP_MAC_PCI */
 
-	/* reset Adapter flags*/
-	RTMP_CLEAR_FLAGS(pAd);
-
 	if (MAX_LEN_OF_MAC_TABLE > MAX_AVAILABLE_CLIENT_WCID(pAd))
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("MAX_LEN_OF_MAC_TABLE can not be larger than MAX_AVAILABLE_CLIENT_WCID!!!!\n"));
 		goto err1;
 	}
 
-#ifdef CONFIG_AP_SUPPORT
-	/* Init BssTab & ChannelInfo tabbles for auto channel select.*/
-	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-	{
-		AutoChBssTableInit(pAd);
-		ChannelInfoInit(pAd);
-	}
-#endif /* CONFIG_AP_SUPPORT */
-#ifdef CUSTOMER_DCC_FEATURE
-	/* init rate multiplication and shift factor table */
-	InitRateMultiplicationAndShiftFactor(pAd);
-#endif
-
-#ifdef DOT11_N_SUPPORT
-	/* Allocate BA Reordering memory*/
-	if (ba_reordering_resource_init(pAd, MAX_REORDERING_MPDU_NUM) != TRUE)		
-		goto err1;
-#endif /* DOT11_N_SUPPORT */
 
 #ifdef RESOURCE_PRE_ALLOC
 	Status = RTMPInitTxRxRingMemory(pAd);
@@ -345,8 +346,6 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 #ifdef RT6352
 	if (IS_RT6352(pAd))
 	{
-		RtmpKickOutHwNullFrame(pAd, TRUE, FALSE);
-
 #if defined(RT6352_EP_SUPPORT) || defined(RT6352_EL_SUPPORT)
 		{
 			ULONG SysRegValue;
@@ -360,6 +359,8 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 			}
 		}
 #endif /* defined(RT6352_EP_SUPPORT) || defined(RT6352_EL_SUPPORT) */
+
+		RtmpKickOutHwNullFrame(pAd, TRUE, FALSE);
 
 		/* Do R-Calibration */
 		R_Calibration(pAd);
@@ -416,10 +417,7 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 #ifdef RT6352_EP_SUPPORT
 		if (pAd->bExtPA == FALSE)
 #endif /* RT6352_EP_SUPPORT */
-		{
 			DoDPDCalibration(pAd);
-			pAd->DoDPDCurrTemperature = 0x7FFFFFFF;
-		}
 
 		/* Rx DCOC Calibration */
 		RxDCOC_Calibration(pAd);
@@ -429,6 +427,8 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 
 #if defined(RT6352_EP_SUPPORT) || defined(RT6352_EL_SUPPORT)
 		RT6352_Init_ExtPA_ExtLNA(pAd, FALSE);
+#else
+		printk("MT7620: 2.4GHz iPA/iLNA used.\n");
 #endif /* defined(RT6352_EP_SUPPORT) || defined(RT6352_EL_SUPPORT) */
 	}
 #endif /* RT6352 */
@@ -551,10 +551,10 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 
 				/* Now Enable RxTx*/
 				RTMPEnableRxTx(pAd);
-#ifdef MT762x
+#ifdef MT76x2
 				// TODO: shiang-usw, check why MT76x2 don't need to set this flag here!
-				if (!IS_MT762x(pAd))
-#endif /* MT762x */
+				if (!IS_MT76x2(pAd))
+#endif /* MT76x2 */
 					RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_START_UP);
 
 				/* Let BBP register at 20MHz to do scan */
@@ -692,17 +692,7 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 #endif /* CONFIG_STA_SUPPORT */
 
 	/* auto-fall back settings */
-#ifdef RT6352
-	if (IS_RT6352(pAd))
-		RTMP_IO_WRITE32(pAd, HT_FBK_CFG1, 0xedcba980);
-#endif /* RT6352 */
-#ifdef DOT11N_SS3_SUPPORT
-	if (pAd->CommonCfg.TxStream >= 3)
-	{
-		RTMP_IO_WRITE32(pAd, TX_FBK_CFG_3S_0, 0x12111008);
-		RTMP_IO_WRITE32(pAd, TX_FBK_CFG_3S_1, 0x16151413);
-	}
-#endif /* DOT11N_SS3_SUPPORT */
+	AsicAutoFallbackInit(pAd);
 
 #ifdef STREAM_MODE_SUPPORT
 	RtmpStreamModeInit(pAd);
@@ -959,7 +949,12 @@ VOID RTMPDrvOpen(VOID *pAdSrc)
 	/* WSC hardware push button function 0811 */
 	WSC_HDR_BTN_Init(pAd);
 #endif /* WSC_INCLUDED */
-
+#ifdef CONFIG_AP_SUPPORT
+#ifdef MULTI_CLIENT_SUPPORT
+	/* for Multi-Clients */
+	asic_change_tx_retry(pAd, 1);
+#endif /* MULTI_CLIENT_SUPPORT */
+#endif // CONFIG_AP_SUPPORT //
 #ifdef BTCOEX_CONCURRENT
 	RT28xx_EEPROM_READ16(pAd, 0x22, ee_tmp);
 	btcoex_val.eeprom23=(ee_tmp & 0xFF00)>>8;
@@ -1087,17 +1082,14 @@ VOID RTMPDrvClose(VOID *pAdSrc, VOID *net_dev)
 		os_free_mem(NULL, pAd->CommonCfg.pChDesp);
 	pAd->CommonCfg.pChDesp = NULL;
 	pAd->CommonCfg.DfsType = MAX_RD_REGION;
-	pAd->CommonCfg.bCountryFlag = 0;
 #endif /* EXT_BUILD_CHANNEL_LIST */
 	pAd->CommonCfg.bCountryFlag = FALSE;
-
-
 
 #ifdef WDS_SUPPORT
 	WdsDown(pAd);
 #endif /* WDS_SUPPORT */
 
-	RtmpOsMsDelay(20); /* wait for disconnect requests transmitted */
+	RtmpOsMsDelay(150); /* wait for disconnect requests transmitted */
 
 	for (i = 0 ; i < NUM_OF_TX_RING; i++)
 	{
@@ -1308,7 +1300,7 @@ VOID RTMPDrvClose(VOID *pAdSrc, VOID *net_dev)
 	NdisZeroMemory(&pAd->MacTab, sizeof(MAC_TABLE));
 
 	/* release all timers */
-	RtmpusecDelay(2000);
+	RtmpusecDelay(3000);
 	RTMP_AllTimerListRelease(pAd);
 
 #ifdef ED_MONITOR

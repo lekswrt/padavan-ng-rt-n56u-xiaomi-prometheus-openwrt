@@ -527,8 +527,6 @@ enum IQ_CAL_TYPE {
 /* Bit mask for the Tx ALC and the Tx fine power control */
 /* */
 
-#define DEFAULT_BBP_TX_FINE_POWER_CTRL 	0
-
 #endif /* RTMP_INTERNAL_TX_ALC || RTMP_TEMPERATURE_COMPENSATION */
 
 
@@ -634,7 +632,9 @@ struct _RTMP_CHIP_CAP_ {
 	
 	/* function */
 	/* use UINT8, not bit-or to speed up driver */
+#ifdef WAPI_SUPPORT
 	BOOLEAN FlgIsHwWapiSup;
+#endif /* WAPI_SUPPORT */
 
 	/* VCO calibration mode */
 	UINT8	VcoPeriod; /* default 10s */
@@ -655,9 +655,6 @@ struct _RTMP_CHIP_CAP_ {
 	BOOLEAN FlgHwFifoExtCap;
 #endif /* FIFO_EXT_SUPPORT */
 
-#ifdef RTMP_MAC_PCI
-#endif /* RTMP_MAC_PCI */
-
 	enum ASIC_CAP asic_caps;
 	enum PHY_CAP phy_caps;
 	
@@ -667,11 +664,11 @@ struct _RTMP_CHIP_CAP_ {
 
 #ifdef DYNAMIC_VGA_SUPPORT
 		BOOLEAN dynamic_vga_support;
-		INT32 compensate_level;
 		INT32 avg_rssi_0;
 		INT32 avg_rssi_1;
 		INT32 avg_rssi_all;
 		UCHAR dynamic_chE_mode;
+		BOOLEAN skip_long_range_dync_vga; /* for 7610 runtime turn long_range_dync_vga on/off , default do long_range_dync_vga */
 #endif
 
 
@@ -769,6 +766,7 @@ struct _RTMP_CHIP_CAP_ {
 	UCHAR *RFRegisterVer;
 	
 #ifdef MT76x0
+	UINT32	RXIQBackup;
 	BOOLEAN bDoTemperatureSensor;
 	SHORT TemperatureOffset;			/* reference temperature(e2p[D1h]) */  
 	SHORT LastTemperatureforVCO;
@@ -782,8 +780,10 @@ struct _RTMP_CHIP_CAP_ {
 	UCHAR delta_tw_pwr_bw40_2G;
 	UCHAR delta_tw_pwr_bw80;
 	BOOLEAN bInternalTxALC; /* Internal Tx ALC */
+#ifdef RTMP_TEMPERATURE_COMPENSATION_VGA
 	CHAR LastTempSensorState;
 	BOOLEAN IsTempSensorStateReset;
+#endif /* RTMP_TEMPERATURE_COMPENSATION_VGA */
 #ifdef MT76x0_TSSI_CAL_COMPENSATION
 	UCHAR tssi_info_1;
 	UCHAR tssi_info_2;

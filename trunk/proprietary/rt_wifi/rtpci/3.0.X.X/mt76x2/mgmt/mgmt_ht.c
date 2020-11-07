@@ -38,24 +38,26 @@ INT ht_mode_adjust(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry, HT_CAPABILITY_IE 
 		pEntry->MaxHTPhyMode.field.MODE = MODE_HTGREENFIELD;
 	}
 	else
-	{	
+	{
 		pEntry->MaxHTPhyMode.field.MODE = MODE_HTMIX;
 		pAd->CommonCfg.AddHTInfo.AddHtInfo2.NonGfPresent = 1;
 		pAd->MacTab.fAnyStationNonGF = TRUE;
 	}
 
-	if ((peer->HtCapInfo.ChannelWidth) && (my->ChannelWidth))
+	if ((peer->HtCapInfo.ChannelWidth) && (my->ChannelWidth) && (pAd->CommonCfg.AddHTInfo.AddHtInfo.RecomWidth))
 	{
 		pEntry->MaxHTPhyMode.field.BW= BW_40;
 		pEntry->MaxHTPhyMode.field.ShortGI = ((my->ShortGIfor40) & (peer->HtCapInfo.ShortGIfor40));
 	}
 	else
-	{	
+	{
 		pEntry->MaxHTPhyMode.field.BW = BW_20;
 		pEntry->MaxHTPhyMode.field.ShortGI = ((my->ShortGIfor20) & (peer->HtCapInfo.ShortGIfor20));
 		pAd->MacTab.fAnyStation20Only = TRUE;
 	}
-				
+
+	pEntry->MaxHTPhyMode.field.STBC = (peer->HtCapInfo.RxSTBC & (pAd->CommonCfg.DesiredHtPhy.TxSTBC));
+
 	return TRUE;
 }
 
@@ -383,9 +385,17 @@ VOID RTMPSetHT(
 	if(pHTPhyMode->SHORTGI == GI_400)
 	{
 		ht_cap->HtCapInfo.ShortGIfor20 = 1;
-		ht_cap->HtCapInfo.ShortGIfor40 = 1;
 		rt_ht_cap->ShortGIfor20 = 1;
+		if(pHTPhyMode->BW == BW_40)
+		{
+			ht_cap->HtCapInfo.ShortGIfor40 = 1;
 		rt_ht_cap->ShortGIfor40 = 1;
+	}
+	else
+	{
+			ht_cap->HtCapInfo.ShortGIfor40 = 0;
+			rt_ht_cap->ShortGIfor40 = 0;
+		}
 	}
 	else
 	{
@@ -596,7 +606,7 @@ VOID RTMPSetIndividualHT(RTMP_ADAPTER *pAd, UCHAR apidx)
 		DBGPRINT(RT_DEBUG_WARN, ("RTMPSetIndividualHT: MCS_32 is only supported in 40-MHz, reset it as MCS_0\n"));
 		DesiredMcs = MCS_0;		
 	}
-
+	   		
 #ifdef APCLI_AUTO_BW_SUPPORT
          if (apidx >= MIN_NET_DEVICE_FOR_APCLI)
          {
@@ -636,7 +646,7 @@ VOID RTMPSetIndividualHT(RTMP_ADAPTER *pAd, UCHAR apidx)
 		DBGPRINT(RT_DEBUG_TRACE, ("%s : HT is disabled\n", __FUNCTION__));
 		return;
 	}
-	
+			
 #ifdef APCLI_AUTO_BW_SUPPORT
 ht_enable:		
 #endif /* APCLI_AUTO_BW_SUPPORT */
@@ -702,6 +712,8 @@ ht_enable:
 	else
 		MlmeUpdateHtTxRates(pAd, apidx);
 
+	N_ChannelCheck(pAd); 
+
 #ifdef DOT11_VHT_AC
 	if (WMODE_CAP_AC(pAd->CommonCfg.PhyMode)) {
 		pDesired_ht_phy->bVhtEnable = TRUE;
@@ -721,9 +733,9 @@ ht_enable:
 */
 VOID RTMPDisableDesiredHtInfo(RTMP_ADAPTER *pAd)
 {
+#ifdef CONFIG_AP_SUPPORT
 	struct wifi_dev *wdev;
 
-#ifdef CONFIG_AP_SUPPORT
 	UINT8 idx = 0;
 
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
@@ -741,13 +753,13 @@ VOID RTMPDisableDesiredHtInfo(RTMP_ADAPTER *pAd)
 #endif /* WDS_SUPPORT */
 #ifdef APCLI_SUPPORT
 		for (idx = 0; idx < MAX_APCLI_NUM; idx++)
-		{	
+		{				
 #ifdef APCLI_AUTO_BW_SUPPORT
 			if (!WMODE_CAP_N(pAd->ApCfg.ApCliTab[idx].wdev.PhyMode))
 #endif /* APCLI_AUTO_BW_SUPPORT */		
 			{	
-				RTMPZeroMemory(&pAd->ApCfg.ApCliTab[idx].wdev.DesiredHtPhyInfo, sizeof(RT_PHY_INFO));
-			}
+			RTMPZeroMemory(&pAd->ApCfg.ApCliTab[idx].wdev.DesiredHtPhyInfo, sizeof(RT_PHY_INFO));
+		}
 		}
 #endif /* APCLI_SUPPORT */
 	}
@@ -786,7 +798,7 @@ INT	SetCommonHT(RTMP_ADAPTER *pAd)
 #endif /* APCLI_AUTO_BW_SUPPORT */
 		return FALSE;
 	}
-	
+
 	N_ChannelCheck(pAd);
 	
 #ifdef DOT11_VHT_AC

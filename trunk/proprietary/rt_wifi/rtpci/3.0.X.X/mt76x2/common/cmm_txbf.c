@@ -119,7 +119,7 @@ UCHAR mcsToLowerMcs[] = {
 #endif /* MFB_SUPPORT */
 
 
-#ifdef ETXBF_EN_COND3_SUPPORT
+//#ifdef ETXBF_EN_COND3_SUPPORT
 UCHAR groupShift[] = {4, 4, 4}; 
 UCHAR groupMethod[] = {0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 1, 0, 1, 1, 1, 1,
@@ -130,7 +130,7 @@ SHORT groupThrd[] = {-8, 4, 20, 32, 52, 68, 80, 88,
 UINT dataRate[] = {65, 130, 195, 260, 390, 520, 585, 650,
 				130, 260, 390, 520, 780, 1040, 1170, 1300,
 				190, 390, 585, 780, 1170, 1560, 1755, 1950};
-#endif /* ETXBF_EN_COND3_SUPPORT */
+//#endif /* ETXBF_EN_COND3_SUPPORT */
 
 
 VOID rtmp_asic_set_bf(
@@ -227,8 +227,8 @@ BOOLEAN rtmp_chk_itxbf_calibration(
 	IN RTMP_ADAPTER *pAd)
 {
 #ifndef MT76x2
-    INT calIdx, calCnt;
-    USHORT offset, eeVal, *calptr;
+	INT calIdx, calCnt;
+	USHORT offset, eeVal, *calptr;
     UINT32 ee_sum;
 	USHORT g_caladdr[] = {0x1a0, 0x1a2, 0x1b0, 0x1b2, 0x1b6, 0x1b8};
 	USHORT a_caladdr[] = {0x1a4, 0x1a6, 0x1a8, 0x1aa, 0x1ac, 0x1ae, 0x1b4, 0x1ba, 0x1bc, 0x1be, 0x1c0, 0x1c2, 0x1c4, 0x1c6, 0x1c8};
@@ -256,8 +256,7 @@ BOOLEAN rtmp_chk_itxbf_calibration(
 		offset = *(calptr + calIdx);
 		RT28xx_EEPROM_READ16(pAd, offset, eeVal);
 		ee_sum += eeVal;
-		DBGPRINT(RT_DEBUG_INFO, ("Check EEPROM(offset=0x%x, eeVal=0x%x, ee_sum=0x%x)!\n", 
-					offset, eeVal, ee_sum));
+		DBGPRINT(RT_DEBUG_INFO, ("TxBF Check EEPROM(offset=0x%x, eeVal=0x%x, ee_sum=0x%x)!\n", offset, eeVal, ee_sum));
 		if (eeVal!=0xffff && eeVal!=0)
 			return TRUE;
 	}
@@ -265,8 +264,7 @@ BOOLEAN rtmp_chk_itxbf_calibration(
 	if ((ee_sum == (0xffff * calCnt)) || (ee_sum == 0x0))
 	{
 		bCalibrated = FALSE;
-		DBGPRINT(RT_DEBUG_TRACE, ("EEPROM all 0xffff(cnt =%d, sum=0x%x), not valid calibration value!\n",
-					calCnt, ee_sum));
+		printk("TxBF EEPROM all 0xffff(cnt =%d, sum=0x%x), not valid calibration value!\n", calCnt, ee_sum);
 	}
 #else
     if (pAd->CommonCfg.Channel <= 14)
@@ -275,7 +273,9 @@ BOOLEAN rtmp_chk_itxbf_calibration(
 	}
 	else
 	{
-        bCalibrated = ITxBFGetEEPROM(pAd, &phaseParams, 0, 0, 0);
+    		bCalibrated = ITxBFGetEEPROM(pAd, &phaseParams, 0, 0, 0);
+		if (bCalibrated == FALSE)
+		    printk("TxBF EEPROM not valid calibration values in eeprom!\n");
 	}
 
 #endif /*MT76x2*/
@@ -313,18 +313,25 @@ VOID eTxBFProbing(
  	IN PRTMP_ADAPTER pAd,
 	IN MAC_TABLE_ENTRY	*pEntry)
 {
-	if (pEntry->eTxBfEnCond == 0)	{
+	if (pEntry->eTxBfEnCond == 0)
+	{
 		pEntry->bfState = READY_FOR_SNDG0;
-	}	else if (pEntry->noSndgCnt>=pEntry->noSndgCntThrd)	{
+	}
+	else if (pEntry->noSndgCnt>=pEntry->noSndgCntThrd)
+	{
 		/* Select NDP sounding, maximum streams */
 		pEntry->sndgMcs = (pEntry->ndpSndgStreams==3) ? 16 : 8;
 		Trigger_Sounding_Packet(pAd, SNDG_TYPE_NDP, 0, pEntry->sndgMcs, pEntry);
 
 		pEntry->bfState = WAIT_SNDG_FB0;
 		pEntry->noSndgCnt = 0;
-	}	else if (pEntry->bfState == READY_FOR_SNDG0)	{
+	}
+	else if (pEntry->bfState == READY_FOR_SNDG0)
+	{
 		pEntry->noSndgCnt++;
-	}	else		pEntry->noSndgCnt = 0;
+	}
+	else
+		pEntry->noSndgCnt = 0;
 }
 
 
@@ -394,13 +401,10 @@ void setETxBFCap(RTMP_ADAPTER *pAd, HT_BF_CAP *pTxBFCap)
 #if defined(CONFIG_AP_SUPPORT) && defined(MT76x2)
     IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
     {
-        if (!pAd->CommonCfg.ETxBfeeEn )
-        {
           pTxBFCap->RxNDPCapable =  FALSE;
           pTxBFCap->RxSoundCapable = FALSE;
           pTxBFCap->ExpNoComBF = HT_ExBF_FB_CAP_NONE;
-		  pTxBFCap->ExpComBF = HT_ExBF_FB_CAP_NONE;           
-        }
+          pTxBFCap->ExpComBF = HT_ExBF_FB_CAP_NONE;
     }
 #endif /*CONFIG_AP_SUPPORT && MT76x2*/
 }
@@ -427,12 +431,9 @@ void setVHTETxBFCap(RTMP_ADAPTER *pAd, VHT_CAP_INFO *pTxBFCap)
     // Disable BFee in AP mode to avoid IOT issue, beacuse MT76x2 can not response to 3x3 or 4x4 sounding
 #if defined(CONFIG_AP_SUPPORT) && defined(MT76x2)
     IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-    {   
-        if (!pAd->CommonCfg.ETxBfeeEn )
-        {
+    {
           pTxBFCap->bfee_cap_mu = FALSE;
-    	  pTxBFCap->bfee_cap_su = FALSE;		
-        }
+    	  pTxBFCap->bfee_cap_su = FALSE;
     }
 #endif /*CONFIG_AP_SUPPORT && MT76x2*/
 }
@@ -939,13 +940,12 @@ VOID handleHtcField(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	UCHAR mfb = ((PHT_CONTROL)(pRxBlk->pData))-> MFBorASC;
 	UCHAR mfsi = ((PHT_CONTROL)(pRxBlk->pData))-> MFSI;
 	UCHAR legalMfb = 0, legalMfbIdx=0, smoothMfb = 0;
-	RXWI_STRUC *pRxWI = pRxBlk->pRxWI;
 	MAC_TABLE_ENTRY *pEntry = NULL;	
 	UCHAR i, j;
 	UCHAR *pTable;
 	UCHAR TableSize = 0;
 	UCHAR InitTxRateIdx;
-	UCHAR snr[] = {pRxWI->SNR0, pRxWI->SNR1, pRxWI->SNR2};
+	UCHAR snr[] = {pRxBlk->snr[0], pRxBlk->snr[1], pRxBlk->snr[2]};
 	UCHAR snrTemp1[3];
 	UCHAR snrTemp;
 	UCHAR streams;

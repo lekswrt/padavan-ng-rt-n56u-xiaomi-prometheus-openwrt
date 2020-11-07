@@ -680,45 +680,60 @@ VOID WPARetryExec(
 
         switch (pEntry->AuthMode)
         {
-			case Ndis802_11AuthModeWPA:
-            case Ndis802_11AuthModeWPAPSK:
-			case Ndis802_11AuthModeWPA2:
+	    case Ndis802_11AuthModeWPA:
+	    case Ndis802_11AuthModeWPAPSK:
+	    case Ndis802_11AuthModeWPA2:
             case Ndis802_11AuthModeWPA2PSK:
-				/* 1. GTK already retried, give up and disconnect client. */
-                if (pEntry->ReTryCounter > (GROUP_MSG1_RETRY_TIMER_CTR + 1))
-                {    
-                	/* send wireless event - for group key handshaking timeout */
-					RTMPSendWirelessEvent(pAd, IW_GROUP_HS_TIMEOUT_EVENT_FLAG, pEntry->Addr, pEntry->apidx, 0); 
-					
+
+		/* 1. GTK already retried, give up and disconnect client. */
+        	if (pEntry->ReTryCounter > (GROUP_MSG1_RETRY_TIMER_CTR + 3))
+                {
+		    /* send wireless event - for group key handshaking timeout */
+		    RTMPSendWirelessEvent(pAd, IW_GROUP_HS_TIMEOUT_EVENT_FLAG, pEntry->Addr, pEntry->apidx, 0); 
+
                     DBGPRINT(RT_DEBUG_TRACE, ("WPARetryExec::Group Key HS exceed retry count, Disassociate client, pEntry->ReTryCounter %d\n", pEntry->ReTryCounter));
                     MlmeDeAuthAction(pAd, pEntry, REASON_GROUP_KEY_HS_TIMEOUT, FALSE);
                 }
-				/* 2. Retry GTK. */
+		/* 2. Retry GTK. */
                 else if (pEntry->ReTryCounter > GROUP_MSG1_RETRY_TIMER_CTR)
                 {
                     DBGPRINT(RT_DEBUG_TRACE, ("WPARetryExec::ReTry 2-way group-key Handshake \n"));
                     if (pEntry->GTKState == REKEY_NEGOTIATING)
                     {
                         WPAStart2WayGroupHS(pAd, pEntry);
-			RTMPSetTimer(&pEntry->RetryTimer, PEER_MSG3_RETRY_EXEC_INTV);
                     }
                 }
-				/* 3. 4-way message 1 retried more than three times. Disconnect client */
+                /* 3. 4-way message 3 retried more than three times. Disconnect client */
+                else if (pEntry->ReTryCounter > (PEER_MSG3_RETRY_TIMER_CTR + 3))
+                {
+		    /* send wireless event - for pairwise key handshaking timeout */
+		    RTMPSendWirelessEvent(pAd, IW_PAIRWISE_HS_TIMEOUT_EVENT_FLAG, pEntry->Addr, pEntry->apidx, 0);
+
+                    DBGPRINT(RT_DEBUG_TRACE, ("WPARetryExec::MSG3 timeout, pEntry->ReTryCounter = %d\n", pEntry->ReTryCounter));
+                    MlmeDeAuthAction(pAd, pEntry, REASON_4_WAY_TIMEOUT, FALSE);
+                }
+                /* 4. Retry 4 way message 3 */
+                else if (pEntry->ReTryCounter >= PEER_MSG3_RETRY_TIMER_CTR)
+                {
+		    DBGPRINT(RT_DEBUG_TRACE, ("WPARetryExec::ReTry MSG3 of 4-way Handshake\n"));
+		    WPAPairMsg3Retry(pAd, pEntry, PEER_MSG1_RETRY_EXEC_INTV);
+                }
+		/* 5. 4-way message 1 retried more than three times. Disconnect client */
                 else if (pEntry->ReTryCounter > (PEER_MSG1_RETRY_TIMER_CTR + 3))
                 {
-					/* send wireless event - for pairwise key handshaking timeout */
-					RTMPSendWirelessEvent(pAd, IW_PAIRWISE_HS_TIMEOUT_EVENT_FLAG, pEntry->Addr, pEntry->apidx, 0);
+		    /* send wireless event - for pairwise key handshaking timeout */
+		    RTMPSendWirelessEvent(pAd, IW_PAIRWISE_HS_TIMEOUT_EVENT_FLAG, pEntry->Addr, pEntry->apidx, 0);
 
                     DBGPRINT(RT_DEBUG_TRACE, ("WPARetryExec::MSG1 timeout, pEntry->ReTryCounter = %d\n", pEntry->ReTryCounter));
                     MlmeDeAuthAction(pAd, pEntry, REASON_4_WAY_TIMEOUT, FALSE);
                 }
-				/* 4. Retry 4 way message 1, the last try, the timeout is 3 sec for EAPOL-Start */
-                else if (pEntry->ReTryCounter == (PEER_MSG1_RETRY_TIMER_CTR + 3))                
+		/* 6. Retry 4 way message 1, the last try, the timeout is 3 sec for EAPOL-Start */
+                else if (pEntry->ReTryCounter == (PEER_MSG1_RETRY_TIMER_CTR + 3))
                 {
                     DBGPRINT(RT_DEBUG_TRACE, ("WPARetryExec::Retry MSG1, the last try\n"));
                     WPAStart4WayHS(pAd , pEntry, PEER_MSG3_RETRY_EXEC_INTV);
                 }
-				/* 4. Retry 4 way message 1 */
+		/* 7. Retry 4 way message 1 */
                 else if (pEntry->ReTryCounter < (PEER_MSG1_RETRY_TIMER_CTR + 3))
                 {
                     if ((pEntry->WpaState == AS_PTKSTART) || (pEntry->WpaState == AS_INITPSK) || (pEntry->WpaState == AS_INITPMK))
@@ -831,22 +846,23 @@ VOID GREKEYPeriodicExec(
 						pMbss->Bssid, pMbss->GTK, LEN_TKIP_GTK);
 				
 			/* Process 2-way handshaking */
-            for (i = 0; i < MAX_LEN_OF_MAC_TABLE; i++)
-            {
+        		for (i = 0; i < MAX_LEN_OF_MAC_TABLE; i++)
+        		{
 				MAC_TABLE_ENTRY  *pEntry;
 
 				pEntry = &pAd->MacTab.Content[i];
 				if (IS_ENTRY_CLIENT(pEntry) && 
 					(pEntry->WpaState == AS_PTKINITDONE) &&
 						(pEntry->apidx == apidx))
-                {
+            			{
 					pEntry->GTKState = REKEY_NEGOTIATING;
 #ifdef DROP_MASK_SUPPORT
 					/* Disable Drop Mask */
 					drop_mask_set_per_client(pAd, pEntry, FALSE);
 #endif /* DROP_MASK_SUPPORT */
-                	WPAStart2WayGroupHS(pAd, pEntry);
-                    DBGPRINT(RT_DEBUG_TRACE, ("Rekey interval excess, Update Group Key for  %x %x %x  %x %x %x , DefaultKeyId= %x \n",\
+                			WPAStart2WayGroupHS(pAd, pEntry);
+					pEntry->ReTryCounter = GROUP_MSG1_RETRY_TIMER_CTR;
+                			DBGPRINT(RT_DEBUG_TRACE, ("Rekey interval excess, Update Group Key for  %x %x %x  %x %x %x , DefaultKeyId= %x \n",\
 												pEntry->Addr[0],pEntry->Addr[1],\
 												pEntry->Addr[2],pEntry->Addr[3],\
 												pEntry->Addr[4],pEntry->Addr[5],\

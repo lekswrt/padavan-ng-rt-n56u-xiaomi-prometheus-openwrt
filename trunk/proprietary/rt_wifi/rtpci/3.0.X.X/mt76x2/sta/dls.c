@@ -1279,7 +1279,7 @@ BOOLEAN RTMPRcvFrameDLSCheck(
 				NdisMoveMemory(PairwiseKey.TxMic, &pSTAKey[16], LEN_TKIP_MIC);
 				NdisMoveMemory(PairwiseKey.RxMic, &pSTAKey[24], LEN_TKIP_MIC);
 
-				/*PairwiseKey.CipherAlg = pAd->SharedKey[BSS0][pAd->StaCfg.DefaultKeyId].CipherAlg; */
+				/*PairwiseKey.CipherAlg = pAd->SharedKey[BSS0][pAd->StaCfg.wdev.DefaultKeyId].CipherAlg; */
 				if (pAd->StaCfg.PairCipher == Ndis802_11TKIPEnable)
 					PairwiseKey.CipherAlg = CIPHER_TKIP;
 				else if (pAd->StaCfg.PairCipher == Ndis802_11AESEnable)

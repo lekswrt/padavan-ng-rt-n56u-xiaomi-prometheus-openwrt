@@ -60,15 +60,17 @@ VOID RadarDetectPeriodic(
 	{
 			DBGPRINT(RT_DEBUG_TRACE,
 					("Not found radar signal, start send beacon and radar detection in service monitor\n\n"));
-		    pAd->Dot11_H.RDMode = RD_NORMAL_MODE;
-		    AsicEnableBssSync(pAd);
+		pAd->Dot11_H.RDMode = RD_NORMAL_MODE;
+		AsicEnableBssSync(pAd);
 #ifdef MT76x2
-	        if (IS_MT76x2(pAd)) {
+			if (IS_MT76x2(pAd)) {
 			    
-			    mt76x2_tssi_calibration(pAd, pAd->hw_cfg.cent_ch);
+				mt76x2_tssi_calibration(pAd, pAd->hw_cfg.cent_ch);
 #ifdef TXBF_SUPPORT			    
+#ifdef RALINK_ATE
 			    if (pAd->hw_cfg.cent_ch > 14) 
 			        rtmp_ate_txbf_fix_tank_code(pAd, pAd->hw_cfg.cent_ch, 0);  // load tank code from efuse, iBF only for A band
+#endif
 #endif /* TXBF_SUPPORT */
 				mt76x2_calibration(pAd, pAd->hw_cfg.cent_ch);
 			}
@@ -162,7 +164,7 @@ ULONG JapRadarType(
 	IN PRTMP_ADAPTER pAd)
 {
 	ULONG		i;
-	const UCHAR	Channel[15]={52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140};
+	const UCHAR	Channel[16]={52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144};
 
 	if (pAd->CommonCfg.RDDurRegion != JAP)
 	{

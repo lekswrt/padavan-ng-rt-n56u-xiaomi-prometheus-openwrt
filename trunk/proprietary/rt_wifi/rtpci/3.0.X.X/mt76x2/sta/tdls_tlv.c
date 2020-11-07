@@ -260,7 +260,7 @@ TDLS_InsertCountryIE(
 		UCHAR TmpFrame[256];
 		UCHAR CountryIe = IE_COUNTRY;
 
-		NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
+		NdisZeroMemory(TmpFrame, 256);
 
 		// prepare channel information
 		{

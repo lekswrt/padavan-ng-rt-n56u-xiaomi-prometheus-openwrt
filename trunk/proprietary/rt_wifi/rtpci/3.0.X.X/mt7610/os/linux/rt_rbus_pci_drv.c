@@ -324,6 +324,11 @@ static void rx_done_tasklet(unsigned long data)
 		bReschedule = APRxDoneInterruptHandle(pAd);
 #endif /* CONFIG_AP_SUPPORT */	
 
+#ifdef CONFIG_BA_REORDER_MONITOR
+			if (pAd->BATable.ba_timeout_check) {
+				ba_timeout_flush(pAd);
+			}
+#endif
 
 #ifdef UAPSD_SUPPORT
 	UAPSD_TIMING_RECORD_STOP();
@@ -334,7 +339,7 @@ static void rx_done_tasklet(unsigned long data)
 #ifdef RLT_MAC
 	if (pAd->int_pending & INT_R0_DONE || bReschedule) 
 #else /* RLT_MAC */
-	if (pAd->int_pending & INT_RX || bReschedule) 
+	if ((pAd->int_pending & INT_RX) || bReschedule) 
 #endif /* !RLT_MAC */
 	{
 		RTMP_OS_TASKLET_SCHE(&pObj->rx_done_task);

@@ -8,21 +8,29 @@
 INT scan_ch_restore(RTMP_ADAPTER *pAd, UCHAR OpMode)
 {
 	INT bw, ch;
-		
+
+#ifdef DOT11_VHT_AC
+	if (WMODE_CAP(pAd->CommonCfg.PhyMode, WMODE_AC) &&
+		(pAd->CommonCfg.Channel > 14) &&
+		(pAd->hw_cfg.bbp_bw == BW_80) &&
+		(pAd->CommonCfg.vht_bw == VHT_BW_80) &&
+		(pAd->CommonCfg.vht_cent_ch != pAd->CommonCfg.CentralChannel)) {
+		pAd->CommonCfg.vht_cent_ch = vht_cent_ch_freq(pAd, pAd->CommonCfg.Channel);
+	}
+
+	if (pAd->hw_cfg.bbp_bw == BW_80)
+		pAd->hw_cfg.cent_ch = pAd->CommonCfg.vht_cent_ch;
+	else
+#endif /* DOT11_VHT_AC */
+		pAd->hw_cfg.cent_ch = pAd->CommonCfg.CentralChannel;
+
 	if (pAd->CommonCfg.BBPCurrentBW != pAd->hw_cfg.bbp_bw)
 		rtmp_bbp_set_bw(pAd, pAd->hw_cfg.bbp_bw);
 
-	if (pAd->hw_cfg.bbp_bw == BW_80)
-		ch = pAd->CommonCfg.vht_cent_ch;
-	else if (pAd->hw_cfg.bbp_bw == BW_40)
-		ch = pAd->CommonCfg.CentralChannel;
-	else
-		ch = pAd->CommonCfg.Channel;
+	AsicSwitchChannel(pAd, pAd->hw_cfg.cent_ch, FALSE);
+	AsicLockChannel(pAd, pAd->hw_cfg.cent_ch);
 
-	ASSERT((ch != 0));
-	AsicSwitchChannel(pAd, ch, FALSE); 
-	AsicLockChannel(pAd, ch);
-
+	ch = pAd->hw_cfg.cent_ch;
 
 	switch(pAd->CommonCfg.BBPCurrentBW)
 	{
@@ -42,14 +50,18 @@ INT scan_ch_restore(RTMP_ADAPTER *pAd, UCHAR OpMode)
 	}
 	DBGPRINT(RT_DEBUG_TRACE, ("SYNC - End of SCAN, restore to %dMHz channel %d, Total BSS[%02d]\n",
 				bw, ch, pAd->ScanTab.BssNr));
-		
+
 
 #ifdef CONFIG_AP_SUPPORT
 	if (OpMode == OPMODE_AP)
 	{
 #ifdef APCLI_SUPPORT
 #ifdef APCLI_AUTO_CONNECT_SUPPORT
-			if (pAd->ApCfg.ApCliAutoConnectRunning == TRUE)
+			if ((pAd->ApCfg.ApCliAutoConnectRunning == TRUE)
+#ifdef AP_PARTIAL_SCAN_SUPPORT
+				&& (pAd->ApCfg.bPartialScanning == FALSE)
+#endif /* AP_PARTIAL_SCAN_SUPPORT */
+			    )
 			{
 				if (!ApCliAutoConnectExec(pAd))
 				{
@@ -95,9 +107,9 @@ INT scan_ch_restore(RTMP_ADAPTER *pAd, UCHAR OpMode)
 			APStartUp(pAd);
 		}
 
-		if ((pAd->CommonCfg.Channel > 14) &&
+		if (((pAd->CommonCfg.Channel > 14) &&
 			(pAd->CommonCfg.bIEEE80211H == TRUE) &&
-			RadarChannelCheck(pAd, pAd->CommonCfg.Channel) &&
+			RadarChannelCheck(pAd, pAd->CommonCfg.Channel)) &&
 			pAd->Dot11_H.RDMode != RD_SWITCHING_MODE)
 		{
 			if (pAd->Dot11_H.InServiceMonitorCount)
@@ -421,6 +433,7 @@ VOID ScanNextChannel(
 		if (ScanType == FAST_SCAN_ACTIVE) {
 			RTMPSetTimer(&pAd->MlmeAux.APScanTimer, MIN_CHANNEL_TIME);//Carter test MIN_CHANNEL_TIME instead of Fast_Scan_Time
 			pAd->ApCfg.ScanChannelCnt++;
+			stay_time = FAST_ACTIVE_SCAN_TIME;
 		}
 		else /* must be SCAN_PASSIVE or SCAN_ACTIVE*/
 #endif
@@ -441,7 +454,11 @@ VOID ScanNextChannel(
 					stay_time = MIN_CHANNEL_TIME;
 			}
 			else
-				stay_time = MAX_CHANNEL_TIME;
+				/* for long beacon interval need more time for scan */
+				if (pAd->CommonCfg.BeaconPeriod > 80)
+				    stay_time = MAX_CHANNEL_TIME + pAd->CommonCfg.BeaconPeriod;
+				else
+				    stay_time = MAX_CHANNEL_TIME;
 		}
 				
 		RTMPSetTimer(sc_timer, stay_time);

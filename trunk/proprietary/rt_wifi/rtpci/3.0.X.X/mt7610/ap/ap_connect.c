@@ -27,9 +27,6 @@
 
 #include "rt_config.h"
 
-UCHAR PowerConstraintIE[3] = {IE_POWER_CONSTRAINT, 1, 3};
-
-
 /*
 	==========================================================================
 	Description:
@@ -51,6 +48,18 @@ BOOLEAN BeaconTransmitRequired(
 
 	do
 	{
+
+	if (RTMP_TEST_FLAG(pAd, (fRTMP_ADAPTER_RADIO_OFF)))
+		break;
+
+#ifdef DOT11K_RRM_SUPPORT
+#ifdef QUIET_SUPPORT_TXSTOP
+	if ((apidx < pAd->ApCfg.BssidNum)
+		&& IS_RRM_QUIET(pAd, apidx))
+		break;
+#endif /* QUIET_SUPPORT */
+#endif /* DOT11K_RRM_SUPPORT */
+
 #ifdef WDS_SUPPORT
 		if (pAd->WdsTab.Mode == WDS_BRIDGE_MODE)
 			break;
@@ -187,6 +196,15 @@ VOID APMakeBssBeacon(RTMP_ADAPTER *pAd, INT apidx)
 #endif /* EXT_BUILD_CHANNEL_LIST */
 
 
+#ifdef DOT11K_RRM_SUPPORT
+			if (IS_RRM_ENABLE(pAd, apidx))
+			{
+				TmpLen2 = 0;
+				NdisZeroMemory(TmpFrame, 256);
+				RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2);
+			}		
+#endif /* DOT11K_RRM_SUPPORT */
+
 			/* need to do the padding bit check, and concatenate it */
 			if ((TmpLen2%2) == 0)
 			{
@@ -216,9 +234,29 @@ VOID APMakeBssBeacon(RTMP_ADAPTER *pAd, INT apidx)
 			DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
 	}
 
+#ifdef DOT11K_RRM_SUPPORT
+	if (IS_RRM_ENABLE(pAd, apidx))
+	{
+		InsertTpcReportIE(pAd, pBeaconFrame+FrameLen, &FrameLen,
+			RTMP_GetTxPwr(pAd, pAd->CommonCfg.MlmeTransmit), 0);
+		RRM_InsertRRMEnCapIE(pAd, pBeaconFrame+FrameLen, &FrameLen, apidx);
+	}
+#endif /* DOT11K_RRM_SUPPORT */
 
 #ifdef DOT11_N_SUPPORT
 	/* AP Channel Report */
+#ifdef DOT11K_RRM_SUPPORT
+	for (i=0; i<MAX_NUM_OF_REGULATORY_CLASS; i++)
+	{
+		if (pAd->CommonCfg.RegulatoryClass[i] == 0)
+			break;
+
+		InsertChannelRepIE(pAd, pBeaconFrame+FrameLen, &FrameLen,
+							(PSTRING)pAd->CommonCfg.CountryCode,
+							pAd->CommonCfg.RegulatoryClass[i], NULL);
+
+	}
+#else
 	{
 		UCHAR APChannelReportIe = IE_AP_CHANNEL_REPORT;
 		ULONG	TmpLen;
@@ -229,7 +267,7 @@ VOID APMakeBssBeacon(RTMP_ADAPTER *pAd, INT apidx)
 				class 33, channel set 5-11
 		*/
 		UCHAR rclass32[]={32, 1, 2, 3, 4, 5, 6, 7};
-        UCHAR rclass33[]={33, 5, 6, 7, 8, 9, 10, 11};
+    		UCHAR rclass33[]={33, 5, 6, 7, 8, 9, 10, 11};
 		UCHAR rclasslen = 8; /*sizeof(rclass32); */
 		if (PhyMode == (WMODE_B | WMODE_G | WMODE_GN))
 		{
@@ -241,12 +279,28 @@ VOID APMakeBssBeacon(RTMP_ADAPTER *pAd, INT apidx)
 							  1,                    &rclasslen,
 							  rclasslen,            rclass33,
 							  END_OF_ARGS);
-			FrameLen += TmpLen;		
+			FrameLen += TmpLen;
 		}
 	}
-
+#endif /* DOT11K_RRM_SUPPORT */
 #endif /* DOT11_N_SUPPORT */
 
+#ifdef DOT11R_FT_SUPPORT
+	/* The Mobility Domain information element (MDIE) is present in Beacon
+	** frame when dot11FastBssTransitionEnable is set to true. */
+	if (pAd->ApCfg.MBSSID[apidx].FtCfg.FtCapFlag.Dot11rFtEnable)
+	{
+		PFT_CFG pFtCfg = &pAd->ApCfg.MBSSID[apidx].FtCfg;
+		FT_CAP_AND_POLICY FtCap;
+		NdisZeroMemory(&FtCap, sizeof(FT_CAP_AND_POLICY));
+		FtCap.field.FtOverDs = pFtCfg->FtCapFlag.FtOverDs;
+		FtCap.field.RsrReqCap = pFtCfg->FtCapFlag.RsrReqCap;
+		FT_InsertMdIE(pAd, pBeaconFrame + FrameLen, &FrameLen,
+						pFtCfg->FtMdId, FtCap);
+	}
+#endif /* DOT11R_FT_SUPPORT */
+
+	BeaconTransmit.word = 0;
 
 	RTMPWriteTxWI(pAd, &pAd->BeaconTxWI, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, 0, BSS0Mcast_WCID, 
 		FrameLen, PID_MGMT, 0, 0,IFS_HTTXOP, FALSE, &BeaconTransmit);
@@ -309,7 +363,9 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 	MULTISSID_STRUCT *pMbss;
 	COMMON_CONFIG *pComCfg;
 	UCHAR PhyMode;
+#ifdef WSC_AP_SUPPORT
 	BOOLEAN bHasWpsIE = FALSE;
+#endif
 	UINT  i;
 	HTTRANSMIT_SETTING	BeaconTransmit = {.word = 0};   /* MGMT frame PHY rate setting when operatin at Ht rate. */
 
@@ -325,8 +381,8 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 		step 1 - update BEACON's Capability
 	*/
 	ptr = pBeaconFrame + pMbss->CapabilityInfoLocationInBeacon;
-	*ptr = (UCHAR)(pMbss->CapabilityInfo & 0x00ff);
-	*(ptr+1) = (UCHAR)((pMbss->CapabilityInfo & 0xff00) >> 8);
+	//prevent little/big endian issue. and let asic_write_bcn_buf() handle it.
+	*(UINT16 *)ptr = pMbss->CapabilityInfo;
 
 	/*
 		step 2 - update TIM IE
@@ -377,30 +433,28 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 	/* adjust BEACON length according to the new TIM */
 	FrameLen += (2 + *(ptr+1)); 
 
+#ifdef WSC_AP_SUPPORT
 #ifdef HOSTAPD_SUPPORT
 	if ( pAd->ApCfg.MBSSID[apidx].HostapdWPS && (pAd->ApCfg.MBSSID[apidx].WscIEBeacon.ValueLen))
 		bHasWpsIE = TRUE;
 #endif
 
-#ifdef WSC_AP_SUPPORT
     /* add Simple Config Information Element */
     if (((pAd->ApCfg.MBSSID[apidx].WscControl.WscConfMode >= 1) && (pAd->ApCfg.MBSSID[apidx].WscIEBeacon.ValueLen)))
     {
     	bHasWpsIE = TRUE;
     }
-#endif /* WSC_AP_SUPPORT */
 
-	if (bHasWpsIE)
+    if (bHasWpsIE)
     {
 		ULONG WscTmpLen = 0;
-        
+
 		MakeOutgoingFrame(pBeaconFrame+FrameLen,                            &WscTmpLen,
 						  pAd->ApCfg.MBSSID[apidx].WscIEBeacon.ValueLen,    pAd->ApCfg.MBSSID[apidx].WscIEBeacon.Value,
                               END_OF_ARGS);
 		FrameLen += WscTmpLen;		  
     }
 
-#ifdef WSC_AP_SUPPORT
     if ((pAd->ApCfg.MBSSID[apidx].WscControl.WscConfMode != WSC_DISABLE) &&
 #ifdef DOT1X_SUPPORT
         (pAd->ApCfg.MBSSID[apidx].IEEE8021X == FALSE) && 
@@ -475,12 +529,12 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 			ptr += 2; // skip len
 
 			if (pComCfg->RegTransmitSetting.field.BW == BW_40) {
-				WIDE_BW_CH_SWITCH_IE wb_info;
+				WIDE_BW_CH_SWITCH_ELEMENT wb_info;
 
 				*ptr = IE_WIDE_BW_CH_SWITCH;
-				*(ptr + 1) = sizeof(WIDE_BW_CH_SWITCH_IE);
+				*(ptr + 1) = sizeof(WIDE_BW_CH_SWITCH_ELEMENT);
 				ptr += 2;
-				NdisZeroMemory(&wb_info, sizeof(WIDE_BW_CH_SWITCH_IE));
+				NdisZeroMemory(&wb_info, sizeof(WIDE_BW_CH_SWITCH_ELEMENT));
 				if (pComCfg->vht_bw == VHT_BW_2040)
 					wb_info.new_ch_width = 0;
 				else
@@ -490,8 +544,8 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 					wb_info.center_freq_1 = vht_cent_ch_freq(pAd, pComCfg->Channel);
 					wb_info.center_freq_2 = 0;
 				}
-				NdisMoveMemory(ptr, &wb_info, sizeof(WIDE_BW_CH_SWITCH_IE));
-				wb_len = sizeof(WIDE_BW_CH_SWITCH_IE);
+				NdisMoveMemory(ptr, &wb_info, sizeof(WIDE_BW_CH_SWITCH_ELEMENT));
+				wb_len = sizeof(WIDE_BW_CH_SWITCH_ELEMENT);
 				ptr += wb_len;
 				wb_len += 2;
 			}
@@ -541,6 +595,7 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 						  END_OF_ARGS);
 #else
 		NdisMoveMemory(&HtCapabilityTmp, &pComCfg->HtCapability, HtLen);
+		HtCapabilityTmp.HtCapInfo.ChannelWidth = pComCfg->AddHTInfo.AddHtInfo.RecomWidth;
 		*(USHORT *)(&HtCapabilityTmp.HtCapInfo) = SWAP16(*(USHORT *)(&HtCapabilityTmp.HtCapInfo));
 #ifdef UNALIGNMENT_SUPPORT
 		{
@@ -610,7 +665,6 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 	}
 #endif /* DOT11_N_SUPPORT */
 
-#if defined(DOT11N_DRAFT3) || defined(DOT11V_WNM_SUPPORT)
 	/* 7.3.2.27 Extended Capabilities IE */
 	{
 		ULONG TmpLen, infoPos;
@@ -636,6 +690,12 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 #endif /* DOT11N_DRAFT3 */
 #endif /* DOT11_N_SUPPORT */
 
+#ifdef DOT11_VHT_AC
+		if (WMODE_CAP_AC(PhyMode) &&
+			(pAd->CommonCfg.Channel > 14))
+			extCapInfo.operating_mode_notification = 1;
+#endif /* DOT11_VHT_AC */
+
 		pInfo = (PUCHAR)(&extCapInfo);
 		for (infoPos = 0; infoPos < extInfoLen; infoPos++)
 		{
@@ -648,6 +708,14 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 
 		if (bNeedAppendExtIE == TRUE)
 		{
+			for (infoPos = (extInfoLen - 1); infoPos >= EXT_CAP_MIN_SAFE_LENGTH; infoPos--) 
+			{
+				if (pInfo[infoPos] == 0)
+					extInfoLen --;
+				else
+					break;
+			}
+
 			MakeOutgoingFrame(pBeaconFrame+FrameLen, &TmpLen,
 							1, &ExtCapIe,
 							1, &extInfoLen,
@@ -656,8 +724,6 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 			FrameLen += TmpLen;
 		}
 	}
-#endif /* defined(DOT11N_DRAFT3) || defined(DOT11V_WNM_SUPPORT) */
-
 
 	if ((pMbss->AuthMode == Ndis802_11AuthModeWPA) || 
 		(pMbss->AuthMode == Ndis802_11AuthModeWPAPSK))
@@ -738,12 +804,17 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 	}
 #endif /* AP_QLOAD_SUPPORT */
 
-#ifdef A_BAND_SUPPORT
-	/* 
-		Only 802.11a APs that comply with 802.11h are required to include a 
-		Power Constrint Element(IE=32) in beacons and probe response frames
+	/*
+		Only APs that comply with 802.11h or 802.11k are required to include
+		the Power Constraint element (IE=32) and
+		the TPC Report element (IE=35) and
+		the VHT Transmit Power Envelope element (IE=195)
+		in beacon frames and probe response frames
 	*/
 	if (((pComCfg->Channel > 14) && pComCfg->bIEEE80211H == TRUE)
+#ifdef DOT11K_RRM_SUPPORT
+		|| IS_RRM_ENABLE(pAd, apidx)
+#endif /* DOT11K_RRM_SUPPORT */
 		)
 	{
 		ULONG TmpLen;
@@ -775,8 +846,92 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 		}
 #endif /* DOT11_VHT_AC */
 	}
-#endif /* A_BAND_SUPPORT */
 
+#ifdef DOT11K_RRM_SUPPORT
+	if (IS_RRM_ENABLE(pAd, apidx))
+	{
+		InsertTpcReportIE(pAd, pBeaconFrame+FrameLen, &FrameLen,
+			RTMP_GetTxPwr(pAd, pAd->CommonCfg.MlmeTransmit), 0);
+		RRM_InsertRRMEnCapIE(pAd, pBeaconFrame+FrameLen, &FrameLen, apidx);
+	}
+#endif /* DOT11K_RRM_SUPPORT */
+
+#ifdef DOT11K_RRM_SUPPORT
+	if (IS_RRM_ENABLE(pAd, apidx))
+	{
+#ifdef QUIET_SUPPORT
+		PRRM_QUIET_CB pQuietCB = &pMbss->RrmCfg.QuietCB;
+		RRM_InsertQuietIE(pAd, pBeaconFrame+FrameLen, &FrameLen,
+				pQuietCB->QuietCnt ,pQuietCB->QuietPeriod,
+				pQuietCB->QuietDuration, pQuietCB->QuietOffset);
+#endif /* QUIET_SUPPORT */
+#ifndef APPLE_11K_IOT
+		/* Insert BSS AC Access Delay IE. */
+		RRM_InsertBssACDelayIE(pAd, pBeaconFrame+FrameLen, &FrameLen);
+
+		/* Insert BSS Available Access Capacity IE. */
+		RRM_InsertBssAvailableACIE(pAd, pBeaconFrame+FrameLen, &FrameLen);
+#endif /* !APPLE_11K_IOT */
+
+	}
+#endif /* DOT11K_RRM_SUPPORT */
+
+#ifdef DOT11_N_SUPPORT
+	/* AP Channel Report */
+#ifdef DOT11K_RRM_SUPPORT
+	for (i=0; i<MAX_NUM_OF_REGULATORY_CLASS; i++)
+	{
+		if (pAd->CommonCfg.RegulatoryClass[i] == 0)
+			break;
+
+		InsertChannelRepIE(pAd, pBeaconFrame+FrameLen, &FrameLen,
+							(PSTRING)pAd->CommonCfg.CountryCode,
+							pAd->CommonCfg.RegulatoryClass[i], NULL);
+
+	}
+#else
+	{
+		UCHAR APChannelReportIe = IE_AP_CHANNEL_REPORT;
+		ULONG	TmpLen;
+
+		/*
+			802.11n D2.0 Annex J, USA regulatory 
+				class 32, channel set 1~7
+				class 33, channel set 5-11
+		*/
+		UCHAR rclass32[]={32, 1, 2, 3, 4, 5, 6, 7};
+    		UCHAR rclass33[]={33, 5, 6, 7, 8, 9, 10, 11};
+		UCHAR rclasslen = 8; /*sizeof(rclass32); */
+		if (PhyMode == (WMODE_B | WMODE_G | WMODE_GN))
+		{
+			MakeOutgoingFrame(pBeaconFrame+FrameLen,&TmpLen,
+							  1,                    &APChannelReportIe,
+							  1,                    &rclasslen,
+							  rclasslen,            rclass32,
+   							  1,                    &APChannelReportIe,
+							  1,                    &rclasslen,
+							  rclasslen,            rclass33,
+							  END_OF_ARGS);
+			FrameLen += TmpLen;
+		}
+	}
+#endif /* DOT11K_RRM_SUPPORT */
+#endif /* DOT11_N_SUPPORT */
+
+#ifdef DOT11R_FT_SUPPORT
+	/* The Mobility Domain information element (MDIE) is present in Beacon
+	** frame when dot11FastBssTransitionEnable is set to true. */
+	if (pAd->ApCfg.MBSSID[apidx].FtCfg.FtCapFlag.Dot11rFtEnable)
+	{
+		PFT_CFG pFtCfg = &pAd->ApCfg.MBSSID[apidx].FtCfg;
+		FT_CAP_AND_POLICY FtCap;
+		NdisZeroMemory(&FtCap, sizeof(FT_CAP_AND_POLICY));
+		FtCap.field.FtOverDs = pFtCfg->FtCapFlag.FtOverDs;
+		FtCap.field.RsrReqCap = pFtCfg->FtCapFlag.RsrReqCap;
+		FT_InsertMdIE(pAd, pBeaconFrame + FrameLen, &FrameLen,
+						pFtCfg->FtMdId, FtCap);
+	}
+#endif /* DOT11R_FT_SUPPORT */
 
 #ifdef DOT11_N_SUPPORT
 	if (WMODE_CAP_N(PhyMode) && 
@@ -860,25 +1015,25 @@ VOID APUpdateBeaconFrame(RTMP_ADAPTER *pAd, INT apidx)
 #endif /* DOT11_N_SUPPORT */
 
    	/* add Ralink-specific IE here - Byte0.b0=1 for aggregation, Byte0.b1=1 for piggy-back */
-{
-	ULONG TmpLen;
-	UCHAR RalinkSpecificIe[9] = {IE_VENDOR_SPECIFIC, 7, 0x00, 0x0c, 0x43, 0x00, 0x00, 0x00, 0x00};
+	if (pComCfg->bAggregationCapable || pComCfg->bPiggyBackCapable || pComCfg->bRdg)
+	{
+	    ULONG TmpLen;
+	    UCHAR RalinkSpecificIe[9] = {IE_VENDOR_SPECIFIC, 7, 0x00, 0x0c, 0x43, 0x00, 0x00, 0x00, 0x00};
 
-	if (pComCfg->bAggregationCapable)
+	    if (pComCfg->bAggregationCapable)
 		RalinkSpecificIe[5] |= 0x1;
-	if (pComCfg->bPiggyBackCapable)
+	    if (pComCfg->bPiggyBackCapable)
 		RalinkSpecificIe[5] |= 0x2;
 #ifdef DOT11_N_SUPPORT
-	if (pComCfg->bRdg)
+	    if (pComCfg->bRdg)
 		RalinkSpecificIe[5] |= 0x4;
 #endif /* DOT11_N_SUPPORT */
-	MakeOutgoingFrame(pBeaconFrame+FrameLen, &TmpLen,
+	    MakeOutgoingFrame(pBeaconFrame+FrameLen, &TmpLen,
 						9,                   RalinkSpecificIe,
 						END_OF_ARGS);
-	FrameLen += TmpLen;
+	    FrameLen += TmpLen;
 
-}
-	
+	}
 
 	/* step 6. Since FrameLen may change, update TXWI. */
 #ifdef A_BAND_SUPPORT

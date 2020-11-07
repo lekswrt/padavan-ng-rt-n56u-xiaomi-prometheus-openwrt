@@ -44,6 +44,7 @@
 #define BAND_WIDTH_80		2
 #define BAND_WIDTH_BOTH		3
 #define BAND_WIDTH_10		4	/* 802.11j has 10MHz. This definition is for internal usage. doesn't fill in the IE or other field. */
+#define BAND_WIDTH_160		3
 
 
 /* SHORTGI */
@@ -65,17 +66,11 @@
 
 #define NDIS_802_11_LENGTH_RATES        8
 #define NDIS_802_11_LENGTH_RATES_EX     16
-#define MAC_ADDR_LEN                 6
+#define MAC_ADDR_LEN			6
 /*#define MAX_NUM_OF_CHS					49 */ /* 14 channels @2.4G +  12@UNII + 4 @MMAC + 11 @HiperLAN2 + 7 @Japan + 1 as NULL terminationc */
 /*#define MAX_NUM_OF_CHS             		54 */ /* 14 channels @2.4G +  12@UNII(lower/middle) + 16@HiperLAN2 + 11@UNII(upper) + 0 @Japan + 1 as NULL termination */
 #define MAX_NUMBER_OF_EVENT				10	/* entry # in EVENT table */
-
-#ifdef CONFIG_RT_MAX_CLIENTS
-#define MAX_NUMBER_OF_MAC			CONFIG_RT_MAX_CLIENTS
-#else
-#define MAX_NUMBER_OF_MAC			32
-#endif
-
+#define MAX_NUMBER_OF_MAC				CONFIG_MAX_CLIENTS	/* if MAX_MBSSID_NUM is 8, this value can't be larger than 211 */
 #define MAX_NUMBER_OF_ACL				64
 #define MAX_LENGTH_OF_SUPPORT_RATES		12	/* 1, 2, 5.5, 11, 6, 9, 12, 18, 24, 36, 48, 54 */
 #define MAX_NUMBER_OF_DLS_ENTRY			4
@@ -86,6 +81,18 @@
 #define RT_SET_APD_PID						0x0405
 #define RT_SET_DEL_MAC_ENTRY				0x0406
 #define RT_QUERY_EVENT_TABLE            	0x0407
+#ifdef DOT11R_FT_SUPPORT
+#define RT_SET_FT_STATION_NOTIFY			0x0408
+#define RT_SET_FT_KEY_REQ					0x0409
+#define RT_SET_FT_KEY_RSP					0x040a
+#define RT_FT_KEY_SET						0x040b
+#define RT_FT_DATA_ENCRYPT					0x040c
+#define RT_FT_DATA_DECRYPT					0x040d
+#define RT_FT_NEIGHBOR_REPORT				0x040e
+#define RT_FT_NEIGHBOR_REQUEST				0x040f
+#define RT_FT_NEIGHBOR_RESPONSE				0x0410
+#define RT_FT_ACTION_FORWARD				0x0411
+#endif /* DOT11R_FT_SUPPORT */
 /* */
 /* IEEE 802.11 OIDs */
 /* */
@@ -152,6 +159,10 @@
 #define OID_802_DOT1X_WPA_KEY						0x0543
 #define OID_802_DOT1X_STATIC_WEP_COPY				0x0544
 #define OID_802_DOT1X_IDLE_TIMEOUT					0x0545
+#define OID_802_DOT1X_RADIUS_ACL_NEW_CACHE          0x0546
+#define OID_802_DOT1X_RADIUS_ACL_DEL_CACHE          0x0547
+#define OID_802_DOT1X_RADIUS_ACL_CLEAR_CACHE        0x0548
+#define OID_802_DOT1X_QUERY_STA_AID                 0x0549
 #endif /* DOT1X_SUPPORT */
 
 #define	RT_OID_DEVICE_NAME							0x0607
@@ -541,6 +552,7 @@ typedef struct GNU_PACKED _DOT1X_CMM_CONF {
 	UINT32 Length;		/* Length of this structure */
 	UCHAR mbss_num;		/* indicate multiple BSS number */
 	UINT32 own_ip_addr;
+	UINT32 own_radius_port; /* for compat stubs */
 	UINT32 retry_interval;
 	UINT32 session_timeout_interval;
 	UINT32 quiet_interval;
@@ -549,12 +561,19 @@ typedef struct GNU_PACKED _DOT1X_CMM_CONF {
 	UCHAR PreAuthifname[8][IFNAMSIZ];
 	UCHAR PreAuthifname_len[8];
 	DOT1X_BSS_INFO Dot1xBssInfo[8];
+	UCHAR RadiusAclEnable[8]; /* for compat stubs */
+	UINT32 AclCacheTimeout[8];/* for compat stubs */
 } DOT1X_CMM_CONF, *PDOT1X_CMM_CONF;
 
 typedef struct GNU_PACKED _DOT1X_IDLE_TIMEOUT {
 	UCHAR StaAddr[6];
 	UINT32 idle_timeout;
 } DOT1X_IDLE_TIMEOUT, *PDOT1X_IDLE_TIMEOUT;
+
+typedef struct GNU_PACKED _DOT1X_QUERY_STA_AID {
+	UCHAR StaAddr[MAC_ADDR_LEN];
+	UINT aid;
+} DOT1X_QUERY_STA_AID, *PDOT1X_QUERY_STA_AID;
 #endif /* DOT1X_SUPPORT */
 
 #ifdef CONFIG_AP_SUPPORT
@@ -784,7 +803,7 @@ typedef enum _NDIS_802_11_MEDIA_STREAM_MODE {
 /* PMKID Structures */
 typedef UCHAR NDIS_802_11_PMKID_VALUE[16];
 
-#if defined(CONFIG_STA_SUPPORT) || defined(APCLI_WPA_SUPPLICANT_SUPPORT)
+#if defined(APCLI_WPA_SUPPLICANT_SUPPORT)
 typedef struct _BSSID_INFO {
 	NDIS_802_11_MAC_ADDRESS BSSID;
 	NDIS_802_11_PMKID_VALUE PMKID;
@@ -795,7 +814,7 @@ typedef struct _NDIS_802_11_PMKID {
 	UINT BSSIDInfoCount;
 	BSSID_INFO BSSIDInfo[1];
 } NDIS_802_11_PMKID, *PNDIS_802_11_PMKID;
-#endif /* defined(CONFIG_STA_SUPPORT) || defined(APCLI_WPA_SUPPLICANT_SUPPORT) */
+#endif /* defined(APCLI_WPA_SUPPLICANT_SUPPORT) */
 
 #ifdef CONFIG_AP_SUPPORT
 #ifdef APCLI_WPA_SUPPLICANT_SUPPORT
@@ -815,7 +834,7 @@ typedef struct _AP_BSSID_INFO {
 	BOOLEAN Valid;
 } AP_BSSID_INFO, *PAP_BSSID_INFO;
 
-#define MAX_PMKID_COUNT		8
+#define MAX_PMKID_COUNT	128
 typedef struct _NDIS_AP_802_11_PMKID {
 	AP_BSSID_INFO BSSIDInfo[MAX_PMKID_COUNT];
 } NDIS_AP_802_11_PMKID, *PNDIS_AP_802_11_PMKID;
@@ -924,35 +943,21 @@ typedef struct _NDIS_802_11_CAPABILITY {
 #define RT_OID_WSC_SET_CON_WPS_STOP                 0x0764
 #endif /* CON_WPS */
 
-
-
-
 /* New for MeetingHouse Api support */
 #define OID_MH_802_1X_SUPPORTED               0xFFEDC100
 
 /* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
 typedef union _HTTRANSMIT_SETTING {
-#ifdef RT_BIG_ENDIAN
 	struct {
-		USHORT MODE:3;	/* Use definition MODE_xxx. */
-		USHORT iTxBF:1;
-		USHORT eTxBF:1;
-		USHORT STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
+		USHORT MCS:6;		/* MCS */
+		USHORT ldpc:1;
+		USHORT BW:2;		/* channel bandwidth 20MHz/40/80 MHz */
 		USHORT ShortGI:1;
-		USHORT BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
-		USHORT MCS:7;	/* MCS */
-	} field;
-#else
-	struct {
-		USHORT MCS:7;
-		USHORT BW:2;
-		USHORT ShortGI:1;
-		USHORT STBC:1;
+		USHORT STBC:1;		/* only support in HT/VHT mode with MCS0~7 */
 		USHORT eTxBF:1;
 		USHORT iTxBF:1;
-		USHORT MODE:3;
+		USHORT MODE:3;		/* Use definition MODE_xxx. */
 	} field;
-#endif
 	USHORT word;
 } HTTRANSMIT_SETTING, *PHTTRANSMIT_SETTING;
 
@@ -1034,21 +1039,6 @@ typedef struct _RT_802_11_EVENT_TABLE {
 } RT_802_11_EVENT_TABLE, *PRT_802_11_EVENT_TABLE;
 #endif /* SYSTEM_LOG_SUPPORT */
 
-/* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
-typedef union _MACHTTRANSMIT_SETTING {
-	struct {
-		USHORT MCS:6;
-		USHORT ldpc:1;
-		USHORT BW:2;
-		USHORT ShortGI:1;
-		USHORT STBC:1;
-		USHORT eTxBF:1;
-		USHORT iTxBF:1;
-		USHORT MODE:3;
-	} field;
-	USHORT word;
-} MACHTTRANSMIT_SETTING, *PMACHTTRANSMIT_SETTING;
-
 typedef struct _RT_802_11_MAC_ENTRY {
 	UCHAR ApIdx;
 	UCHAR Addr[MAC_ADDR_LEN];
@@ -1058,8 +1048,10 @@ typedef struct _RT_802_11_MAC_ENTRY {
 	CHAR AvgRssi0;
 	CHAR AvgRssi1;
 	CHAR AvgRssi2;
+	UINT64 TxBytes;
+	UINT64 RxBytes;
 	UINT32 ConnectedTime;
-	MACHTTRANSMIT_SETTING TxRate;
+	HTTRANSMIT_SETTING TxRate;
 	UINT32 LastRxRate;
 } RT_802_11_MAC_ENTRY, *PRT_802_11_MAC_ENTRY;
 
@@ -1097,17 +1089,6 @@ typedef struct _RT_802_11_HARDWARE_REGISTER {
 	ULONG Offset;		/* Q/S register offset addr */
 	ULONG Data;		/* R/W data buffer */
 } RT_802_11_HARDWARE_REGISTER, *PRT_802_11_HARDWARE_REGISTER;
-
-typedef struct _RT_802_11_AP_CONFIG {
-	ULONG EnableTxBurst;	/* 0-disable, 1-enable */
-	ULONG EnableTurboRate;	/* 0-disable, 1-enable 72/100mbps turbo rate */
-	ULONG IsolateInterStaTraffic;	/* 0-disable, 1-enable isolation */
-	ULONG HideSsid;		/* 0-disable, 1-enable hiding */
-	ULONG UseBGProtection;	/* 0-AUTO, 1-always ON, 2-always OFF */
-	ULONG UseShortSlotTime;	/* 0-no use, 1-use 9-us short slot time */
-	ULONG Rsv1;		/* must be 0 */
-	ULONG SystemErrorBitmap;	/* ignore upon SET, return system error upon QUERY */
-} RT_802_11_AP_CONFIG, *PRT_802_11_AP_CONFIG;
 
 /* structure to query/set STA_CONFIG */
 typedef struct _RT_802_11_STA_CONFIG {
@@ -1288,8 +1269,34 @@ typedef struct _WAPI_WIE_STRUCT {
 #endif /* APCLI_SUPPORT */
 
 
+#ifdef DOT11R_FT_SUPPORT
+#define OID_802_11R_SUPPORT							0x0780
+#define OID_802_11R_MDID							0x0781
+#define OID_802_11R_R0KHID							0x0782
+#define OID_802_11R_RIC								0x0783
+#define OID_802_11R_OTD								0x0784
+#define OID_802_11R_INFO							0x0785
+
+#define	RT_OID_802_11R_SUPPORT					  	(OID_GET_SET_TOGGLE | OID_802_11R_SUPPORT)
+#define RT_OID_802_11R_MDID							(OID_GET_SET_TOGGLE | OID_802_11R_MDID)
+#define RT_OID_802_11R_R0KHID						(OID_GET_SET_TOGGLE | OID_802_11R_R0KHID)
+#define	RT_OID_802_11R_RIC					  		(OID_GET_SET_TOGGLE | OID_802_11R_RIC)
+#define RT_OID_802_11R_OTD							(OID_GET_SET_TOGGLE | OID_802_11R_OTD)
+#define RT_OID_802_11R_INFO							(OID_GET_SET_TOGGLE | OID_802_11R_INFO)
+#endif /* DOT11R_FT_SUPPORT */
 
 
+
+#ifdef DOT11R_FT_SUPPORT
+typedef struct _FT_CONFIG_INFO {
+	UCHAR MdId[2];
+	UCHAR R0KHId[49];
+	UCHAR R0KHIdLen;
+	BOOLEAN FtSupport;
+	BOOLEAN FtRicSupport;
+	BOOLEAN FtOtdSupport;
+} FT_CONFIG_INFO, *PFT_CONFIG_INFO;
+#endif /* DOT11R_FT_SUPPORT */
 
 
 #endif /* _OID_H_ */

@@ -45,7 +45,7 @@ NDIS_STATUS RtmpInsertPsQueue(
 	MAC_TABLE_ENTRY *pMacEntry,
 	UCHAR QueIdx)
 {
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 #ifdef UAPSD_SUPPORT
 	/* put the U-APSD packet to its U-APSD queue by AC ID */
 	UINT32 ac_id = QueIdx - QID_AC_BE; /* should be >= 0 */
@@ -109,11 +109,11 @@ VOID RtmpCleanupPsQueue(RTMP_ADAPTER *pAd, QUEUE_HEADER *pQueue)
 	QUEUE_ENTRY *pQEntry;
 	PNDIS_PACKET pPacket;
 
-	DBGPRINT(RT_DEBUG_TRACE, ("RtmpCleanupPsQueue (0x%08lx)...\n", (ULONG)pQueue));
+	DBGPRINT(RT_DEBUG_INFO, ("RtmpCleanupPsQueue (0x%08lx)...\n", (ULONG)pQueue));
 
 	while (pQueue->Head)
 	{
-		DBGPRINT(RT_DEBUG_TRACE,
+		DBGPRINT(RT_DEBUG_INFO,
 					("RtmpCleanupPsQueue %u...\n",pQueue->Number));
 
 		pQEntry = RemoveHeadQueue(pQueue);
@@ -121,7 +121,7 @@ VOID RtmpCleanupPsQueue(RTMP_ADAPTER *pAd, QUEUE_HEADER *pQueue)
 		pPacket = QUEUE_ENTRY_TO_PACKET(pQEntry);
 		RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 
-		DBGPRINT(RT_DEBUG_TRACE, ("RtmpCleanupPsQueue pkt = %lx...\n", (ULONG)pPacket));
+		DBGPRINT(RT_DEBUG_INFO, ("RtmpCleanupPsQueue pkt = %lx...\n", (ULONG)pPacket));
 	}
 }
 
@@ -138,7 +138,7 @@ VOID RtmpHandleRxPsPoll(RTMP_ADAPTER *pAd, UCHAR *pAddr, USHORT wcid, BOOLEAN is
 { 
 	QUEUE_ENTRY *pQEntry;
 	MAC_TABLE_ENTRY *pMacEntry;
-	unsigned long IrqFlags;
+	ULONG IrqFlags = 0;
 
 	/*
 	DBGPRINT(RT_DEBUG_TRACE, ("rcv PS-POLL (AID=%d) from %02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -221,6 +221,7 @@ VOID RtmpHandleRxPsPoll(RTMP_ADAPTER *pAd, UCHAR *pAddr, USHORT wcid, BOOLEAN is
 							So we can not count it for UAPSD; Or the SP will
 							not closed until timeout.
 						*/
+						;
 					}
 					else
 						UAPSD_MR_MIX_PS_POLL_RCV(pAd, pMacEntry);
@@ -291,7 +292,6 @@ VOID RtmpHandleRxPsPoll(RTMP_ADAPTER *pAd, UCHAR *pAddr, USHORT wcid, BOOLEAN is
 	{
 		DBGPRINT(RT_DEBUG_ERROR,("rcv PS-POLL (AID=%d not match) from %02x:%02x:%02x:%02x:%02x:%02x\n", 
 			  pMacEntry->Aid, PRINT_MAC(pAddr)));
-
 	}
 }
 
@@ -333,6 +333,8 @@ BOOLEAN RtmpPsIndicate(RTMP_ADAPTER *pAd, UCHAR *pAddr, UCHAR wcid, UCHAR Psm)
 
 		if ((old_psmode == PWR_SAVE) && (Psm == PWR_ACTIVE))
 		{
+			/* drop tx fail count */
+			pEntry->ContinueTxFailCnt = 0;
 #ifdef DROP_MASK_SUPPORT
 			/* Disable Drop Mask */
 			drop_mask_set_per_client(pAd, pEntry, FALSE);
@@ -352,6 +354,11 @@ BOOLEAN RtmpPsIndicate(RTMP_ADAPTER *pAd, UCHAR *pAddr, UCHAR wcid, UCHAR Psm)
 			SendRefreshBAR(pAd, pEntry);
 #endif /* DOT11_N_SUPPORT */
 #endif /* RTMP_MAC_PCI */
+
+			DBGPRINT(RT_DEBUG_TRACE,
+					("RtmpPsIndicate - %02x:%02x:%02x:%02x:%02x:%02x wakes up, "
+					"act like rx PS-POLL\n",
+					pAddr[0],pAddr[1],pAddr[2],pAddr[3],pAddr[4],pAddr[5]));
 
 			/* sleep station awakes, move all pending frames from PSQ to TXQ if any */
 			RtmpHandleRxPsPoll(pAd, pAddr, pEntry->wcid, TRUE);

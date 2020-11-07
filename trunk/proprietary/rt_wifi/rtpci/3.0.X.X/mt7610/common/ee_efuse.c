@@ -190,7 +190,7 @@ UCHAR eFuseReadRegisters(
 		{
 			break;
 		}	
-		RTMPusecDelay(2);
+		RTMPusecDelay(200);
 		i++;	
 	}
 
@@ -289,7 +289,7 @@ VOID eFusePhysicalReadRegisters(
 		RTMP_IO_READ32(pAd, EFUSE_CTRL, &eFuseCtrlStruc.word);	
 		if(eFuseCtrlStruc.field.EFSROM_KICK == 0)
 			break;
-		RTMPusecDelay(2);
+		RTMPusecDelay(200);
 		i++;	
 	}
 
@@ -448,7 +448,7 @@ static VOID eFusePhysicalWriteRegisters(
 
 		if(eFuseCtrlStruc.field.EFSROM_KICK == 0)
 			break;
-		RTMPusecDelay(2);
+		RTMPusecDelay(200);
 		i++;	
 	}
 
@@ -515,7 +515,7 @@ static VOID eFusePhysicalWriteRegisters(
 		if(eFuseCtrlStruc.field.EFSROM_KICK == 0)
 			break;
 		
-		RTMPusecDelay(2);	
+		RTMPusecDelay(200);
 		i++;	
 	}
 }
@@ -1207,7 +1207,7 @@ static NTSTATUS eFuseWriteRegistersFromBin(
 			if(eFuseCtrlStruc.field.EFSROM_KICK == 0)
 				break;
 			
-			RTMPusecDelay(2);	
+			RTMPusecDelay(200);
 			i++;	
 		}
 		
@@ -1240,7 +1240,7 @@ static NTSTATUS eFuseWriteRegistersFromBin(
 
 			if(eFuseCtrlStruc.field.EFSROM_KICK == 0)
 				break;
-			RTMPusecDelay(2);
+			RTMPusecDelay(200);
 			i++;	
 		}
 
@@ -1799,7 +1799,7 @@ INT efuse_probe(RTMP_ADAPTER *pAd)
 
 
 	if (WaitForAsicReady(pAd) == FALSE)
-			return -1;
+		return -1;
 		
 	pAd->bUseEfuse=FALSE;
 #ifdef RT65xx

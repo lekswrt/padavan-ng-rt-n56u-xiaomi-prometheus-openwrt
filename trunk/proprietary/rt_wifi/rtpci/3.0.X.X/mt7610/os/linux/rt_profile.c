@@ -373,6 +373,9 @@ void tbtt_tasklet(unsigned long data)
 		QBSS_LoadUpdate(pAd, 0);
 #endif /* AP_QLOAD_SUPPORT */
 
+#ifdef DOT11K_RRM_SUPPORT
+		RRM_QuietUpdata(pAd);
+#endif /* DOT11K_RRM_SUPPORT */
 	}
 #endif /* RTMP_MAC_PCI */
 
@@ -393,7 +396,7 @@ void tbtt_tasklet(unsigned long data)
 			PQUEUE_ENTRY    pEntry;
 			BOOLEAN			bPS = FALSE;
 			UINT 			count = 0;
-			unsigned long 		IrqFlags;
+			ULONG IrqFlags = 0;
 
 /*			NdisAcquireSpinLock(&pAd->MacTabLock); */
 /*			NdisAcquireSpinLock(&pAd->TxSwQueueLock); */
@@ -448,7 +451,11 @@ void announce_802_3_packet(
 	IN PNDIS_PACKET pNetPkt,
 	IN UCHAR OpMode)
 {
+#ifdef CONFIG_AP_SUPPORT
+#ifdef APCLI_SUPPORT
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)pAdSrc;
+#endif /* APCLI_SUPPORT */
+#endif /* CONFIG_AP_SUPPORT */
 	struct sk_buff *pRxPkt;
 
 	ASSERT(pNetPkt);
@@ -597,7 +604,7 @@ VOID	RTMPFreeAdapter(
 	RTMP_OS_FREE_SEM(pAd);
 	RTMP_OS_FREE_ATOMIC(pAd);
 
-	RtmpOsVfree(pAd); /* pci_free_consistent(os_cookie->pci_dev,sizeof(RTMP_ADAPTER),pAd,os_cookie->pAd_pa); */
+	RtmpOsVfree(pAd);
 	if (os_cookie)
 		os_free_mem(NULL, os_cookie);
 }
@@ -613,7 +620,18 @@ int	RTMPSendPackets(
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)dev_hnd;
 	PNDIS_PACKET pPacket = ppPacketArray[0];
 
+	if(pAd == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s(): pAd is NULL!\n", __FUNCTION__));
+		return 0;
+	}
+
 	INC_COUNTER64(pAd->WlanCounters.TransmitCountFrmOs);
+
+#ifdef RTMP_MAC_PCI
+	/* Update timer to flush tx ring buffer */
+	RTMPModTimer(&pAd->TxDoneCleanupTimer, 50);
+#endif /* RTMP_MAC_PCI */
 
 	if (pPacket == NULL)
 		goto done;

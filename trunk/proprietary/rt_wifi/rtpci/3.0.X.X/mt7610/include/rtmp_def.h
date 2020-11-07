@@ -106,8 +106,6 @@
 #define MAX_NUM_OF_TUPLE_CACHE  2
 #define MAX_MCAST_LIST_SIZE     32
 #define MAX_LEN_OF_VENDOR_DESC  64
-/*#define MAX_SIZE_OF_MCAST_PSQ   (NUM_OF_LOCAL_TXBUF >> 2) // AP won't spend more than 1/4 of total buffers on M/BCAST PSQ */
-#define MAX_SIZE_OF_MCAST_PSQ               32
 
 #define MAX_RX_PROCESS_CNT	(RX_RING_SIZE)
 
@@ -135,11 +133,11 @@
 */
 
 #ifdef NOISE_TEST_ADJUST
-#define MAX_PACKETS_IN_MCAST_PS_QUEUE	128 /*64*/
-#define MAX_PACKETS_IN_PS_QUEUE			256 /*32 */
+#define MAX_PACKETS_IN_MCAST_PS_QUEUE       128 /*64*/
+#define MAX_PACKETS_IN_PS_QUEUE             256 /*32 */
 #else
-#define MAX_PACKETS_IN_MCAST_PS_QUEUE		32
-#define MAX_PACKETS_IN_PS_QUEUE				128	/*32 */
+#define MAX_PACKETS_IN_MCAST_PS_QUEUE       32
+#define MAX_PACKETS_IN_PS_QUEUE             128	/*32 */
 #endif /* NOISE_TEST_ADJUST */
 #define WMM_NUM_OF_AC                       4	/* AC0, AC1, AC2, and AC3 */
 
@@ -249,11 +247,11 @@ enum WIFI_MODE{
 #define WMODE_HT_ONLY(_x)		(((_x) & (~(WMODE_GN | WMODE_AN | WMODE_AC))) == 0)
 #define WMODE_VHT_ONLY(_x)		(((_x) & (~(WMODE_AC))) == 0)
 
-#ifdef CONFIG_PM
-#ifdef USB_SUPPORT_SELECTIVE_SUSPEND
+//#ifdef CONFIG_PM
+//#ifdef USB_SUPPORT_SELECTIVE_SUSPEND
 #define fRTMP_ADAPTER_SUSPEND 0x00800000
-#endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
-#endif /* CONFIG_PM */
+//#endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
+//#endif /* CONFIG_PM */
 
 
 /*
@@ -594,6 +592,7 @@ enum WIFI_MODE{
 /* Auth and Assoc mode related definitions */
 #define AUTH_MODE_OPEN                  0x00
 #define AUTH_MODE_KEY                   0x01
+#define AUTH_MODE_FT                    0x02
 /*#define AUTH_MODE_AUTO_SWITCH         0x03 */
 /*#define AUTH_MODE_DEAUTH              0x04 */
 /*#define AUTH_MODE_UPLAYER             0x05 // reserved for 802.11i use */
@@ -730,6 +729,7 @@ enum WIFI_MODE{
 #define IE_OVERLAPBSS_SCAN_PARM           74	/* 802.11n D3.03 */
 #define IE_CHANNEL_USAGE					97	/* Cisco advertises suggested channel using this IE. */
 #define IE_EXT_CAPABILITY                127	/* 802.11n D3.03 */
+#define IE_OPERATING_MODE_NOTIFY        199
 
 #define IE_WPA                          221	/* WPA */
 #define IE_VENDOR_SPECIFIC              221	/* Wifi WMM (WME) */
@@ -889,7 +889,11 @@ enum WIFI_MODE{
 	(see Table 7 Management Action Frame Fields)
 */
 #define MT2_PEER_WMM				17
-#define MAX_IEEE_STD_CATE			17	/* Indicate the maximum category code defined in IEEE-802.11-Std */
+#define WNM_CATEGORY_BSS_TRANSITION		18
+#define MT2_PEER_RESV_19			19
+#define MT2_PEER_RESV_20			20
+#define MT2_PEER_VHT_CATE			21
+#define MAX_IEEE_STD_CATE			21	/* Indicate the maximum category code defined in IEEE-802.11-Std */
 #define MAX_PEER_CATE_MSG			MAX_IEEE_STD_CATE
 
 #define MT2_MLME_ADD_BA_CATE		(MAX_IEEE_STD_CATE + 1)
@@ -901,6 +905,13 @@ enum WIFI_MODE{
 
 #define MAX_ACT_MSG				(MAX_IEEE_STD_CATE + 7)
 
+#ifdef DOT11V_WNM_SUPPORT
+#define WNM_CATEGORY_BSS_TRANSITION  			18
+#undef MAX_ACT_MSG
+#define MAX_ACT_MSG						(MAX_IEEE_STD_CATE + 8)
+#undef MAX_PEER_CATE_MSG
+#define MAX_PEER_CATE_MSG                   (MAX_IEEE_STD_CATE + 8)
+#endif /* DOT11V_WNM_SUPPORT */
 
 #define MT2_ACT_VENDOR				0x7F
 
@@ -914,6 +925,14 @@ enum WIFI_MODE{
 #define CATEGORY_FT				6
 #define CATEGORY_HT			7
 
+
+#ifdef DOT11_VHT_AC
+#define CATEGORY_VHT		21
+
+#define ACT_VHT_COMPRESS_BF		0	/* VHT Compressed Beamforming */
+#define ACT_VHT_GRP_ID_MGMT		1	/* Group ID Management */
+#define ACT_VHT_OPMODE_NOTIFY		2	/* Operating Mode Notification */
+#endif /* DOT11_VHT_AC */
 
 /* DLS Action frame definition */
 #define ACTION_DLS_REQUEST		0
@@ -1355,6 +1374,8 @@ enum WIFI_MODE{
 #define BW_20		BAND_WIDTH_20
 #define BW_40		BAND_WIDTH_40
 #define BW_80		BAND_WIDTH_80
+#define BW_160		BAND_WIDTH_160
+
 #define BW_10		BAND_WIDTH_10	/* 802.11j has 10MHz. This definition is for internal usage. doesn't fill in the IE or other field. */
 
 
@@ -1480,7 +1501,7 @@ enum WIFI_MODE{
 #define REGION_4_A_BAND                   4	/* 149, 153, 157, 161, 165 */
 #define REGION_5_A_BAND                   5	/* 149, 153, 157, 161 */
 #define REGION_6_A_BAND                   6	/* 36, 40, 44, 48 */
-#define REGION_7_A_BAND                   7	/* 36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 149, 153, 157, 161, 165, 169, 173 */
+#define REGION_7_A_BAND                   7	/* 36, 40, 44, 48, 52, 56, 60, 64, 149, 153, 157, 161, 165 */
 #define REGION_8_A_BAND                   8	/* 52, 56, 60, 64 */
 #define REGION_9_A_BAND                   9	/* 36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 132, 136, 140, 149, 153, 157, 161, 165 */
 #define REGION_10_A_BAND                  10	/* 36, 40, 44, 48, 149, 153, 157, 161, 165 */
@@ -1521,16 +1542,20 @@ enum WIFI_MODE{
 #define PAIRWISE_KEY                1
 #define GROUP_KEY                   2
 
-
+#ifdef OPTIMISTIC_TRAINUP
+#define RA_TRAINDIV 1
+#else
+#define RA_TRAINDIV 2
+#endif /* OPTIMISTIC_TRAINUP */
 
 /* Rate Adaptation timing */
 #define RA_RATE		5					/* RA every fifth 100msec period */
 #define RA_INTERVAL		(RA_RATE*100)	/* RA Interval in msec */
 
 /* Rate Adaptation simpling interval setting */
-#define DEF_QUICK_RA_TIME_INTERVAL	100
-
-#define DEF_RA_TIME_INTRVAL			500
+#define DEF_QUICK_RA_TIME_INTERVAL		80 /* Quick RA 80 msec after rate change */
+#define DEF_RA_TIME_INTRVAL			400
+#define FASTRATEUPERRTH				20 /* < 20% errors to allow fast up rate */
 
 /*definition of DRS */
 #define MAX_TX_RATE_INDEX			33		/* Maximum Tx Rate Table Index value */
@@ -1552,10 +1577,10 @@ enum WIFI_MODE{
 #define I_ORIGINATOR                   FALSE
 
 #define DEFAULT_BBP_TX_POWER        0
-#define DEFAULT_RF_TX_POWER         5
-#define DEFAULT_BBP_TX_FINE_POWER_CTRL 0
+#define DEFAULT_RF_TX_POWER         8
+#define DEFAULT_MAX_TX_POWER        20
 
-#define MAX_INI_BUFFER_SIZE		8192
+#define MAX_INI_BUFFER_SIZE		10000
 #define MAX_PARAM_BUFFER_SIZE		(2048)	/* enough for ACL (18*64) */
 											/*18 : the length of Mac address acceptable format "01:02:03:04:05:06;") */
 											/*64 : MAX_NUM_OF_ACL_LIST */
@@ -1806,6 +1831,7 @@ enum WIFI_MODE{
 #define MCAST_CCK		1
 #define MCAST_OFDM		2
 #define MCAST_HTMIX		3
+#define MCAST_VHT               4
 #endif /* MCAST_RATE_SPECIFIC */
 
 /* For AsicRadioOff/AsicRadioOn function */

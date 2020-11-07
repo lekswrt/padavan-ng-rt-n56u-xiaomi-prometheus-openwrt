@@ -310,7 +310,7 @@ static void rx_done_tasklet(unsigned long data)
 #endif /* WORKQUEUE_BH */
 	UINT32 INT_RX = 0;
 
-	pAd->rx_tasklet_counter++;
+		pAd->rx_tasklet_counter++;
 
 #ifdef RLT_MAC
 	if (pAd->chipCap.hif_type == HIF_RLT)
@@ -340,6 +340,11 @@ static void rx_done_tasklet(unsigned long data)
 	RTMP_INT_UNLOCK(&pAd->LockInterrupt, flags);
 
 	bReschedule = rtmp_rx_done_handle(pAd);
+#ifdef CONFIG_BA_REORDER_MONITOR
+			if (pAd->BATable.ba_timeout_check) {
+				ba_timeout_flush(pAd);
+			}
+#endif
 
 #ifdef UAPSD_SUPPORT
 	UAPSD_TIMING_RECORD_STOP();
@@ -718,7 +723,7 @@ static void ac0_dma_done_tasklet(unsigned long data)
 		if (pAd->chipCap.hif_type == HIF_RLT)
 		{
 			if(IS_MT76x2(pAd))
-				pAd->int_disable_mask &= ~(INT_TX_DLY);
+		pAd->int_disable_mask &= ~(INT_TX_DLY); 
 			else
 				pAd->int_disable_mask &= ~(RLT_INT_AC0_DLY);
 		}			
@@ -756,13 +761,13 @@ static void ac0_dma_done_tasklet(unsigned long data)
 	{
 		if(IS_MT76x2(pAd))
 		{
-			if ((pAd->int_pending & INT_TX_DLY) || bReschedule)
-			{
-				RTMP_OS_TASKLET_SCHE(&pObj->ac0_dma_done_task);
-				RTMP_INT_UNLOCK(&pAd->LockInterrupt, flags);    
-				return;
-			}
-		}
+	if ((pAd->int_pending & INT_TX_DLY) || bReschedule)
+	{
+		RTMP_OS_TASKLET_SCHE(&pObj->ac0_dma_done_task);
+		RTMP_INT_UNLOCK(&pAd->LockInterrupt, flags);    
+		return;
+	}
+	}
 		else
 		{
 			if ((pAd->int_pending & RLT_INT_AC0_DLY) || bReschedule)
@@ -790,7 +795,7 @@ static void ac0_dma_done_tasklet(unsigned long data)
 	if (pAd->chipCap.hif_type == HIF_RLT)
 	{
 		if(IS_MT76x2(pAd))
-			rt2860_int_enable(pAd, INT_TX_DLY);
+	rt2860_int_enable(pAd, INT_TX_DLY);
 		else
 			rt2860_int_enable(pAd, RLT_INT_AC0_DLY);
 	}
@@ -912,15 +917,18 @@ VOID RTMPHandleInterrupt(VOID *pAdSrc)
 	UINT32 IntSource;
 	POS_COOKIE pObj;
 	unsigned long flags=0;
-	UINT32 INT_RX_DATA = 0, INT_RX_CMD=0, TxCoherent = 0, RxCoherent = 0, FifoStaFullInt = 0;
+	UINT32 INT_RX_DATA = 0, TxCoherent = 0, RxCoherent = 0, FifoStaFullInt = 0;
 	UINT32 INT_MGMT_DLY = 0, INT_HCCA_DLY = 0, INT_AC3_DLY = 0, INT_AC2_DLY = 0, INT_AC1_DLY = 0, INT_AC0_DLY = 0;
 	UINT32 PreTBTTInt = 0, TBTTInt = 0, GPTimeOutInt = 0;
-#ifdef CARRIER_DETECTION_SUPPORT
-	UINT32 RadarInt = 0;
-#endif /* CARRIER_DETECTION_SUPPORT */
 #ifdef CONFIG_STA_SUPPORT
 	UINT32 AutoWakeupInt = 0;
-#endif /* CONFIG_STA_SUPPORT */
+#endif
+#ifdef CARRIER_DETECTION_SUPPORT
+	UINT32 RadarInt = 0;
+#endif
+#ifdef RLT_MAC
+	UINT32 INT_RX_CMD=0;
+#endif
 
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
 

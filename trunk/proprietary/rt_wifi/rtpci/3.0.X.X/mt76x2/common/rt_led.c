@@ -231,9 +231,13 @@ VOID SetLedMode(
  */
 void SetWPSLinkStatus(IN PRTMP_ADAPTER pAd)
 {
+#ifdef WSC_INCLUDED
+#ifdef WSC_LED_SUPPORT
 	PLED_OPERATION_MODE pCurrentLedCfg = &pAd->LedCntl.SWMCULedCntl.CurrentLedCfg;
+#endif /* WSC_INCLUDED */
+#endif /* WSC_LED_SUPPORT */
 	PWPS_LED_TIME_UNIT pWPSLedTimeUnit = &pAd->LedCntl.SWMCULedCntl.WPSLedTimeUnit;
-	
+
 	switch(pAd->LedCntl.SWMCULedCntl.LinkStatus)
 	{
 #ifdef WSC_INCLUDED
@@ -578,7 +582,9 @@ VOID RTMPSetLEDStatus(
 	UCHAR			LedMode;
 	UCHAR			MCUCmd = 0;
 	BOOLEAN 		bIgnored = FALSE;
+#ifdef MT76x2
 	INT led_cmd = -1;
+#endif
 #ifdef WSC_INCLUDED
 #ifdef WSC_LED_SUPPORT
 	PWSC_CTRL		pWscControl = NULL;
@@ -616,7 +622,7 @@ VOID RTMPSetLEDStatus(
 		led_cmd = LED_Array[LedMode][Status];
 	}
 #endif
-
+	
 	switch (Status)
 	{
 		case LED_LINK_DOWN:
@@ -823,7 +829,7 @@ VOID RTMPSetLEDStatus(
 			if(WscSupportWPSLEDMode10(pAd))
 			{
 				LinkStatus = LINK_STATUS_WPS_MODE10_TURN_OFF;
-				MCUCmd = MCU_SET_WPS_LED_MODE;;
+				MCUCmd = MCU_SET_WPS_LED_MODE;
 			}
 			else
 				bIgnored = TRUE;
@@ -1054,11 +1060,7 @@ void RTMPInitLEDMode(IN RTMP_ADAPTER *pAd)
 		pLedCntl->LedPolarity = 0xA9F8;
 #endif /* RTMP_MAC_PCI */
 	}
-
-	/* override disabled LED control */
-	if (pLedCntl->MCULedCntl.word == 0)
-		pLedCntl->MCULedCntl.word = 0x01;
-
+	
 	AsicSendCommandToMcu(pAd, MCU_SET_LED_AG_CFG, 0xff, (UCHAR)pLedCntl->LedAGCfg, (UCHAR)(pLedCntl->LedAGCfg >> 8), FALSE);
 	AsicSendCommandToMcu(pAd, MCU_SET_LED_ACT_CFG, 0xff, (UCHAR)pLedCntl->LedACTCfg, (UCHAR)(pLedCntl->LedACTCfg >> 8), FALSE);
 	AsicSendCommandToMcu(pAd, MCU_SET_LED_POLARITY, 0xff, (UCHAR)pLedCntl->LedPolarity, (UCHAR)(pLedCntl->LedPolarity >> 8), FALSE);

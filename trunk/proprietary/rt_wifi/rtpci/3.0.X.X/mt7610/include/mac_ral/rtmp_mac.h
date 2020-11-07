@@ -562,6 +562,8 @@ typedef	union _LED_CFG_STRUC {
 
 #define AMPDU_MAX_LEN_20M1S	0x1030
 #define AMPDU_MAX_LEN_20M2S	0x1034
+#define AMPDU_MAX_LEN_20M1S_MCS0_7	0x1030
+#define AMPDU_MAX_LEN_20M1S_MCS8_9	0x1034
 #define AMPDU_MAX_LEN_40M1S	0x1038
 #define AMPDU_MAX_LEN_40M2S	0x103c
 #define AMPDU_MAX_LEN			0x1040
@@ -934,7 +936,7 @@ typedef	union _EDCA_AC_CFG_STRUC {
 #define TX_PWR_HT_VHT_1SS_MCS_0_1_MASK (0x3f << 16)
 #define TX_PWR_HT_VHT_1SS_MCS_0_1(p) (((p) & 0x3f) << 16)
 #define TX_PWR_HT_VHT_1SS_MCS_2_3_MASK (0x3f << 24)
-#define TX_PWR_HT_VHT_1SS_MCS_2_3(p) (((p) & 0x3f) << 24)
+#define TX_PWR_HT_VHT_1SS_MCS_2_3(p) (((p) & 0x3f) << 16)
 
 #define TX_PWR_CFG_1_EXT	0x1394
 
@@ -1576,7 +1578,8 @@ typedef union _AUTO_RSP_CFG_STRUC {
 #define TX_SEC_CNT0		0x1500
 #define RX_SEC_CNT0		0x1504
 #define CCMP_FC_MUTE	0x1508
-
+#define PN_PAD_MODE 	0x150C
+#define PN_PAD_MODE_OFFSET 0x1
 
 /*  4.6 HCCA/PSMP (offset:0x1600) */
 #define TXOP_HLDR_ADDR0		0x1600		 
@@ -1720,7 +1723,7 @@ typedef	union _TX_STA_CNT2_STRUC {
 #ifdef RT_BIG_ENDIAN
 typedef	union _TX_STA_FIFO_STRUC {
 	struct {
-		UINT32		Reserve:2;
+		UINT32		PhyMode:2;
 		UINT32		iTxBF:1; /* iTxBF enable */
 		UINT32		Sounding:1; /* Sounding enable */
 		UINT32		eTxBF:1; /* eTxBF enable */
@@ -1747,7 +1750,7 @@ typedef	union _TX_STA_FIFO_STRUC {
 		UINT32		eTxBF:1;
 		UINT32		Sounding:1;
 		UINT32		iTxBF:1;
-		UINT32		Reserve:2;
+		UINT32		PhyMode:2;
 	} field;
 	UINT32 word;
 } TX_STA_FIFO_STRUC;
@@ -1996,14 +1999,14 @@ typedef	union _MPDU_DEN_CNT_STRUC {
 } MPDU_DEN_CNT_STRUC;
 #endif
 
-
+#ifdef FIFO_EXT_SUPPORT
 /* TX_STA_FIFO_EXT_STRUC: TX retry cnt for specific frame */
 #define TX_STA_FIFO_EXT		0x1798		/* Only work after RT53xx */
 #ifdef RT_BIG_ENDIAN
 typedef	union _TX_STA_FIFO_EXT_STRUC {
 	struct {
-		UINT32 rsv:16;
-		UINT32 pkt_id_65xx:8; /* pkt_id when run as rt65xx based chips */
+		UINT32		Reserve:16;
+		UINT32		PidType:8;				
 		UINT32		txRtyCnt:8;   /* frame Tx retry cnt */
 	} field;
 	UINT32 word;
@@ -2012,15 +2015,15 @@ typedef	union _TX_STA_FIFO_EXT_STRUC {
 typedef	union _TX_STA_FIFO_EXT_STRUC {
 	struct {
 		UINT32		txRtyCnt:8;
-		UINT32 pkt_id_65xx:8;
-		UINT32 rsv:16;
+		UINT32		PidType:8;
+		UINT32		Reserve:16;
 	} field;
 	UINT32 word;
 } TX_STA_FIFO_EXT_STRUC;
 #endif
 
 
-#ifdef FIFO_EXT_SUPPORT
+
 #define WCID_TX_CNT_0	0x176c
 #define WCID_TX_CNT_1	0x1770
 #define WCID_TX_CNT_2	0x1774
@@ -2072,8 +2075,6 @@ typedef	union _WCID_MAPPING_STRUC {
 } WCID_MAPPINGT_STRUC;
 #endif
 #endif /* FIFO_EXT_SUPPORT */
-
-
 
 /* Security key table memory, base address = 0x1000 */
 #define MAC_WCID_BASE		0x1800 /*8-bytes(use only 6-bytes) * 256 entry = */
@@ -2465,6 +2466,13 @@ INT get_pkt_snr_by_rxwi(RXWI_STRUC *rxwi, INT size, UCHAR *snr);
 INT rtmp_mac_set_band(struct _RTMP_ADAPTER *pAd, int  band);
 INT rtmp_mac_set_ctrlch(struct _RTMP_ADAPTER *pAd, INT extch);
 INT rtmp_mac_set_mmps(struct  _RTMP_ADAPTER *pAd, INT ReduceCorePower);
+
+#ifdef MCS_LUT_SUPPORT
+INT set_lut_phy_rate(
+		struct _RTMP_ADAPTER *pAd, UINT8 wcid,
+		UINT8 mcs, UINT8 bw, 	UINT8 gi,
+		UINT8 stbc, UINT8 mode);
+#endif /* MCS_LUT_SUPPORT */
 
 #endif /* __RTMP_MAC_H__ */
 

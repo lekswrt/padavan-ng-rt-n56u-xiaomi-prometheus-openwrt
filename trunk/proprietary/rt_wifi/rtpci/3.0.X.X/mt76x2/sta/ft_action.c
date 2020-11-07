@@ -242,7 +242,7 @@ VOID FT_OTD_ReqAction(
 		      MdIe.FtCapPlc);
 
 	/* Process with RSN */
-	if (pAd->StaCfg.AuthMode >= Ndis802_11AuthModeWPA) {
+	if (pAd->StaCfg.wdev.AuthMode >= Ndis802_11AuthModeWPA) {
 		FT_ConstructAuthReqInRsn(pAd, pOutBuffer, &FrameLen);
 	}
 

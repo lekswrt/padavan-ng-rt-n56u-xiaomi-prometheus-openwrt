@@ -34,7 +34,7 @@ VOID RalHandleRxPsPoll(RTMP_ADAPTER *pAd, UCHAR *pAddr, USHORT wcid, BOOLEAN isA
 { 
 	QUEUE_ENTRY *pQEntry;
 	MAC_TABLE_ENTRY *pMacEntry;
-	unsigned long IrqFlags;
+	ULONG IrqFlags = 0;
 	STA_TR_ENTRY *tr_entry;
 
 	/*
@@ -148,7 +148,7 @@ VOID RalHandleRxPsPoll(RTMP_ADAPTER *pAd, UCHAR *pAddr, USHORT wcid, BOOLEAN isA
 				in-used. We should consider "HardTransmt" this MPDU using MGMT 
 				queue or things like that.
 		*/
-		RTMPDeQueuePacket(pAd, FALSE, NUM_OF_TX_RING, wcid, MAX_TX_PROCESS);
+		RTMPDeQueuePacket(pAd, FALSE, WMM_NUM_OF_AC, wcid, MAX_TX_PROCESS);
 	}
 }
 
@@ -195,6 +195,8 @@ BOOLEAN RalPsIndicate(RTMP_ADAPTER *pAd, UCHAR *pAddr, UCHAR wcid, UCHAR Psm)
 
 		if ((old_psmode == PWR_SAVE) && (Psm == PWR_ACTIVE))
 		{
+			/* drop tx fail count */
+			pEntry->ContinueTxFailCnt = 0;
 #ifdef RTMP_MAC_PCI
 #ifdef DOT11_N_SUPPORT
 			/*

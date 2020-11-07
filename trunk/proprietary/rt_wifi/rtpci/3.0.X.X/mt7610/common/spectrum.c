@@ -28,43 +28,55 @@
 #include "rt_config.h"
 #include "action.h"
 
+/* The regulatory information in the Russia (RU) */
+static DOT11_REGULATORY_INFORMATION RURegulatoryInfo[] =
+{
+/*  "regulatory class"  "number of channels"  "Max Tx Pwr"  "channel list" */
+    {0,                 {0,                   0,           {0}}}, /* Invalid entry*/
+    {1,                 {4,                  23,            {36, 40, 44, 48}}},
+    {2,                 {4,                  23,            {52, 56, 60, 64}}},
+    {3,                 {4,                  23,            {132, 136, 140, 144}}},
+    {4,                 {5,                  23,            {149, 153, 157, 161, 165}}},
+    {5,                 {14,                 20,            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}}}
+};
+#define RU_REGULATORY_INFO_SIZE (sizeof(RURegulatoryInfo) / sizeof(DOT11_REGULATORY_INFORMATION))
 
 /* The regulatory information in the USA (US) */
-DOT11_REGULATORY_INFORMATION USARegulatoryInfo[] = 
+static DOT11_REGULATORY_INFORMATION USARegulatoryInfo[] = 
 {
 /*  "regulatory class"  "number of channels"  "Max Tx Pwr"  "channel list" */
     {0,	                {0,                   0,           {0}}}, /* Invlid entry*/
-    {1,                 {4,                   16,           {36, 40, 44, 48}}}, 
+    {1,                 {4,                   23,           {36, 40, 44, 48}}}, 
     {2,                 {4,                   23,           {52, 56, 60, 64}}}, 
     {3,                 {4,                   29,           {149, 153, 157, 161}}}, 
-    {4,                 {11,                  23,           {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140}}}, 
+    {4,                 {11,                  23,           {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144}}}, 
     {5,                 {5,                   30,           {149, 153, 157, 161, 165}}}, 
     {6,                 {10,                  14,           {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}}, 
     {7,                 {10,                  27,           {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}}, 
     {8,                 {5,                   17,           {11, 13, 15, 17, 19}}}, 
     {9,                 {5,                   30,           {11, 13, 15, 17, 19}}}, 
     {10,                {2,                   20,           {21, 25}}}, 
-    {11,                {2,                   33,            {21, 25}}}, 
-    {12,                {11,                  30,            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}}}
+    {11,                {2,                   33,           {21, 25}}}, 
+    {12,                {11,                  30,           {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}}}
 };
 #define USA_REGULATORY_INFO_SIZE (sizeof(USARegulatoryInfo) / sizeof(DOT11_REGULATORY_INFORMATION))
 
 
 /* The regulatory information in Europe */
-DOT11_REGULATORY_INFORMATION EuropeRegulatoryInfo[] = 
+static DOT11_REGULATORY_INFORMATION EuropeRegulatoryInfo[] = 
 {
 /*  "regulatory class"  "number of channels"  "Max Tx Pwr"  "channel list" */
     {0,                 {0,                   0,           {0}}}, /* Invalid entry*/
     {1,                 {4,                   20,           {36, 40, 44, 48}}}, 
     {2,                 {4,                   20,           {52, 56, 60, 64}}}, 
-    {3,                 {11,                  30,           {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140}}}, 
+    {3,                 {11,                  30,           {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144}}}, 
     {4,                 {13,                  20,           {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}}}
 };
 #define EU_REGULATORY_INFO_SIZE (sizeof(EuropeRegulatoryInfo) / sizeof(DOT11_REGULATORY_INFORMATION))
 
 
 /* The regulatory information in Japan */
-DOT11_REGULATORY_INFORMATION JapanRegulatoryInfo[] = 
+static DOT11_REGULATORY_INFORMATION JapanRegulatoryInfo[] = 
 {
 /*  "regulatory class"  "number of channels"  "Max Tx Pwr"  "channel list" */
     {0,                 {0,                   0,           {0}}}, /* Invalid entry*/
@@ -115,10 +127,20 @@ UINT8 GetRegulatoryMaxTxPwr(
 	PSTRING pCountry = (PSTRING)(pAd->CommonCfg.CountryCode);
 
 
-	if (strncmp(pCountry, "US", 2) == 0)
+	if (strncmp(pCountry, "RU", 2) == 0)
+	{
+		MaxRegulatoryClassNum = RU_REGULATORY_INFO_SIZE;
+		pRegulatoryClass = &RURegulatoryInfo[0];
+	}
+	else if (strncmp(pCountry, "US", 2) == 0)
 	{
 		MaxRegulatoryClassNum = USA_REGULATORY_INFO_SIZE;
 		pRegulatoryClass = &USARegulatoryInfo[0];
+	}
+	else if (strncmp(pCountry, "EU", 2) == 0)
+	{
+		MaxRegulatoryClassNum = EU_REGULATORY_INFO_SIZE;
+		pRegulatoryClass = &EuropeRegulatoryInfo[0];
 	}
 	else if (strncmp(pCountry, "JP", 2) == 0)
 	{
@@ -129,7 +151,7 @@ UINT8 GetRegulatoryMaxTxPwr(
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("%s: Unknow Country (%s)\n",
 					__FUNCTION__, pCountry));
-		return 0xff;
+		return DEFAULT_MAX_TX_POWER;
 	}
 
 	for (RegulatoryClassLoop = 0;
@@ -143,20 +165,23 @@ UINT8 GetRegulatoryMaxTxPwr(
 		{
 			DBGPRINT(RT_DEBUG_ERROR, ("%s: %c%c Unknow Requlatory class (%d)\n",
 						__FUNCTION__, pCountry[0], pCountry[1], RegulatoryClass));
-			return 0xff;
+			return DEFAULT_MAX_TX_POWER;
 		}
 		pChannelSet = &pRegulatoryClass[RegulatoryClass].ChannelSet;
 		for (ChIdx=0; ChIdx<pChannelSet->NumberOfChannels; ChIdx++)
 		{
-			if (channel == pChannelSet->ChannelList[ChIdx])
-				return pChannelSet->MaxTxPwr;
-		
+			if (channel == pChannelSet->ChannelList[ChIdx]) {
+				if (pChannelSet->MaxTxPwr >= 14)
+				    return pChannelSet->MaxTxPwr;
+				else
+				    return DEFAULT_MAX_TX_POWER;
+			}
 		}
 		if (ChIdx == pChannelSet->NumberOfChannels)
-			return 0xff;
+			return DEFAULT_MAX_TX_POWER;
 	}
 
-	return 0xff;
+	return DEFAULT_MAX_TX_POWER;
 }
 
 typedef struct __TX_PWR_CFG
@@ -212,15 +237,25 @@ CHAR RTMP_GetTxPwr(
 	INT Idx;
 	UINT8 PhyMode;
 	CHAR CurTxPwr;
+	CHAR MaxTxPwr;
 	UINT8 TxPwrRef = 0;
 	CHAR DaltaPwr;
 	ULONG TxPwr[5];
 
-
 #ifdef SINGLE_SKU
-	CurTxPwr = pAd->CommonCfg.DefineMaxTxPwr;
+	CurTxPwr = MaxTxPwr = pAd->CommonCfg.DefineMaxTxPwr;
 #else
-	CurTxPwr = 19;
+	if (pAd->CommonCfg.CentralChannel > 14) {
+#if defined (CONFIG_RT_SECOND_IF_INTERNAL_PA_INTERNAL_LNA) || defined(CONFIG_RT_SECOND_IF_INTERNAL_PA_EXTERNAL_LNA) || defined(CONFIG_RALINK_MT7620)
+	    /* TPC report calculate from real maximum PWR+AntGain after calibration, for internal PA + 3-5dB antenna gain summart must be 20dBm */
+	    CurTxPwr = DEFAULT_MAX_TX_POWER;
+#else
+	    CurTxPwr = GetCuntryMaxTxPwr(pAd, pAd->CommonCfg.Channel);
+#endif
+	} else
+	    CurTxPwr = DEFAULT_MAX_TX_POWER;
+
+	MaxTxPwr = GetCuntryMaxTxPwr(pAd, pAd->CommonCfg.Channel);
 #endif /* SINGLE_SKU */
 
 	/* check Tx Power setting from UI. */
@@ -323,6 +358,13 @@ CHAR RTMP_GetTxPwr(
 		}
 	}
 
+	if (MaxTxPwr > CurTxPwr) {
+	    /* calculate real power constraint limit for clients - reduce client side interference */
+	    pAd->CommonCfg.PwrConstraint = ((MaxTxPwr - CurTxPwr) / 2);
+	} else {
+	    pAd->CommonCfg.PwrConstraint = 0;
+	}
+
 	return CurTxPwr;
 }
 
@@ -332,11 +374,11 @@ NDIS_STATUS	MeasureReqTabInit(
 {
 	NDIS_STATUS     Status = NDIS_STATUS_SUCCESS;
 
-	NdisAllocateSpinLock(pAd, &pAd->CommonCfg.MeasureReqTabLock);
-
 	os_alloc_mem(pAd, (UCHAR **)&(pAd->CommonCfg.pMeasureReqTab), sizeof(MEASURE_REQ_TAB));
-	if (pAd->CommonCfg.pMeasureReqTab)
+	if (pAd->CommonCfg.pMeasureReqTab) {
 		NdisZeroMemory(pAd->CommonCfg.pMeasureReqTab, sizeof(MEASURE_REQ_TAB));
+		NdisAllocateSpinLock(pAd, &pAd->CommonCfg.MeasureReqTabLock);
+	}
 	else
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("%s Fail to alloc memory for pAd->CommonCfg.pMeasureReqTab.\n", __FUNCTION__));
@@ -349,11 +391,11 @@ NDIS_STATUS	MeasureReqTabInit(
 VOID MeasureReqTabExit(
 	IN PRTMP_ADAPTER pAd)
 {
-	NdisFreeSpinLock(&pAd->CommonCfg.MeasureReqTabLock);
-
-	if (pAd->CommonCfg.pMeasureReqTab)
+	if (pAd->CommonCfg.pMeasureReqTab) {
 		os_free_mem(NULL, pAd->CommonCfg.pMeasureReqTab);
-	pAd->CommonCfg.pMeasureReqTab = NULL;
+		pAd->CommonCfg.pMeasureReqTab = NULL;
+		NdisFreeSpinLock(&pAd->CommonCfg.MeasureReqTabLock);
+	}
 
 	return;
 }
@@ -365,7 +407,6 @@ PMEASURE_REQ_ENTRY MeasureReqLookUp(
 	UINT HashIdx;
 	PMEASURE_REQ_TAB pTab = pAd->CommonCfg.pMeasureReqTab;
 	PMEASURE_REQ_ENTRY pEntry = NULL;
-	PMEASURE_REQ_ENTRY pPrevEntry = NULL;
 
 	if (pTab == NULL)
 	{
@@ -384,7 +425,6 @@ PMEASURE_REQ_ENTRY MeasureReqLookUp(
 			break;
 		else
 		{
-			pPrevEntry = pEntry;
 			pEntry = pEntry->pNext;
 		}
 	}
@@ -555,11 +595,11 @@ NDIS_STATUS	TpcReqTabInit(
 {
 	NDIS_STATUS     Status = NDIS_STATUS_SUCCESS;
 
-	NdisAllocateSpinLock(pAd, &pAd->CommonCfg.TpcReqTabLock);
-
 	os_alloc_mem(pAd, (UCHAR **)&(pAd->CommonCfg.pTpcReqTab), sizeof(TPC_REQ_TAB));
-	if (pAd->CommonCfg.pTpcReqTab)
+	if (pAd->CommonCfg.pTpcReqTab) {
 		NdisZeroMemory(pAd->CommonCfg.pTpcReqTab, sizeof(TPC_REQ_TAB));
+		NdisAllocateSpinLock(pAd, &pAd->CommonCfg.TpcReqTabLock);
+	}
 	else
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("%s Fail to alloc memory for pAd->CommonCfg.pTpcReqTab.\n", __FUNCTION__));
@@ -572,11 +612,11 @@ NDIS_STATUS	TpcReqTabInit(
 VOID TpcReqTabExit(
 	IN PRTMP_ADAPTER pAd)
 {
-	NdisFreeSpinLock(&pAd->CommonCfg.TpcReqTabLock);
-
-	if (pAd->CommonCfg.pTpcReqTab)
+	if (pAd->CommonCfg.pTpcReqTab) {
 		os_free_mem(NULL, pAd->CommonCfg.pTpcReqTab);
-	pAd->CommonCfg.pTpcReqTab = NULL;
+		pAd->CommonCfg.pTpcReqTab = NULL;
+		NdisFreeSpinLock(&pAd->CommonCfg.TpcReqTabLock);
+	}
 
 	return;
 }
@@ -588,7 +628,6 @@ static PTPC_REQ_ENTRY TpcReqLookUp(
 	UINT HashIdx;
 	PTPC_REQ_TAB pTab = pAd->CommonCfg.pTpcReqTab;
 	PTPC_REQ_ENTRY pEntry = NULL;
-	PTPC_REQ_ENTRY pPrevEntry = NULL;
 
 	if (pTab == NULL)
 	{
@@ -607,7 +646,6 @@ static PTPC_REQ_ENTRY TpcReqLookUp(
 			break;
 		else
 		{
-			pPrevEntry = pEntry;
 			pEntry = pEntry->pNext;
 		}
 	}
@@ -805,16 +843,20 @@ static UINT8 GetCurTxPwr(
 	IN PRTMP_ADAPTER pAd,
 	IN UINT8 Wcid)
 {
-	return 16; /* 16 dBm */
+	UCHAR MaxTxPower = GetCuntryMaxTxPwr(pAd, pAd->CommonCfg.Channel);
+	if (!MaxTxPower)
+	    return DEFAULT_MAX_TX_POWER; /* dbm */
+	else
+	    return MaxTxPower;
 }
 
 /*
 	==========================================================================
 	Description:
 		Get Current Transmit Power.
-		
+
 	Parametrs:
-	
+
 	Return	: Current Time Stamp.
 	==========================================================================
  */
@@ -823,16 +865,32 @@ VOID InsertChannelRepIE(
 	OUT PUCHAR pFrameBuf,
 	OUT PULONG pFrameLen,
 	IN PSTRING pCountry,
-	IN UINT8 RegulatoryClass)
+	IN UINT8 RegulatoryClass,
+	IN UINT8 *ChReptList
+	)
 {
 	ULONG TempLen;
 	UINT8 Len;
 	UINT8 IEId = IE_AP_CHANNEL_REPORT;
 	PUCHAR pChListPtr = NULL;
 	PDOT11_CHANNEL_SET pChannelSet = NULL;
+	UINT8 i,j;
+	UCHAR ChannelList[16] ={0};
+	UINT8 NumberOfChannels = 0;
+	UINT8 *pChannelList = NULL;
 
 	Len = 1;
-	if (strncmp(pCountry, "US", 2) == 0)
+	if (strncmp(pCountry, "RU", 2) == 0)
+	{
+		if (RegulatoryClass >= RU_REGULATORY_INFO_SIZE)
+		{
+			DBGPRINT(RT_DEBUG_ERROR, ("%s: RU Unknow Requlatory class (%d)\n",
+						__FUNCTION__, RegulatoryClass));
+			return;
+		}
+		pChannelSet = &RURegulatoryInfo[RegulatoryClass].ChannelSet;
+	}
+	else if (strncmp(pCountry, "US", 2) == 0)
 	{
 		if (RegulatoryClass >= USA_REGULATORY_INFO_SIZE)
 		{
@@ -841,6 +899,16 @@ VOID InsertChannelRepIE(
 			return;
 		}
 		pChannelSet = &USARegulatoryInfo[RegulatoryClass].ChannelSet;
+	}
+	else if (strncmp(pCountry, "EU", 2) == 0)
+	{
+		if (RegulatoryClass >= EU_REGULATORY_INFO_SIZE)
+		{
+			DBGPRINT(RT_DEBUG_ERROR, ("%s: EU Unknow Requlatory class (%d)\n",
+						__FUNCTION__, RegulatoryClass));
+			return;
+		}
+		pChannelSet = &EuropeRegulatoryInfo[RegulatoryClass].ChannelSet;
 	}
 	else if (strncmp(pCountry, "JP", 2) == 0)
 	{
@@ -868,8 +936,33 @@ VOID InsertChannelRepIE(
 	if (pChannelSet->NumberOfChannels == 0)
 		return;
 
-	Len += pChannelSet->NumberOfChannels;
-	pChListPtr = pChannelSet->ChannelList;
+	if (ChReptList) // assign partial channel list
+	{
+		for (i=0; i <pChannelSet->NumberOfChannels; i++)
+		{
+			for (j=0; j <16; j++)
+			{
+				if (ChReptList[j] == pChannelSet->ChannelList[i])
+				{
+					ChannelList[NumberOfChannels++] = pChannelSet->ChannelList[i];
+				}
+			}
+		}
+
+		pChannelList = &ChannelList[0];
+	}
+	else
+	{
+		NumberOfChannels = pChannelSet->NumberOfChannels;	
+		pChannelList = pChannelSet->ChannelList;
+	}
+
+	//DBGPRINT(RT_DEBUG_TRACE, ("%s: Requlatory class (%d), NumberOfChannels=%d, pChannelSet->NumberOfChannels=%d\n",
+	//					__FUNCTION__, RegulatoryClass,NumberOfChannels,pChannelSet->NumberOfChannels));
+
+	Len += NumberOfChannels;
+	pChListPtr = pChannelList;
+
 
 	if (Len > 1)
 	{
@@ -1390,6 +1483,7 @@ static BOOLEAN DfsRequirementCheck(
 	IN UINT8 Channel)
 {
 	BOOLEAN Result = FALSE;
+#ifdef DFS_SUPPORT
 	INT i;
 
 	do
@@ -1415,7 +1509,7 @@ static BOOLEAN DfsRequirementCheck(
 			}
 		}
 	} while(FALSE);
-
+#endif /* DFS_SUPPORT */
 	return Result;
 }
 
@@ -1426,6 +1520,7 @@ VOID NotifyChSwAnnToPeerAPs(
 	IN UINT8 ChSwMode,
 	IN UINT8 Channel)
 {
+#ifdef DFS_SUPPORT
 #ifdef WDS_SUPPORT
 	if (!((pRA[0] & 0xff) == 0xff)) /* is pRA a broadcase address.*/
 	{
@@ -1447,6 +1542,7 @@ VOID NotifyChSwAnnToPeerAPs(
 		}
 	}
 #endif /* WDS_SUPPORT */
+#endif /* DFS_SUPPORT */
 }
 
 static VOID StartDFSProcedure(
@@ -1454,6 +1550,7 @@ static VOID StartDFSProcedure(
 	IN UCHAR Channel,
 	IN UINT8 ChSwMode)
 {
+#ifdef DFS_SUPPORT
 	/* start DFS procedure*/
 	pAd->CommonCfg.Channel = Channel;
 #ifdef DOT11_N_SUPPORT
@@ -1461,6 +1558,7 @@ static VOID StartDFSProcedure(
 #endif /* DOT11_N_SUPPORT */
 	pAd->Dot11_H.RDMode = RD_SWITCHING_MODE;
 	pAd->Dot11_H.CSCount = 0;
+#endif /* DFS_SUPPORT */
 }
 
 /*
@@ -1485,6 +1583,7 @@ static VOID StartDFSProcedure(
   +----+-----+-----------+------------+-----------+
     1    1        1           1            1      
 */
+#ifdef DFS_SUPPORT
 static BOOLEAN PeerChSwAnnSanity(
 	IN PRTMP_ADAPTER pAd,
 	IN VOID *pMsg,
@@ -1492,9 +1591,14 @@ static BOOLEAN PeerChSwAnnSanity(
 	OUT PCH_SW_ANN_INFO pChSwAnnInfo)
 {
 	PFRAME_802_11 Fr = (PFRAME_802_11)pMsg;
-	PUCHAR pFramePtr = Fr->Octet;
+	PUCHAR pFramePtr;
 	BOOLEAN result = FALSE;
 	PEID_STRUCT eid_ptr;
+
+	if (Fr == NULL || pChSwAnnInfo == NULL)
+		return result;
+
+	pFramePtr = Fr->Octet;
 
 	/* skip 802.11 header.*/
 	MsgLen -= sizeof(HEADER_802_11);
@@ -1502,9 +1606,6 @@ static BOOLEAN PeerChSwAnnSanity(
 	/* skip category and action code.*/
 	pFramePtr += 2;
 	MsgLen -= 2;
-
-	if (pChSwAnnInfo == NULL)
-		return result;
 
 	eid_ptr = (PEID_STRUCT)pFramePtr;
 	while (((UCHAR*)eid_ptr + eid_ptr->Len + 1) < ((PUCHAR)pFramePtr + MsgLen))
@@ -1527,6 +1628,7 @@ static BOOLEAN PeerChSwAnnSanity(
 
 	return result;
 }
+#endif /* DFS_SUPPORT */
 
 /*
 	==========================================================================
@@ -1550,12 +1652,17 @@ static BOOLEAN PeerMeasureReqSanity(
 	OUT PMEASURE_REQ pMeasureReq)
 {
 	PFRAME_802_11 Fr = (PFRAME_802_11)pMsg;
-	PUCHAR pFramePtr = Fr->Octet;
+	PUCHAR pFramePtr;
 	BOOLEAN result = FALSE;
 	PEID_STRUCT eid_ptr;
 	PUCHAR ptr;
 	UINT64 MeasureStartTime;
 	UINT16 MeasureDuration;
+
+	if (Fr == NULL || pMeasureReqInfo == NULL)
+		return result;
+
+	pFramePtr = Fr->Octet;
 
 	/* skip 802.11 header.*/
 	MsgLen -= sizeof(HEADER_802_11);
@@ -1564,8 +1671,6 @@ static BOOLEAN PeerMeasureReqSanity(
 	pFramePtr += 2;
 	MsgLen -= 2;
 
-	if (pMeasureReqInfo == NULL)
-		return result;
 
 	NdisMoveMemory(pDialogToken, pFramePtr, 1);
 	pFramePtr += 1;
@@ -1642,10 +1747,15 @@ static BOOLEAN PeerMeasureReportSanity(
 	OUT PUINT8 pReportBuf)
 {
 	PFRAME_802_11 Fr = (PFRAME_802_11)pMsg;
-	PUCHAR pFramePtr = Fr->Octet;
+	PUCHAR pFramePtr;
 	BOOLEAN result = FALSE;
 	PEID_STRUCT eid_ptr;
 	PUCHAR ptr;
+
+	if (Fr == NULL  || pMeasureReportInfo == NULL)
+		return result;
+
+	pFramePtr = Fr->Octet;
 
 	/* skip 802.11 header.*/
 	MsgLen -= sizeof(HEADER_802_11);
@@ -1653,9 +1763,6 @@ static BOOLEAN PeerMeasureReportSanity(
 	/* skip category and action code.*/
 	pFramePtr += 2;
 	MsgLen -= 2;
-
-	if (pMeasureReportInfo == NULL)
-		return result;
 
 	NdisMoveMemory(pDialogToken, pFramePtr, 1);
 	pFramePtr += 1;
@@ -1731,18 +1838,20 @@ static BOOLEAN PeerTpcReqSanity(
 	OUT PUINT8 pDialogToken)
 {
 	PFRAME_802_11 Fr = (PFRAME_802_11)pMsg;
-	PUCHAR pFramePtr = Fr->Octet;
+	PUCHAR pFramePtr;
 	BOOLEAN result = FALSE;
 	PEID_STRUCT eid_ptr;
+
+	if (Fr == NULL || pDialogToken == NULL)
+		return result;
+
+	pFramePtr = Fr->Octet;
 
 	MsgLen -= sizeof(HEADER_802_11);
 
 	/* skip category and action code.*/
 	pFramePtr += 2;
 	MsgLen -= 2;
-
-	if (pDialogToken == NULL)
-		return result;
 
 	NdisMoveMemory(pDialogToken, pFramePtr, 1);
 	pFramePtr += 1;
@@ -1788,18 +1897,20 @@ static BOOLEAN PeerTpcRepSanity(
 	OUT PTPC_REPORT_INFO pTpcRepInfo)
 {
 	PFRAME_802_11 Fr = (PFRAME_802_11)pMsg;
-	PUCHAR pFramePtr = Fr->Octet;
+	PUCHAR pFramePtr;
 	BOOLEAN result = FALSE;
 	PEID_STRUCT eid_ptr;
+
+	if (Fr == NULL || pDialogToken == NULL)
+		return result;
+
+	pFramePtr = Fr->Octet;
 
 	MsgLen -= sizeof(HEADER_802_11);
 
 	/* skip category and action code.*/
 	pFramePtr += 2;
 	MsgLen -= 2;
-
-	if (pDialogToken == NULL)
-		return result;
 
 	NdisMoveMemory(pDialogToken, pFramePtr, 1);
 	pFramePtr += 1;
@@ -1836,12 +1947,15 @@ static BOOLEAN PeerTpcRepSanity(
 	Return	: None.
 	==========================================================================
  */
+#ifdef DFS_SUPPORT
 static VOID PeerChSwAnnAction(
 	IN PRTMP_ADAPTER pAd, 
 	IN MLME_QUEUE_ELEM *Elem) 
 {
 	CH_SW_ANN_INFO ChSwAnnInfo;
 	PFRAME_802_11 pFr = (PFRAME_802_11)Elem->Msg;
+	if (pFr == NULL)
+	    return;
 
 	NdisZeroMemory(&ChSwAnnInfo, sizeof(CH_SW_ANN_INFO));
 	if (! PeerChSwAnnSanity(pAd, Elem->Msg, Elem->MsgLen, &ChSwAnnInfo))
@@ -1863,7 +1977,7 @@ static VOID PeerChSwAnnAction(
 
 	return;
 }
-
+#endif /* DFS_SUPPORT */
 
 /*
 	==========================================================================
@@ -1885,6 +1999,9 @@ static VOID PeerMeasureReqAction(
 	MEASURE_REQ_INFO MeasureReqInfo;
 	MEASURE_REQ	MeasureReq;
 	MEASURE_REPORT_MODE ReportMode;
+
+	if (pFr == NULL)
+	    return;
 
 	if(PeerMeasureReqSanity(pAd, Elem->Msg, Elem->MsgLen, &DialogToken, &MeasureReqInfo, &MeasureReq))
 	{
@@ -1915,6 +2032,9 @@ static VOID PeerMeasureReportAction(
 	PFRAME_802_11 pFr = (PFRAME_802_11)Elem->Msg;
 	UINT8 DialogToken;
 	PUINT8 pMeasureReportInfo;
+
+	if (pFr == NULL)
+	    return;
 
 /*	if (pAd->CommonCfg.bIEEE80211H != TRUE)*/
 /*		return;*/
@@ -1978,17 +2098,22 @@ static VOID PeerTpcReqAction(
 	IN MLME_QUEUE_ELEM *Elem) 
 {
 	PFRAME_802_11 pFr = (PFRAME_802_11)Elem->Msg;
-	PUCHAR pFramePtr = pFr->Octet;
+	PUCHAR pFramePtr;
 	UINT8 DialogToken;
 	UINT8 TxPwr = GetCurTxPwr(pAd, Elem->Wcid);
 	UINT8 LinkMargin = 0;
 	CHAR RealRssi;
 
+	if (pFr == NULL)
+	    return;
+
+	pFramePtr = pFr->Octet;
+
 	/* link margin: Ratio of the received signal power to the minimum desired by the station (STA). The*/
 	/*				STA may incorporate rate information and channel conditions, including interference, into its computation*/
 	/*				of link margin.*/
 
-	RealRssi = RTMPMaxRssi(pAd, ConvertToRssi(pAd, Elem->Rssi0, RSSI_0),
+	RealRssi = RTMPMinRssi(pAd, ConvertToRssi(pAd, Elem->Rssi0, RSSI_0),
 								ConvertToRssi(pAd, Elem->Rssi1, RSSI_1),
 								ConvertToRssi(pAd, Elem->Rssi2, RSSI_2));
 
@@ -2081,15 +2206,14 @@ VOID PeerSpectrumAction(
 			break;
 
 		case SPEC_CHANNEL_SWITCH:
-
-#ifdef DOT11N_DRAFT3
+#ifdef DFS_SUPPORT
 			{
 				SEC_CHA_OFFSET_IE	Secondary;
 				CHA_SWITCH_ANNOUNCE_IE	ChannelSwitch;
 
 				/* 802.11h only has Channel Switch Announcement IE. */
 				RTMPMoveMemory(&ChannelSwitch, &Elem->Msg[LENGTH_802_11+4], sizeof (CHA_SWITCH_ANNOUNCE_IE));
-					
+
 				/* 802.11n D3.03 adds secondary channel offset element in the end.*/
 				if (Elem->MsgLen ==  (LENGTH_802_11 + 2 + sizeof (CHA_SWITCH_ANNOUNCE_IE) + sizeof (SEC_CHA_OFFSET_IE)))
 				{
@@ -2099,15 +2223,14 @@ VOID PeerSpectrumAction(
 				{
 					Secondary.SecondaryChannelOffset = 0;
 				}
-
 				if ((Elem->Msg[LENGTH_802_11+2] == IE_CHANNEL_SWITCH_ANNOUNCEMENT) && (Elem->Msg[LENGTH_802_11+3] == 3))
 				{
 					ChannelSwitchAction(pAd, Elem->Wcid, ChannelSwitch.NewChannel, Secondary.SecondaryChannelOffset);
 				}
 			}
-#endif /* DOT11N_DRAFT3 */
 
 			PeerChSwAnnAction(pAd, Elem);
+#endif /* DFS_SUPPORT */
 			break;
 	}
 
@@ -2137,8 +2260,6 @@ INT Set_MeasureReq_Proc(
 	UINT8 MeasureCh = 1;
 	UINT64 MeasureStartTime = GetCurrentTimeStamp(pAd);
 	MEASURE_REQ MeasureReq;
-	UINT8 TotalLen;
-
 	HEADER_802_11 ActHdr;
 	PUCHAR pOutBuffer = NULL;
 	NDIS_STATUS NStatus;
@@ -2195,10 +2316,14 @@ INT Set_MeasureReq_Proc(
 	NdisMoveMemory(pOutBuffer, (PCHAR)&ActHdr, sizeof(HEADER_802_11));
 	FrameLen = sizeof(HEADER_802_11);
 
-	TotalLen = sizeof(MEASURE_REQ_INFO) + sizeof(MEASURE_REQ);
-
+	/*
+		according to 802.11h-2003.pdf 
+		Page#26
+		Table 19a!XCategory values
+		Spectrum management (CATEGORY_SPECTRUM) ==> 0
+	*/
 	MakeMeasurementReqFrame(pAd, pOutBuffer, &FrameLen,
-		sizeof(MEASURE_REQ_INFO), CATEGORY_RM, RM_BASIC,
+		sizeof(MEASURE_REQ_INFO), CATEGORY_SPECTRUM, SPEC_MRQ,
 		MeasureReqToken, MeasureReqMode.word,
 		MeasureReqType, 1);
 
@@ -2320,6 +2445,66 @@ typedef struct __PWR_CONSTRAIN_CFG
 }
 
 
+#ifdef DOT11K_RRM_SUPPORT
+INT Set_VoPwrConsTest(
+	IN	PRTMP_ADAPTER	pAd,
+	IN	PSTRING			arg)
+{
+	POS_COOKIE	pObj= (POS_COOKIE)pAd->OS_Cookie;
+
+	/* 
+		Set AP Supported Rate Set to signle rate 54Mbps.
+	*/
+	pAd->CommonCfg.SupRate[0]  = 0x8c;	  /* 54 mbps, in units of 0.5 Mbps*/
+	pAd->CommonCfg.SupRateLen  = 1;
+	pAd->CommonCfg.ExtRateLen = 0;
+
+	/* 
+		1. disable AP Dynamic rate switch 
+		2. and fix it as 54Mbps
+		3. set G only mode.
+	*/
+	APStop(pAd);
+	APStartUp(pAd);
+
+#ifdef DOT11_N_SUPPORT
+	if (pAd->CommonCfg.Channel > 14)
+		pAd->CommonCfg.PhyMode = (WMODE_A | WMODE_AN);
+	else
+		pAd->CommonCfg.PhyMode = (WMODE_B | WMODE_G |WMODE_GN);
+#endif /* DOT11_N_SUPPORT */
+
+	pAd->ApCfg.MBSSID[pObj->ioctl_if].wdev.DesiredTransmitSetting.field.FixedTxMode = FIXED_TXMODE_OFDM;
+	pAd->ApCfg.MBSSID[pObj->ioctl_if].wdev.DesiredTransmitSetting.field.MCS = 0;
+
+#ifdef DOT11_N_SUPPORT
+	SetCommonHT(pAd);
+#endif /* DOT11_N_SUPPORT */
+
+	pAd->MacTab.Content[0].HTPhyMode.field.MODE = MODE_OFDM;
+	pAd->MacTab.Content[0].HTPhyMode.field.iTxBF = 0;
+	pAd->MacTab.Content[0].HTPhyMode.field.eTxBF = 0;
+	pAd->MacTab.Content[0].HTPhyMode.field.STBC = 0;
+	pAd->MacTab.Content[0].HTPhyMode.field.ShortGI = 0;
+	pAd->MacTab.Content[0].HTPhyMode.field.BW = 0;
+	pAd->MacTab.Content[0].HTPhyMode.field.MCS = 0;
+
+	pAd->CommonCfg.BasicMlmeRate = RATE_6;
+	pAd->CommonCfg.MlmeRate = RATE_6;
+
+	pAd->CommonCfg.MlmeRate = RATE_6;
+	pAd->CommonCfg.RtsRate = RATE_6;
+	pAd->CommonCfg.MlmeTransmit.field.MODE = MODE_OFDM;
+	pAd->CommonCfg.MlmeTransmit.field.MCS = OfdmRateToRxwiMCS[pAd->CommonCfg.MlmeRate];
+
+	/* Stop all auto fall back. */
+	RTMP_IO_WRITE32(pAd, LG_FBK_CFG0, 0x08080808);
+	RTMP_IO_WRITE32(pAd, LG_FBK_CFG1, 0x08080808);
+
+	return TRUE;
+}
+#endif /* DOT11K_RRM_SUPPORT */
+
 static PDOT11_REGULATORY_INFORMATION GetRugClassRegion(
 	IN PSTRING pCountryCode,
 	IN UINT8 RugClass)
@@ -2329,19 +2514,31 @@ static PDOT11_REGULATORY_INFORMATION GetRugClassRegion(
 	pRugClass = NULL;
 	do
 	{
-		if (strncmp(pCountryCode, "US", 2) == 0)
+		if (strncmp(pCountryCode, "RU", 2) == 0)
+		{
+			if (RugClass >= RU_REGULATORY_INFO_SIZE)
+				break;
+			pRugClass = &RURegulatoryInfo[RugClass];
+		} else if (strncmp(pCountryCode, "US", 2) == 0)
 		{
 			if (RugClass >= USA_REGULATORY_INFO_SIZE)
 				break;
 			pRugClass = &USARegulatoryInfo[RugClass];
-		}
-
-		if (strncmp(pCountryCode, "JP", 2) == 0)
+		} else	if (strncmp(pCountryCode, "EU", 2) == 0)
+		{
+			if (RugClass >= EU_REGULATORY_INFO_SIZE)
+				break;
+			pRugClass = &EuropeRegulatoryInfo[RugClass];
+		} else if (strncmp(pCountryCode, "JP", 2) == 0)
 		{
 			if (RugClass >= JP_REGULATORY_INFO_SIZE)
 				break;
 			pRugClass = &JapanRegulatoryInfo[RugClass];
 
+		} else {
+			if (RugClass >= RU_REGULATORY_INFO_SIZE)
+				break;
+			pRugClass = &RURegulatoryInfo[RugClass];
 		}
 	} while (FALSE);
 
@@ -2361,15 +2558,18 @@ VOID RguClass_BuildBcnChList(
 	for (loop = 0 ;loop < MAX_NUM_OF_REGULATORY_CLASS; loop++)
 	{
 		if (pAd->CommonCfg.RegulatoryClass[loop] == 0)
-			break;
+			continue;
 
 		pRguClassRegion = GetRugClassRegion(
 							(PSTRING)pAd->CommonCfg.CountryCode,
 							pAd->CommonCfg.RegulatoryClass[loop]);
 
+		if (pRguClassRegion == NULL)
+			return;
+
 		pChList = &pRguClassRegion->ChannelSet;
 
-		if (pRguClassRegion == NULL)
+		if (pChList == NULL)
 			return;
 
 		MakeOutgoingFrame(pBuf + *pBufLen,		&TmpLen,

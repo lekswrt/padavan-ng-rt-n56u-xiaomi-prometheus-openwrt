@@ -391,8 +391,6 @@ INT MWDSAPUP(
 	MWDSConnEntryListInit(pAd);
 	RoutingTabInit(pAd, ROUTING_ENTRY_MWDS);
 	pAd->ApCfg.bMWDSAPInit = TRUE;
-
-	return TRUE;
 }
 
 INT MWDSAPDown(
@@ -401,8 +399,6 @@ INT MWDSAPDown(
 	MWDSConnEntryListClear(pAd);
 	RoutingTabDestory(pAd, ROUTING_ENTRY_MWDS);
 	pAd->ApCfg.bMWDSAPInit = FALSE;
-
-	return TRUE;
 }
 
 INT	Set_Enable_MWDS_Proc(
@@ -534,8 +530,6 @@ INT Set_ApCli_MWDS_Show_Proc(
         bEnable = bSupportMWDS;
     }
     DBGPRINT(RT_DEBUG_OFF,("%d\n", bEnable));
-
-	return TRUE;
 }
 
 INT Set_APProxy_Status_Show_Proc(

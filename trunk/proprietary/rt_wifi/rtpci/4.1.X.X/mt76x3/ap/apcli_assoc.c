@@ -210,7 +210,7 @@ static VOID ApCliAssocTimeoutExt(
 	pAd = pRepeaterCliEntry->pAd;
 	ifIndex = (64 + (16*pRepeaterCliEntry->MatchApCliIdx) + pRepeaterCliEntry->MatchLinkIdx);
 
-	DBGPRINT(RT_DEBUG_ERROR, (" (%s) ifIndex = %d, CliIdx = %d !!!\n",
+	DBGPRINT(RT_DEBUG_TRACE, (" (%s) ifIndex = %d, CliIdx = %d !!!\n",
 					__FUNCTION__, pRepeaterCliEntry->MatchApCliIdx, pRepeaterCliEntry->MatchLinkIdx));
 
 	MlmeEnqueue(pAd, APCLI_ASSOC_STATE_MACHINE, APCLI_MT2_ASSOC_TIMEOUT, 0, NULL, ifIndex);
@@ -398,6 +398,11 @@ static VOID ApCliMlmeAssocReqAction(
 				(apcli_entry->MlmeAux.vht_cap_len))
 			{
 				FrameLen += build_vht_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen), SUBTYPE_ASSOC_REQ);
+
+            			/* For VHT40 ApClient, Add the OP Noitfy IE to notify rootAP the STA current BW */
+            			if ((apcli_entry->MlmeAux.HtCapability.HtCapInfo.ChannelWidth == BW_40) &&
+                			(pAd->CommonCfg.vht_bw == VHT_BW_2040)) 
+                		    FrameLen += build_vht_op_mode_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen));
 			}
 #endif /* DOT11_VHT_AC */
 		}
@@ -799,6 +804,9 @@ static VOID ApCliPeerAssocRspAction(
 			}
 			else
 			{
+				if(Status == MLME_ASSOC_REJ_DATA_RATE)
+					printk("APCLI_ASSOC - receive ASSOC_RSP reject - AP not support reqested rates or modes\n");
+
 				ApCliCtrlMsg.Status = Status;
 				MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_ASSOC_RSP,
 							sizeof(APCLI_CTRL_MSG_STRUCT), &ApCliCtrlMsg, ifIndex);

@@ -61,6 +61,7 @@
                 {       \
                         __HtPhyMode.field.MODE = MODE_VHT;                                      \
                         __HtPhyMode.field.MCS = 9;                                                      \
+                        __HtPhyMode.field.BW = BW_80;   \
                }       \
 	}
 

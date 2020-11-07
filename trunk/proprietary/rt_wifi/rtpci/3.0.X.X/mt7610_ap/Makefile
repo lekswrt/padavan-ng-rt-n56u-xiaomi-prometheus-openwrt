@@ -54,6 +54,7 @@ $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/phy/rtmp_phy.o
 $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/rate_ctrl/ra_ctrl.o
 $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/rate_ctrl/alg_legacy.o
 $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/rate_ctrl/alg_grp.o
+$(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/rate_ctrl/alg_ags.o
 $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/ap/ap.o
 $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/ap/ap_assoc.o
 $(RT_DRV_NAME)-objs += $(RT_DRV_PATH)/ap/ap_auth.o

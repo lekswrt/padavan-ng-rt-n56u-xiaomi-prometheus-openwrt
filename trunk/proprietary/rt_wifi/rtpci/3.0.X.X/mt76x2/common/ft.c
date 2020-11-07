@@ -168,7 +168,7 @@ VOID FT_EnqueueAuthReply(
 	}
 
 	/* Calculate MIC in authentication-ACK frame */	
-	if (pFtIeInfo->MICCtr.field.IECnt)
+	if (pFtIeInfo && pFtIeInfo->MICCtr.field.IECnt)
 	{
 		PMAC_TABLE_ENTRY pEntry;
 		
@@ -248,6 +248,8 @@ static VOID FT_ReqActionParse(
 					pFtInfo->RicInfo.Len = ((UCHAR*)Ptr + Len)
 											- (UCHAR*)eid_ptr + 1;
 				}
+				break;
+
 			case IE_FT_RIC_DESCRIPTOR:
 				if ((pFtInfo->RicInfo.RicIEsLen + eid_ptr->Len + 2) < MAX_RICIES_LEN)
 				{
@@ -527,6 +529,7 @@ USHORT FT_AuthConfirmHandler(
 	UCHAR ApIdx = pEntry->apidx;
 	PFT_CFG pFtCfg;
 	FT_CAP_AND_POLICY FtCapPlc;
+	ULONG temp_len = 0;
 
 	DBGPRINT(RT_DEBUG_TRACE, ("%s:\n", __FUNCTION__));
 
@@ -578,11 +581,13 @@ USHORT FT_AuthConfirmHandler(
 
 			pFtInfoBuf->RSNIE_Len = 0;
 			RTMPInsertRSNIE(pFtInfoBuf->RSN_IE, 
-							(PULONG)&pFtInfoBuf->RSNIE_Len,
+							&temp_len,
 							rsnie_ptr, 
 							rsnie_len, 
 							pEntry->FT_PMK_R1_NAME, 
 							LEN_PMK_NAME);
+
+			pFtInfoBuf->RSNIE_Len = (UCHAR)temp_len;
 
 			ft_len = sizeof(FT_FTIE);
 	
@@ -691,7 +696,7 @@ USHORT FT_AssocReqHandler(
 			if (!IS_FT_STA(pEntry))
 			{
 				NdisMoveMemory(&pEntry->MdIeInfo, &pPeer_FtInfo->MdIeInfo,
-						pPeer_FtInfo->MdIeInfo.Len);
+						sizeof(pPeer_FtInfo->MdIeInfo));
 			}
 					
 			if (pPeer_FtInfo->RSNIE_Len != 0)
@@ -1585,6 +1590,7 @@ UINT16	FT_AuthReqRsnValidation(
 	UINT8 	rsnie_len = 0;
     PUINT8  rsnie_ptr = NULL;
 	UINT16	result = MLME_SUCCESS;
+	ULONG temp_len = 0;
 	
 	/* Check the validity of the received RSNIE */
 	if ((result = APValidateRSNIE(pAd, pEntry, pFtInfo_in->RSN_IE, pFtInfo_in->RSNIE_Len)) != MLME_SUCCESS)	
@@ -1757,11 +1763,13 @@ UINT16	FT_AuthReqRsnValidation(
 
 	pFtInfo_out->RSNIE_Len = 0;
 	RTMPInsertRSNIE(pFtInfo_out->RSN_IE, 
-					(PULONG)&pFtInfo_out->RSNIE_Len,
+					&temp_len,
 					rsnie_ptr, 
 					rsnie_len, 
 					pPmkR0Name, 
 					LEN_PMK_NAME);
+
+	pFtInfo_out->RSNIE_Len = (UCHAR)temp_len;
 
 	return MLME_SUCCESS;
 
@@ -1873,6 +1881,7 @@ UINT16	FT_AssocReqRsnValidation(
 	PFT_R1HK_ENTRY pR1hkEntry = NULL;
 	PUINT8 	pAkmSuite = NULL;
 	UINT8 	count = 0;
+	ULONG	temp_len = 0;
 
 
 	/*	The R1KH of the target AP verifies the MIC in the FTIE in 
@@ -1964,12 +1973,14 @@ UINT16	FT_AssocReqRsnValidation(
 
 	pFtInfo_out->RSNIE_Len = 0;
 	RTMPInsertRSNIE(pFtInfo_out->RSN_IE, 
-					(PULONG)&pFtInfo_out->RSNIE_Len,
+					&temp_len,
 					rsnie_ptr, 
 					rsnie_len, 
 					pEntry->FT_PMK_R1_NAME, 
 					LEN_PMK_NAME);
 	
+	pFtInfo_out->RSNIE_Len = (UCHAR)temp_len;
+
 	/* Prepare MIC-control and MIC field of FTIE for outgoing frame. */										
 	pFtInfo_out->FtIeInfo.MICCtr.field.IECnt = 3;
 	NdisZeroMemory(pFtInfo_out->FtIeInfo.MIC, 16);
@@ -3169,11 +3180,11 @@ INT	Show_FTConfig_Proc(
 
 	pFtCfg = &pAd->ApCfg.MBSSID[pObj->ioctl_if].FtCfg;
 
-	DBGPRINT(RT_DEBUG_OFF, ("MDID=%c%c\n", pFtCfg->FtMdId[0], pFtCfg->FtMdId[1]));
-	DBGPRINT(RT_DEBUG_OFF, ("R0KHID=%s, Len=%d\n", pFtCfg->FtR0khId, pFtCfg->FtR0khIdLen));
-	DBGPRINT(RT_DEBUG_OFF, ("FT Enable=%d\n", pFtCfg->FtCapFlag.Dot11rFtEnable));
-	DBGPRINT(RT_DEBUG_OFF, ("FT RIC=%d\n", pFtCfg->FtCapFlag.RsrReqCap));
-	DBGPRINT(RT_DEBUG_OFF, ("FT OTD=%d\n", pFtCfg->FtCapFlag.FtOverDs));
+	printk("MDID=%c%c\n", pFtCfg->FtMdId[0], pFtCfg->FtMdId[1]);
+	printk("R0KHID=%s, Len=%d\n", pFtCfg->FtR0khId, pFtCfg->FtR0khIdLen);
+	printk("FT Enable=%d\n", pFtCfg->FtCapFlag.Dot11rFtEnable);
+	printk("FT RIC=%d\n", pFtCfg->FtCapFlag.RsrReqCap);
+	printk("FT OTD=%d\n", pFtCfg->FtCapFlag.FtOverDs);
 
 	return TRUE;
 }

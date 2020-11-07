@@ -223,7 +223,7 @@ int rtinet_aton(PSTRING cp, unsigned int *addr)
 	unsigned int 	val;
 	int         	base, n;
 	STRING        	c;
-	unsigned int    parts[4];
+	unsigned int    parts[4] = {0};
 	unsigned int    *pp = parts;
 
 	for (;;)
@@ -1621,6 +1621,11 @@ static void VHTParametersHook(
 		else
 			pAd->CommonCfg.vht_bw = VHT_BW_2040;
 
+#ifdef MCAST_RATE_SPECIFIC
+		if (pAd->CommonCfg.vht_bw == VHT_BW_80)
+			pAd->CommonCfg.MCastPhyMode.field.BW = BW_80;
+#endif /* MCAST_RATE_SPECIFIC */
+
 		DBGPRINT(RT_DEBUG_TRACE, ("VHT: Channel Width = %s\n",
 					(pAd->CommonCfg.vht_bw == VHT_BW_80) ? "80 MHz" : "20/40 MHz" ));
 	}
@@ -1644,7 +1649,7 @@ static void VHTParametersHook(
 	{
 		Value = simple_strtol(pValueStr, 0, 10);
 
-		pAd->CommonCfg.vht_stbc = (Value == 1 ? STBC_USE : STBC_NONE);
+		pAd->CommonCfg.vht_stbc = ((Value == 1 && pAd->Antenna.field.TxPath >= 2) ? STBC_USE : STBC_NONE);
 		DBGPRINT(RT_DEBUG_TRACE, ("VHT: STBC = %d\n",
 					pAd->CommonCfg.vht_stbc));
 	}
@@ -1861,7 +1866,6 @@ static void HTParametersHook(
 		IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
 		Value = 64;
 #endif /* CONFIG_AP_SUPPORT */
-
 		if (Value >=1 && Value <= 64)
 		{		
 			pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = Value;
@@ -1870,7 +1874,7 @@ static void HTParametersHook(
 		}
 		else
 		{
-            pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = 64;
+        		pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = 64;
 			pAd->CommonCfg.BACapability.field.RxBAWinLimit = 64;
 			DBGPRINT(RT_DEBUG_TRACE, ("HT: BA Windw Size = 64 (Defualt)\n"));
 		}
@@ -1988,7 +1992,7 @@ static void HTParametersHook(
     if (RTMPGetKeyParameter("HT_STBC", pValueStr, 25, pInput, TRUE))
 	{
 		Value = simple_strtol(pValueStr, 0, 10);
-		if (Value == STBC_USE)
+		if (Value == STBC_USE && pAd->Antenna.field.TxPath >= 2)
 		{		
 			pAd->CommonCfg.RegTransmitSetting.field.STBC = STBC_USE;
 		}
@@ -2206,19 +2210,22 @@ static void HTParametersHook(
 }
 #endif /* DOT11_N_SUPPORT */
 
-
-
-
 void RTMPSetCountryCode(RTMP_ADAPTER *pAd, PSTRING CountryCode)
 {
-	NdisMoveMemory(pAd->CommonCfg.CountryCode, CountryCode , 2);
-	pAd->CommonCfg.CountryCode[2] = ' ';
-	if (strlen((PSTRING) pAd->CommonCfg.CountryCode) != 0)
+	if (strlen((PSTRING)CountryCode) != 0) {
+		NdisZeroMemory(pAd->CommonCfg.CountryCode,
+				sizeof(pAd->CommonCfg.CountryCode));
+		pAd->CommonCfg.CountryCode[2] = ' ';
+		NdisMoveMemory(pAd->CommonCfg.CountryCode, CountryCode , 2);
 		pAd->CommonCfg.bCountryFlag = TRUE;
+	} else {
+		NdisZeroMemory(pAd->CommonCfg.CountryCode,
+				sizeof(pAd->CommonCfg.CountryCode));
+		pAd->CommonCfg.bCountryFlag = FALSE;
+	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("CountryCode=%s\n", pAd->CommonCfg.CountryCode));
 }
-
 
 NDIS_STATUS	RTMPSetProfileParameters(
 	IN RTMP_ADAPTER *pAd,
@@ -2402,6 +2409,8 @@ NDIS_STATUS	RTMPSetProfileParameters(
 		{
 			pAd->CommonCfg.Channel = (UCHAR) simple_strtol(tmpbuf, 0, 10);
 			DBGPRINT(RT_DEBUG_TRACE, ("Channel=%d\n", pAd->CommonCfg.Channel));
+			if (pAd->CommonCfg.Channel > 14)
+				pAd->Dot11_H.org_ch = pAd->CommonCfg.Channel;
 		}
 
 		/*WirelessMode*/
@@ -2621,15 +2630,11 @@ NDIS_STATUS	RTMPSetProfileParameters(
 	    /*TxPower*/
 		if(RTMPGetKeyParameter("TxPower", tmpbuf, 10, pBuffer, TRUE))
 		{
-			pAd->CommonCfg.TxPowerPercentage = (ULONG) simple_strtol(tmpbuf, 0, 10);
-			DBGPRINT(RT_DEBUG_TRACE, ("TxPower=%ld\n", pAd->CommonCfg.TxPowerPercentage));
+			Set_TxPower_Proc(pAd, tmpbuf);
 		}
 		/*BGProtection*/
 		if(RTMPGetKeyParameter("BGProtection", tmpbuf, 10, pBuffer, TRUE))
 		{
-	/*#if 0	#ifndef WIFI_TEST*/
-	/*		pAd->CommonCfg.UseBGProtection = 2; disable b/g protection for throughput test*/
-	/*#else*/
 			switch (simple_strtol(tmpbuf, 0, 10))
 			{
 				case 1: /*Always On*/
@@ -2643,7 +2648,6 @@ NDIS_STATUS	RTMPSetProfileParameters(
 					pAd->CommonCfg.UseBGProtection = 0;
 					break;
 			}
-	/*#endif*/
 			DBGPRINT(RT_DEBUG_TRACE, ("BGProtection=%ld\n", pAd->CommonCfg.UseBGProtection));
 		}
 
@@ -2673,6 +2677,9 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			{
 				case Rt802_11PreambleShort:
 					pAd->CommonCfg.TxPreamble = Rt802_11PreambleShort;
+					break;
+				case Rt802_11PreambleAuto:
+					pAd->CommonCfg.TxPreamble = Rt802_11PreambleAuto;
 					break;
 				case Rt802_11PreambleLong:
 				default:
@@ -2761,13 +2768,13 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			/* MaxStaNum*/
 			if (RTMPGetKeyParameter("MaxStaNum", tmpbuf, 32, pBuffer, TRUE))
 			{
-				for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr; macptr = rstrtok(NULL,";"), i++)
-				{
+			    for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr; macptr = rstrtok(NULL,";"), i++)
+			    {
 					if (i >= pAd->ApCfg.BssidNum)
 						break;
 					
-					ApCfg_Set_MaxStaNum_Proc(pAd, i, macptr);
-				}
+					ApCfg_Set_MaxStaNum_Proc(pAd, i, macptr);					
+			    }
 			}
 		
 			/* IdleTimeout*/
@@ -2779,8 +2786,8 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			/*NoForwarding*/
 			if(RTMPGetKeyParameter("NoForwarding", tmpbuf, 32, pBuffer, TRUE))
 			{
-				for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr; macptr = rstrtok(NULL,";"), i++)
-				{
+			    for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr; macptr = rstrtok(NULL,";"), i++)
+			    {
 					if (i >= pAd->ApCfg.BssidNum)
 						break;
 
@@ -2790,7 +2797,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 						pAd->ApCfg.MBSSID[i].IsolateInterStaTraffic = FALSE;
 
 					DBGPRINT(RT_DEBUG_TRACE, ("I/F(ra%d) NoForwarding=%d\n", i, pAd->ApCfg.MBSSID[i].IsolateInterStaTraffic));
-				}
+			    }
 			}
 			/*NoForwardingMBCast*/
 			if (RTMPGetKeyParameter("NoForwardingMBCast", tmpbuf, 32, pBuffer, TRUE))
@@ -2822,7 +2829,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			if(RTMPGetKeyParameter("HideSSID", tmpbuf, 32, pBuffer, TRUE))
 			{
 				for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr; macptr = rstrtok(NULL,";"), i++)
-				{
+			    {
 					int apidx = i;
 
 					if (i >= pAd->ApCfg.BssidNum)
@@ -2884,13 +2891,13 @@ NDIS_STATUS	RTMPSetProfileParameters(
 				DBGPRINT(RT_DEBUG_TRACE, ("AutoChannelAtBootup=%d\n", pAd->ApCfg.bAutoChannelAtBootup));
 			}
 			/*AutoChannelSkipList*/
-			if (RTMPGetKeyParameter("AutoChannelSkipList", tmpbuf, 50, pBuffer, FALSE))
+			if (RTMPGetKeyParameter("AutoChannelSkipList", tmpbuf, 100, pBuffer, FALSE))
 			{		
 				pAd->ApCfg.AutoChannelSkipListNum = delimitcnt(tmpbuf, ";") + 1;
-				if ( pAd->ApCfg.AutoChannelSkipListNum > 10 )
+				if ( pAd->ApCfg.AutoChannelSkipListNum > 20 )
 				{
-					DBGPRINT(RT_DEBUG_TRACE, ("Your no. of AutoChannelSkipList( %d ) is larger than 10 (boundary)\n",pAd->ApCfg.AutoChannelSkipListNum));
-					pAd->ApCfg.AutoChannelSkipListNum = 10;
+					DBGPRINT(RT_DEBUG_TRACE, ("Your no. of AutoChannelSkipList( %d ) is larger than 20 (boundary)\n",pAd->ApCfg.AutoChannelSkipListNum));
+					pAd->ApCfg.AutoChannelSkipListNum = 20;
 				}
 						
 				for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr ; macptr = rstrtok(NULL,";"), i++)
@@ -3749,37 +3756,48 @@ NDIS_STATUS	RTMPSetProfileParameters(
 					if (RTMPGetKeyParameter("McastPhyMode", tmpbuf, 32, pBuffer, TRUE))
 					{	
 						UCHAR PhyMode = simple_strtol(tmpbuf, 0, 10);
-									pAd->CommonCfg.MCastPhyMode.field.BW = pAd->CommonCfg.RegTransmitSetting.field.BW;
+						//pAd->CommonCfg.MCastPhyMode.field.BW = pAd->CommonCfg.RegTransmitSetting.field.BW;
 						switch (PhyMode)
 						{
-										case MCAST_DISABLE: /* disable*/
-											NdisMoveMemory(&pAd->CommonCfg.MCastPhyMode,
-												&pAd->MacTab.Content[MCAST_WCID].HTPhyMode, sizeof(HTTRANSMIT_SETTING));
-											break;
-
-										case MCAST_CCK:	/* CCK*/
-											pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_CCK;
-											pAd->CommonCfg.MCastPhyMode.field.BW =  BW_20;
+							case MCAST_DISABLE: /* disable */
+								NdisMoveMemory(&pAd->CommonCfg.MCastPhyMode,
+									&pAd->MacTab.Content[MCAST_WCID].HTPhyMode, sizeof(HTTRANSMIT_SETTING));
 								break;
 
-										case MCAST_OFDM:	/* OFDM*/
-											pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_OFDM;
+							case MCAST_CCK:	/* CCK*/
+								pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_CCK;
+								pAd->CommonCfg.MCastPhyMode.field.BW =  BW_20;
+								break;
+
+							case MCAST_OFDM: /* OFDM*/
+								pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_OFDM;
+								pAd->CommonCfg.MCastPhyMode.field.BW =  BW_20;
 								break;
 #ifdef DOT11_N_SUPPORT
-										case MCAST_HTMIX:	/* HTMIX*/
-											pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_HTMIX;
+							case MCAST_HTMIX: /* HTMIX*/
+								pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_HTMIX;
+								if (pAd->CommonCfg.BBPCurrentBW > BW_20)
+									pAd->CommonCfg.MCastPhyMode.field.BW =  BW_40;
+								else
+									pAd->CommonCfg.MCastPhyMode.field.BW =  BW_20;
 								break;
-#endif /* DOT11_N_SUPPORT */									
+#endif /* DOT11_N_SUPPORT */	
+#ifdef DOT11_VHT_AC
+							case MCAST_VHT:	/* VHT */
+								pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_VHT;
+								pAd->CommonCfg.MCastPhyMode.field.BW = pAd->CommonCfg.BBPCurrentBW;
+								break;
+#endif /* DOT11_VHT_AC */	
 
 							default:
-								DBGPRINT(RT_DEBUG_OFF, ("unknow Muticast PhyMode %d.\n", PhyMode));
-								DBGPRINT(RT_DEBUG_OFF, ("0:Disable 1:CCK, 2:OFDM, 3:HTMIX.\n"));
+								DBGPRINT(RT_DEBUG_OFF, ("Unknown Muticast PhyMode %d\n", PhyMode));
+								DBGPRINT(RT_DEBUG_OFF, ("0:Disable 1:CCK, 2:OFDM, 3:HTMIX, 4:VHT\n"));
 								break;
 						}
 					}
 					else
-									NdisMoveMemory(&pAd->CommonCfg.MCastPhyMode,
-										&pAd->MacTab.Content[MCAST_WCID].HTPhyMode, sizeof(HTTRANSMIT_SETTING));
+						NdisMoveMemory(&pAd->CommonCfg.MCastPhyMode,
+							&pAd->MacTab.Content[MCAST_WCID].HTPhyMode, sizeof(HTTRANSMIT_SETTING));
 
 					/* McastMcs*/
 					if (RTMPGetKeyParameter("McastMcs", tmpbuf, 32, pBuffer, TRUE))
@@ -3796,7 +3814,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 
 							case MODE_OFDM:
 								if (Mcs > 7)
-									DBGPRINT(RT_DEBUG_OFF, ("MCS must in range from 0 to 7 for CCK Mode.\n"));
+									DBGPRINT(RT_DEBUG_OFF, ("MCS must in range from 0 to 7 for OFDM Mode.\n"));
 								else
 									pAd->CommonCfg.MCastPhyMode.field.MCS = Mcs;
 								break;
@@ -3880,6 +3898,9 @@ NDIS_STATUS	RTMPSetProfileParameters(
 #endif /* WSC_INCLUDED */
 
 #ifdef CONFIG_AP_SUPPORT
+#ifdef DOT11R_FT_SUPPORT
+				FT_rtmp_read_parameters_from_file(pAd, tmpbuf, pBuffer);
+#endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
 
@@ -3897,6 +3918,9 @@ NDIS_STATUS	RTMPSetProfileParameters(
 					DBGPRINT(RT_DEBUG_ERROR, ("EntryLifeCheck=%ld\n", pAd->ApCfg.EntryLifeCheck));
 				}
 
+#ifdef DOT11K_RRM_SUPPORT
+				RRM_ReadParametersFromFile(pAd, tmpbuf, pBuffer);
+#endif /* DOT11K_RRM_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
 
@@ -4490,37 +4514,37 @@ NDIS_STATUS	RTMPSetSingleSKUParameters(
 		DlListForEachSafe(ch, ch_temp, &pAd->SingleSkuPwrList, CH_POWER, List)
 		{
 			int i;
-			DBGPRINT(RT_DEBUG_TRACE, ("start ch = %d, ch->num = %d\n", ch->channel, ch->num));
+			printk("start ch = %d, ch->num = %d\n", ch->channel, ch->num);
 
 			for ( i= 0 ; i < SINGLE_SKU_TABLE_CCK_LENGTH ; i++ )
 			{
-				DBGPRINT(RT_DEBUG_TRACE, ("%d ", ch->PwrCCK[i]));
+				printk("%d ", ch->PwrCCK[i]);
 			}
-			DBGPRINT(RT_DEBUG_TRACE, ("\n"));
+			printk("\n");
 
 			for ( i= 0 ; i < SINGLE_SKU_TABLE_OFDM_LENGTH ; i++ )
 			{
-				DBGPRINT(RT_DEBUG_TRACE, ("%d ", ch->PwrOFDM[i]));
+				printk("%d ", ch->PwrOFDM[i]);
 			}
-			DBGPRINT(RT_DEBUG_TRACE, ("\n"));
+			printk("\n");		
 
 			for ( i= 0 ; i < SINGLE_SKU_TABLE_HT_LENGTH ; i++ )
 			{
-				DBGPRINT(RT_DEBUG_TRACE, ("%d ", ch->PwrHT20[i]));
+				printk("%d ", ch->PwrHT20[i]);
 			}
-			DBGPRINT(RT_DEBUG_TRACE, ("\n"));
+			printk("\n");
 
 			for ( i= 0 ; i < SINGLE_SKU_TABLE_HT_LENGTH ; i++ )
 			{
-				DBGPRINT(RT_DEBUG_TRACE, ("%d ", ch->PwrHT40[i]));
+				printk("%d ", ch->PwrHT40[i]);
 			}
-			DBGPRINT(RT_DEBUG_TRACE, ("\n"));
+			printk("\n");
 
 			for ( i= 0 ; i < SINGLE_SKU_TABLE_VHT_LENGTH ; i++ )
 			{
-				DBGPRINT(RT_DEBUG_TRACE, ("%d ", ch->PwrVHT80[i]));
+				printk("%d ", ch->PwrVHT80[i]);
 			}
-			DBGPRINT(RT_DEBUG_TRACE, ("\n"));
+			printk("\n");
 		}
 	}
 

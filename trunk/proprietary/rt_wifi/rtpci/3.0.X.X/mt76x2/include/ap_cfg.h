@@ -63,7 +63,7 @@ VOID RTMPAPIoctlE2PROM(
     IN  PRTMP_ADAPTER   pAdapter,
     IN  RTMP_IOCTL_INPUT_STRUCT    *wrq);
 
-#if defined(DBG) || defined(RALINK_ATE)
+#if defined(DBG) || (defined(BB_SOC) && defined(RALINK_ATE))
 VOID RTMPAPIoctlBBP(
     IN  PRTMP_ADAPTER   pAdapter,
     IN  RTMP_IOCTL_INPUT_STRUCT    *wrq);
@@ -79,15 +79,6 @@ VOID RTMPAPIoctlRF(
 #endif /* RTMP_RF_RW_SUPPORT */
 
 #endif /* DBG */
-
-VOID RtmpDrvRateGet(
-	IN	VOID					*pReserved,
-	IN	UINT8					MODE,
-	IN	UINT8					ShortGI,
-	IN	UINT8					BW,
-	IN	UINT8					MCS,
-	IN  UINT8                   Antena,
-	OUT	UINT32					*pRate);
 
 #ifdef WSC_AP_SUPPORT
 VOID RTMPIoctlWscProfile(

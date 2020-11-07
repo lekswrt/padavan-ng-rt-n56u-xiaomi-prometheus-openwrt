@@ -74,13 +74,16 @@ VOID RTMPWriteTxWI(
 	PMAC_TABLE_ENTRY pMac = NULL;
 	TXWI_STRUC TxWI, *pTxWI;
 	UINT8 TXWISize = pAd->chipCap.TXWISize;
-	UINT TxEAPId_Cal = 0;
 	UCHAR stbc, bw, mcs, sgi, phy_mode, mpdu_density = 0, mimops = 0, ldpc = 0;
+#ifdef MT76x2
 	UCHAR tx_stream_mode = 0;
+#endif
+#ifdef RLT_MAC
+	UINT TxEAPId_Cal = 0;
+#endif
 #ifdef TXBF_SUPPORT
 	UCHAR eTxBf, iTxBf, sounding, ndp_rate;
-#endif /* TXBF_SUPPORT */
-
+#endif
 	if (WCID < MAX_LEN_OF_MAC_TABLE)
 		pMac = &pAd->MacTab.Content[WCID];
 
@@ -266,8 +269,9 @@ VOID RTMPWriteTxWI(
 		txwi_n->GroupID = FALSE;
 		txwi_n->TxEAPId = pAd->CommonCfg.Bssid[5];
 #endif /*CONFIG_STA_SUPPORT*/				
-
+#ifdef MT76x2
 		txwi_n->TxStreamMode = tx_stream_mode;
+#endif
 #ifdef TXBF_SUPPORT
 		txwi_n->Sounding = sounding;
 		txwi_n->eTxBF = eTxBf;
@@ -278,7 +282,7 @@ VOID RTMPWriteTxWI(
 #endif /* TXBF_SUPPORT */
 
 		/* Calculate TxPwrAdj */
-		txwi_n->TxPwrAdj = 0;
+		txwi_n->TxPwrAdj = 0; 
 		
 #ifdef SPECIFIC_TX_POWER_SUPPORT
 		if (pMac)
@@ -337,14 +341,6 @@ VOID RTMPWriteTxWI(
 #endif /* RTMP_MAC */
 
 	NdisMoveMemory(pOutTxWI, &TxWI, TXWISize);
-#ifdef DBG
-//+++Add by shiang for debug
-if (0){
-	hex_dump("TxWI", (UCHAR *)pOutTxWI, TXWISize);
-	dump_txwi(pAd, pOutTxWI);
-}
-//---Add by shiang for debug
-#endif
 }
 
 
@@ -365,8 +361,9 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 	BOOLEAN lut_enable = 0;
 	UCHAR mbc_wcid;
 #endif /* MCS_LUT_SUPPORT */
+#ifdef MT76x2
 	UCHAR tx_stream_mode = 0;
-
+#endif /* MT76x2 */
 
 	ASSERT(pTxWI);
 
@@ -656,8 +653,9 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 		txwi_n->ShortGI = sgi;
 		txwi_n->STBC = stbc;
 		txwi_n->LDPC = ldpc;
+#ifdef MT76x2
 		txwi_n->TxStreamMode = tx_stream_mode;
-		
+#endif
 #ifdef CONFIG_AP_SUPPORT
 		if((phy_mode == MODE_CCK) && 
 			(OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_SHORT_PREAMBLE_INUSED)) 
@@ -699,7 +697,7 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 
 
 		/* Calculate TxPwrAdj */
-		txwi_n->TxPwrAdj = 0;
+		txwi_n->TxPwrAdj = 0; 
 
 #ifdef SPECIFIC_TX_POWER_SUPPORT
 		if (pMacEntry)
@@ -780,6 +778,9 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 VOID RTMPWriteTxWI_Cache(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 {
 	HTTRANSMIT_SETTING *pTransmit = pTxBlk->pTransmit;
+#ifdef CONFIG_FPGA_MODE
+	HTTRANSMIT_SETTING tmpTransmit;
+#endif
 	MAC_TABLE_ENTRY *pMacEntry = pTxBlk->pMacEntry;
 	UCHAR pkt_id;
 	UCHAR bw, mcs, stbc, phy_mode, sgi, ldpc;
@@ -792,7 +793,9 @@ VOID RTMPWriteTxWI_Cache(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 #ifdef MCS_LUT_SUPPORT
 	BOOLEAN lut_enable;
 #endif /* MCS_LUT_SUPPORT */
+#ifdef MT76x2
 	UCHAR tx_stream_mode = 0;
+#endif /* MT76x2 */
 
 
 	/* If CCK or OFDM, BW must be 20*/
@@ -1017,7 +1020,9 @@ VOID RTMPWriteTxWI_Cache(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 		txwi_n->ShortGI = sgi;
 		txwi_n->STBC = stbc;
 		txwi_n->LDPC = ldpc;
+#ifdef MT76x2
 		txwi_n->TxStreamMode = tx_stream_mode;
+#endif
 		txwi_n->MCS = mcs;
 		txwi_n->PHYMODE = phy_mode;
 		txwi_n->TxPktId = pkt_id;
@@ -1047,7 +1052,7 @@ VOID RTMPWriteTxWI_Cache(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 #endif /* TXBF_SUPPORT */
 
 		/* Calculate TxPwrAdj */
-		txwi_n->TxPwrAdj = 0;
+		txwi_n->TxPwrAdj = 0; 
 
 #ifdef SPECIFIC_TX_POWER_SUPPORT
 		if (pMacEntry)

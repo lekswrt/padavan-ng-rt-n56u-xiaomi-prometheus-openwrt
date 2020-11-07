@@ -246,7 +246,7 @@ UCHAR *wmode_2_str(UCHAR wmode)
 
 RT_802_11_PHY_MODE wmode_2_cfgmode(UCHAR wmode)
 {
-	INT i, mode_cnt = sizeof(CFG_WMODE_MAP) / sizeof(UCHAR);
+	INT i, mode_cnt = sizeof(CFG_WMODE_MAP) / (sizeof(UCHAR) * 2);
 
 	for (i = 1; i < mode_cnt; i+=2)
 	{
@@ -636,8 +636,7 @@ INT	RT_CfgSetFixedTxPhyMode(PSTRING arg)
 	}
 
 	return fix_tx_mode;
-					
-}	
+}
 
 INT	RT_CfgSetMacAddress(
 	IN 	PRTMP_ADAPTER 	pAd,
@@ -996,6 +995,9 @@ INT RTMP_COM_IoctlHandle(
 				extern VOID  APUpdateAllBeaconFrame(IN PRTMP_ADAPTER pAd);
 				APMakeAllBssBeacon(pAd);
 				APUpdateAllBeaconFrame(pAd);
+
+				if (pAd->Dot11_H.RDMode == RD_NORMAL_MODE)
+					AsicEnableBssSync(pAd);
 #endif /* CONFIG_AP_SUPPORT */
 			}
 			VIRTUAL_IF_INC(pAd);
@@ -1064,23 +1066,6 @@ INT RTMP_COM_IoctlHandle(
 					pStats->rx_crc_errors = 0;
 					pStats->rx_frame_errors = 0;
 					pStats->rx_fifo_errors = 0;
-				}
-#endif
-#ifdef CONFIG_STA_SUPPORT
-				if(pAd->OpMode == OPMODE_STA)
-				{
-					pStats->rx_packets = pAd->WlanCounters.ReceivedFragmentCount.QuadPart;
-					pStats->tx_packets = pAd->WlanCounters.TransmittedFragmentCount.QuadPart;
-					pStats->rx_bytes = pAd->RalinkCounters.ReceivedByteCount;
-					pStats->tx_bytes = pAd->RalinkCounters.TransmittedByteCount;
-					pStats->rx_errors = pAd->Counters8023.RxErrors;
-					pStats->tx_errors = pAd->Counters8023.TxErrors;
-					pStats->multicast = pAd->WlanCounters.MulticastReceivedFrameCount.QuadPart;   /* multicast packets received*/
-					pStats->collisions = pAd->Counters8023.OneCollision + pAd->Counters8023.MoreCollisions;  /* Collision packets*/
-					pStats->rx_over_errors = pAd->Counters8023.RxNoBuffer;                   /* receiver ring buff overflow*/
-					pStats->rx_crc_errors = 0;/*pAd->WlanCounters.FCSErrorCount;      recved pkt with crc error*/
-					pStats->rx_frame_errors = pAd->Counters8023.RcvAlignmentErrors;          /* recv'd frame alignment error*/
-					pStats->rx_fifo_errors = pAd->Counters8023.RxNoBuffer;                   /* recv'r fifo overrun*/
 				}
 #endif
 			}
@@ -1242,6 +1227,7 @@ INT RTMP_COM_IoctlHandle(
 		{
 			RT_CMD_IOCTL_RATE *pRate = (RT_CMD_IOCTL_RATE *)pData;
 			HTTRANSMIT_SETTING HtPhyMode;
+			UINT8 BW = 0, GI = 0;
 
 #ifdef APCLI_SUPPORT
 			if (pRate->priv_flags == INT_APCLI)
@@ -1260,8 +1246,20 @@ INT RTMP_COM_IoctlHandle(
 				MBSS_PHY_MODE_RESET(pObj->ioctl_if, HtPhyMode);
 #endif /* MBSS_SUPPORT */
 			}
-			RtmpDrvMaxRateGet(pAd, HtPhyMode.field.MODE, HtPhyMode.field.ShortGI,
-							HtPhyMode.field.BW, HtPhyMode.field.MCS,
+#ifdef DOT11_VHT_AC
+			if (HtPhyMode.field.BW == BW_40 && pAd->CommonCfg.vht_bw == VHT_BW_80 && HtPhyMode.field.MODE >= MODE_VHT) {
+				BW = 2;
+				GI = pAd->CommonCfg.vht_sgi_80;
+			}
+			else
+#endif /* DOT11_VHT_AC */
+			{
+				BW = HtPhyMode.field.BW;
+				GI = HtPhyMode.field.ShortGI;
+			}
+
+			RtmpDrvMaxRateGet(pAd, HtPhyMode.field.MODE, GI,
+							BW, HtPhyMode.field.MCS,
 							(UINT32 *)&pRate->BitRate);
 		}
 			break;

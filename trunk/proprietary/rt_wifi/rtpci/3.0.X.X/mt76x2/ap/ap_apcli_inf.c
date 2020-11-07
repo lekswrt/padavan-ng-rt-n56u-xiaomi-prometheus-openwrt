@@ -121,7 +121,6 @@ INT ApCli_VirtualIF_Open(PNET_DEV dev_p)
 	/* increase MODULE use count */
 	RT_MOD_INC_USE_COUNT();
 
-
 	RTMP_AP_IoctlHandle(pAd, NULL, CMD_RTPRIV_IOCTL_APC_OPEN, 0, dev_p, 0);
 
 	return 0;

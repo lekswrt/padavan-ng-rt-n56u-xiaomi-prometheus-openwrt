@@ -695,7 +695,7 @@ static VOID ApCliCtrlJoinReqTimeoutAction(
 		char SSID[MAX_LEN_OF_SSID + 1] = {0};
 
 		snprintf(SSID, JoinReq.SsidLen + 1, "%s", JoinReq.Ssid);
-		printk(KERN_INFO "AP-Client probe: SSID=%s, BSSID=%02x:%02x:%02x:%02x:%02x:%02x\n",
+		printk("AP-Client probe: SSID=%s, BSSID=%02x:%02x:%02x:%02x:%02x:%02x\n",
 			SSID, PRINT_MAC(JoinReq.Bssid));
 	}
 
@@ -761,12 +761,11 @@ static VOID ApCliCtrlProbeRspAction(
 			char SSID[MAX_LEN_OF_SSID + 1] = {0};
 
 			snprintf(SSID, pApCliEntry->MlmeAux.SsidLen + 1, "%s", pApCliEntry->MlmeAux.Ssid);
-			printk(KERN_INFO "AP-Client probe response: SSID=%s, BSSID=%02x:%02x:%02x:%02x:%02x:%02x\n",
+			printk("AP-Client probe response: SSID=%s, BSSID=%02x:%02x:%02x:%02x:%02x:%02x\n",
 				SSID, PRINT_MAC(pApCliEntry->MlmeAux.Bssid));
 		}
-
 #ifdef DOT11_N_SUPPORT
-		if ((pAd->CommonCfg.Channel < 14)
+		if ((pAd->CommonCfg.Channel <= 14)
 #ifdef MAC_REPEATER_SUPPORT
 			&& (CliIdx == 0xFF)
 #endif /* MAC_REPEATER_SUPPORT */
@@ -791,7 +790,7 @@ static VOID ApCliCtrlProbeRspAction(
 #ifdef DOT11N_DRAFT3
 				pAd->CommonCfg.Bss2040NeedFallBack = 0;
 				pAd->CommonCfg.LastBSSCoexist2040.field.BSS20WidthReq = 0;
-#endif /* DOT11N_DRAFT3 */
+#endif
 				SetCommonHT(pAd);
 				AsicBBPAdjust(pAd);
 
@@ -1067,7 +1066,7 @@ static VOID ApCliCtrlAuth2RspAction(
 	} 
 	else
 	{
-		printk(KERN_WARNING "AP-Client: authentication failed!\n");
+		printk("AP-Client: authentication failed!\n");
 
 		*pCurrState = APCLI_CTRL_DISCONNECTED;
 #ifdef APCLI_AUTO_CONNECT_SUPPORT
@@ -1371,10 +1370,10 @@ static VOID ApCliCtrlDeAssocRspAction(
 	pApCliEntry = &pAd->ApCfg.ApCliTab[ifIndex];
 	if (Status == MLME_SUCCESS)
 	{
-		DBGPRINT(RT_DEBUG_TRACE, ("(%s) Receive DeAssoc Rsp Success.\n", __FUNCTION__));
+		printk("Receive DeAssoc Rsp Success.\n");
 	} else
 	{
-		DBGPRINT(RT_DEBUG_TRACE, ("(%s) Receive DeAssoc Rsp Failure.\n", __FUNCTION__));
+		printk("Receive DeAssoc Rsp Failure.\n");
 	}
 
 #ifdef MAC_REPEATER_SUPPORT
@@ -1507,7 +1506,7 @@ static VOID ApCliCtrlDisconnectReqAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_TRACE, ("(%s) MLME Request disconnect.\n", __FUNCTION__));
+	printk("MLME Request disconnect.\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -1586,7 +1585,7 @@ static VOID ApCliCtrlPeerDeAssocReqAction(
 		UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	printk(KERN_INFO "AP-Client: disconnected by peer\n");
+	printk("AP-Client: disconnected by peer\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -1695,7 +1694,7 @@ static VOID ApCliCtrlDeAssocAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_TRACE, ("(%s) MLME Request Disconnect.\n", __FUNCTION__));
+	printk("MLME Request Disconnect.\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -1781,7 +1780,7 @@ static VOID ApCliCtrlDeAuthAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_TRACE, ("(%s) MLME Request Disconnect.\n", __FUNCTION__));
+	printk("MLME Request Disconnect.\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT

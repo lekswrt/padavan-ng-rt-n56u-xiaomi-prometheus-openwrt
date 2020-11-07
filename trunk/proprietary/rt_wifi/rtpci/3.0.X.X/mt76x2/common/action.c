@@ -166,10 +166,10 @@ VOID MlmeADDBAAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 		Frame.Category = CATEGORY_BA;
 		Frame.Action = ADDBA_REQ;
 		Frame.BaParm.AMSDUSupported = 0;
-#ifdef WFA_VHT_PF
-		if (pAd->CommonCfg.DesiredHtPhy.AmsduEnable)
+#ifdef DOT11_VHT_AC
+		if (pEntry && IS_VHT_STA(pEntry) && pAd->CommonCfg.DesiredHtPhy.AmsduEnable)
 			Frame.BaParm.AMSDUSupported = 1;
-#endif /* WFA_VHT_PF */
+#endif
 		Frame.BaParm.BAPolicy = IMMED_BA;
 		Frame.BaParm.TID = pInfo->TID;
 		Frame.BaParm.BufSize = pInfo->BaBufSize;
@@ -1241,6 +1241,7 @@ VOID PeerHTAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 {
 	UCHAR Action = Elem->Msg[LENGTH_802_11+1];
 	MAC_TABLE_ENTRY *pEntry;
+	UCHAR oldMmpsMode;
 	
 	if (Elem->Wcid >= MAX_LEN_OF_MAC_TABLE)
 		return;
@@ -1275,12 +1276,24 @@ VOID PeerHTAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 		case SMPS_ACTION:
 			/* 7.3.1.25*/
  			DBGPRINT(RT_DEBUG_TRACE,("ACTION - SMPS action----> \n"));
+			oldMmpsMode = pEntry->MmpsMode;
 			if (((Elem->Msg[LENGTH_802_11+2] & 0x1) == 0))
 				pEntry->MmpsMode = MMPS_DISABLE;
 			else if (((Elem->Msg[LENGTH_802_11+2] & 0x2) == 0))
 				pEntry->MmpsMode = MMPS_STATIC;
 			else
 				pEntry->MmpsMode = MMPS_DYNAMIC;
+
+#ifdef CONFIG_AP_SUPPORT
+			if (oldMmpsMode != pEntry->MmpsMode)
+			{
+				if (!pEntry->MmpsMode == MMPS_DYNAMIC) {
+					IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+						APMlmeDynamicTxRateSwitching(pAd);
+
+				}
+			}
+#endif /* CONFIG_AP_SUPPORT */
 
 			DBGPRINT(RT_DEBUG_TRACE,("Wcid(%d) MIMO PS = %d\n", Elem->Wcid, pEntry->MmpsMode));
 			/* rt2860c : add something for smps change.*/

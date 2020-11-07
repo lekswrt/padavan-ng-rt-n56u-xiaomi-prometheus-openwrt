@@ -49,11 +49,11 @@
 #endif
 
 #if (CONFIG_RT_FIRST_CARD == 7612 || CONFIG_RT_SECOND_CARD == 7612)
-#define EEPROM_DEFAULT_FILE_PATH	"/etc_ro/Wireless/MT7612E_EEPROM.bin"
+#define EEPROM_DEFAULT_FILE_PATH	"/etc/Wireless/MT7612E_EEPROM.bin"
 #elif (CONFIG_RT_FIRST_CARD == 7602 || CONFIG_RT_SECOND_CARD == 7602)
-#define EEPROM_DEFAULT_FILE_PATH	"/etc_ro/Wireless/MT7602E_EEPROM.bin"
+#define EEPROM_DEFAULT_FILE_PATH	"/etc/Wireless/MT7602E_EEPROM.bin"
 #elif (CONFIG_RT_FIRST_CARD == 7620)
-#define EEPROM_DEFAULT_FILE_PATH	"/etc_ro/Wireless/MT7620_AP_2T2R-4L_V15.BIN"
+#define EEPROM_DEFAULT_FILE_PATH	"/etc/Wireless/MT7620_AP_2T2R-4L_V15.BIN"
 #endif
 
 /* For ioctl check usage */
@@ -81,9 +81,9 @@
 #define BIN_FILE_PATH				"/tmp/RT30xxEEPROM.bin"
 #endif /* BB_SOC */
 
-#define EEPROM_FILE_DIR			"/etc_ro/Wireless/"
-#define EEPROM_1ST_FILE_DIR        "/etc_ro/Wireless/iNIC/"
-#define EEPROM_2ND_FILE_DIR        "/etc_ro/Wireless/iNIC/"
+#define EEPROM_FILE_DIR			"/etc/Wireless/"
+#define EEPROM_1ST_FILE_DIR		"/etc/Wireless/iNIC/"
+#define EEPROM_2ND_FILE_DIR		"/etc/Wireless/iNIC/"
 
 #ifdef RT_BIG_ENDIAN
 typedef	union _EEPROM_WORD_STRUC {
@@ -851,7 +851,6 @@ INT Set_EepromBufferWriteBack_Proc(
   *	Public function declarations for prom operation callback functions setting
   ************************************************************************/
 INT RtmpChipOpsEepromHook(struct _RTMP_ADAPTER *pAd, INT infType);
-
-BOOLEAN rtmp_get_default_bin_file_by_chip(struct _RTMP_ADAPTER *pAd, UINT32 ChipVersion, PSTRING *pBinFileName);
 UCHAR RtmpEepromGetDefault(struct _RTMP_ADAPTER *pAd);
+BOOLEAN rtmp_get_default_bin_file_by_chip(struct _RTMP_ADAPTER *pAd, UINT32 ChipVersion, PSTRING *pBinFileName);
 #endif /* __EEPROM_H__ */

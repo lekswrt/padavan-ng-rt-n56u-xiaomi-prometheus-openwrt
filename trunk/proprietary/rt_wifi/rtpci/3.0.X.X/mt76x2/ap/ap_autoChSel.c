@@ -30,30 +30,17 @@ static inline INT GetABandChOffset(
 	IN INT Channel)
 {
 #ifdef A_BAND_SUPPORT
-	UCHAR region = GetCountryRegionFromCountryCode(pAd);
-	if((region==CE || region==JAP) && Channel >= 140)
-		return 0;
-	if(region==FCC && Channel >= 116 && Channel <= 128)
-		return 0;
-	if ((Channel == 36) || (Channel == 44) 
-			|| (Channel == 52) || (Channel == 60) 
-			|| (Channel == 100) || (Channel == 108) 
-			|| (Channel == 116) || (Channel == 124) 
-			|| (Channel == 132) || (Channel == 149) 
-			|| (Channel == 157))
+	if ((Channel == 36) || (Channel == 44) || (Channel == 52) || (Channel == 60) || (Channel == 100) || (Channel == 108) ||
+	    (Channel == 116) || (Channel == 124) || (Channel == 132) || (Channel == 149) || (Channel == 157))
 	{
 		return 1;
 	}
-	else if ((Channel == 40) || (Channel == 48) 
-			|| (Channel == 56) || (Channel == 64) 
-			|| (Channel == 104) || (Channel == 112) 
-			|| (Channel == 120) || (Channel == 128) 
-			|| (Channel == 136) || (Channel == 153) 
-			|| (Channel == 161))
+	else if ((Channel == 40) || (Channel == 48) || (Channel == 56) || (Channel == 64) || (Channel == 104) || (Channel == 112) ||
+			(Channel == 120) || (Channel == 128) || (Channel == 136) || (Channel == 153) || (Channel == 161))
 	{
 		return -1;
 	}
-#endif /* A_BAND_SUPPORT */	
+#endif /* A_BAND_SUPPORT */
 	return 0;
 }
 
@@ -98,7 +85,7 @@ static inline VOID AutoChBssEntrySet(
 	IN CHAR Rssi)
 {
 	COPY_MAC_ADDR(pBss->Bssid, pBssid);
-	if (SsidLen > 0)
+	if (SsidLen > 0 && SsidLen <= MAX_LEN_OF_SSID)
 	{
 		/* 
 			For hidden SSID AP, it might send beacon with SSID len equal to 0,
@@ -185,9 +172,7 @@ VOID UpdateChannelInfo(
 		*/
 
 		RTMP_IO_READ32(pAd, CH_BUSY_STA, &BusyTime);
-#ifdef AP_QLOAD_SUPPORT
 		pAd->pChannelInfo->chanbusytime[ch_index] = (BusyTime * 100) / AUTO_CHANNEL_SEL_TIMEOUT;
-#endif /* AP_QLOAD_SUPPORT */
 #ifdef CUSTOMER_DCC_FEATURE
 		pAd->ChannelInfo.chanbusytime[ch_index] = BusyTime;
 #endif
@@ -329,7 +314,7 @@ static inline UCHAR SelectClearChannelRandom(
 		if (ch == 0)
 			ch = FirstChannel(pAd);
 	}
-	printk("%s(): Select Channel %d\n", __FUNCTION__, ch);
+	printk("Select Channel %d\n", ch);
 	return ch;
 
 }
@@ -437,7 +422,7 @@ static inline UCHAR SelectClearChannelCCA(
             /* check neighbor channel */
 			for (loop=(channel_idx-1); loop >= (channel_idx-BelowBound); loop--)
 			{
-				if (loop < 0)
+				if (loop < 0 || loop >= MAX_NUM_OF_CHANNELS)
 					break;
 
 				if (pAd->ChannelList[loop+1].Channel - pAd->ChannelList[loop].Channel > 4)
@@ -881,7 +866,7 @@ static inline UCHAR SelectClearChannelApCnt(
 
 				for (ll = channel_index - 1; ll > (channel_index - ChanOffset - 1); ll--)
 				{
-					if (ll >= 0)
+					if (ll >= 0 && ll < MAX_NUM_OF_CHANNELS+1)
 						pChannelInfo->dirtyness[ll]++;
 				}
 			}

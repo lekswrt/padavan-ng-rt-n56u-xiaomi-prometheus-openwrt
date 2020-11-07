@@ -50,13 +50,14 @@
 #define RT_PRIV_IOCTL								(SIOCIWFIRSTPRIV + 0x01)
 #define RTPRIV_IOCTL_SET							(SIOCIWFIRSTPRIV + 0x02)
 #define RT_PRIV_IOCTL_EXT							(SIOCIWFIRSTPRIV + 0x0E) /* Sync. with RT61 (for wpa_supplicant) */				
-#ifdef DBG
+
+#if defined(DBG) ||(defined(BB_SOC)&&defined(RALINK_ATE))
 #define RTPRIV_IOCTL_BBP                            (SIOCIWFIRSTPRIV + 0x03)
 #define RTPRIV_IOCTL_MAC                            (SIOCIWFIRSTPRIV + 0x05)
 
 #define RTPRIV_IOCTL_RF                             (SIOCIWFIRSTPRIV + 0x13)
+#endif /* defined(DBG) ||(defined(BB_SOC)&&defined(RALINK_ATE)) */
 
-#endif /* DBG */
 #define RTPRIV_IOCTL_E2P                            (SIOCIWFIRSTPRIV + 0x07)
 
 #define RTPRIV_IOCTL_ATE							(SIOCIWFIRSTPRIV + 0x08)

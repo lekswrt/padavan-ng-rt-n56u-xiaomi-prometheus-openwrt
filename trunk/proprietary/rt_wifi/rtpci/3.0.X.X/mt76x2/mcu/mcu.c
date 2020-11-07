@@ -49,17 +49,20 @@ INT mcu_sys_init(RTMP_ADAPTER *pAd)
 {
 	NDIS_STATUS Status;
 
+	if (WaitForAsicReady(pAd) != TRUE)
+		return FALSE;
+
 	/* Load MCU firmware*/
 	MCU_CTRL_INIT(pAd);
 
 	Status = load_patch(pAd);
-	
+
 	if (Status != NDIS_STATUS_SUCCESS)
 	{
 		DBGPRINT_ERR(("load patch failed, Status[=0x%08x]\n", Status));
 		return FALSE;
 	}
-	
+
 	Status = NICLoadFirmware(pAd);
 	if (Status != NDIS_STATUS_SUCCESS)
 	{

@@ -27,6 +27,7 @@
 #define	__DOT11I_WPA_H__
 
 #include "rtmp_type.h"
+#include "dot11_base.h"
 
 /* The length is the EAPoL-Key frame except key data field. 
    Please refer to 802.11i-2004 ,Figure 43u in p.78 */

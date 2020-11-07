@@ -361,7 +361,7 @@ VOID RTMPResumeMsduTransmission(RTMP_ADAPTER *pAd)
 		RTMPDeQueuePacket(pAd, TRUE, NUM_OF_TX_RING, MAX_TX_PROCESS);
 	else
 */
-	RTMPDeQueuePacket(pAd, FALSE, NUM_OF_TX_RING, WCID_ALL, MAX_TX_PROCESS);
+	RTMPDeQueuePacket(pAd, FALSE, WMM_NUM_OF_AC, WCID_ALL, MAX_TX_PROCESS);
 }
 
 
@@ -398,7 +398,6 @@ VOID RtmpEnqueueNullFrame(
 		frm_len = sizeof(HEADER_802_11);
 
 #ifdef CONFIG_AP_SUPPORT
-//		IF_DEV_CONFIG_OPMODE_ON_AP(pAd) 
 		if (pEntry && pEntry->wdev->wdev_type == WDEV_TYPE_AP)
 		{
 			MgtMacHeaderInit(pAd, pNullFr, SUBTYPE_DATA_NULL, 0, pAddr, 
@@ -482,10 +481,7 @@ VOID ApCliRTMPSendNullFrame(
 		COPY_MAC_ADDR(wifi_hdr->Addr2, pApCliEntry->wdev.if_addr);
 	COPY_MAC_ADDR(wifi_hdr->Addr3, pMacEntry->Addr);
 
-	if (pAd->CommonCfg.bAPSDForcePowerSave)
-		wifi_hdr->FC.PwrMgmt = PWR_SAVE;
-	else
-		wifi_hdr->FC.PwrMgmt = PwrMgmt;
+	wifi_hdr->FC.PwrMgmt = PwrMgmt;
 	wifi_hdr->Duration = pAd->CommonCfg.Dsifs + RTMPCalcDuration(pAd, TxRate, 14);
 
 	/* sequence is increased in MlmeHardTx */
@@ -507,8 +503,7 @@ VOID ApCliRTMPSendNullFrame(
 #endif/*APCLI_SUPPORT*/
 #endif /* CONFIG_AP_SUPPORT */
 
-
-
+#ifdef CONFIG_STA_SUPPORT
 VOID RtmpPrepareHwNullFrame(
 	IN PRTMP_ADAPTER pAd,
 	IN PMAC_TABLE_ENTRY pEntry,
@@ -671,7 +666,7 @@ VOID RtmpPrepareHwNullFrame(
 	if (pNullFrame)
 		MlmeFreeMemory(pAd, pNullFrame);
 }
-
+#endif /* CONFIG_STA_SUPPORT */
 
 /*
 	==========================================================================
@@ -1271,7 +1266,7 @@ VOID MlmeHalt(RTMP_ADAPTER *pAd)
 #endif /* WSC_AP_SUPPORT */
 		}
 #endif /* APCLI_SUPPORT */
-		RTMPCancelTimer(&pAd->ScanCtrl.APScanTimer, &Cancelled);
+		RTMPReleaseTimer(&pAd->ScanCtrl.APScanTimer, &Cancelled);
 	}
 
 #endif /* CONFIG_AP_SUPPORT */
@@ -1441,6 +1436,9 @@ NTSTATUS MlmePeriodicExec(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 /*	RECBATimerTimeout(SystemSpecific1,FunctionContext,SystemSpecific2,SystemSpecific3);*/
 	pAd->Mlme.PeriodicRound ++;
 	pAd->Mlme.GPIORound++;
+#ifdef CONFIG_BA_REORDER_MONITOR
+	ba_timeout_monitor(pAd);
+#endif /* CONFIG_BA_REORDER_MONITOR */
 
 #ifndef WFA_VHT_PF
 #endif /* WFA_VHT_PF */
@@ -1494,13 +1492,13 @@ NTSTATUS MlmePeriodicExec(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 #ifdef MT_MAC
 		if (pAd->chipCap.hif_type == HIF_MT) {
 			//AsicRssiUpdate(pAd);
-			//AsicTxCntUpdate(pAd, 0);
+			//AsicTxCntUpdate(pAd, FALSE);
 		}
 #endif /* MT_MAC */
 
 #ifdef CONFIG_AP_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-			APMlmeDynamicTxRateSwitching(pAd);
+			IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+				APMlmeDynamicTxRateSwitching(pAd);
 #endif /* CONFIG_AP_SUPPORT */
 	}
 
@@ -1526,7 +1524,7 @@ NTSTATUS MlmePeriodicExec(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 			{
 #endif /* APCLI_CERT_SUPPORT */		
 #endif /* APCLI_SUPPORT */
-			IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+			    IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
 				dynamic_tune_be_tx_op(pAd, 50);	/* change form 100 to 50 for WMM WiFi test @20070504*/
 #ifdef APCLI_SUPPORT
 #ifdef APCLI_CERT_SUPPORT
@@ -1624,16 +1622,6 @@ NTSTATUS MlmePeriodicExec(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 		}
 #endif /* MT76x0_TSSI_CAL_COMPENSATION */
 
-
-		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF | fRTMP_ADAPTER_DISABLE_DEQUEUEPACKET) == FALSE)
-		{
-			if ((pAd->Mlme.OneSecPeriodicRound % 10) == 0)
-			{
-				{
-				}
-			}
-		}
-
 #ifdef DOT11_N_SUPPORT
 #ifdef MT_MAC
         if (pAd->chipCap.hif_type == HIF_MT)
@@ -1691,8 +1679,6 @@ NTSTATUS MlmePeriodicExec(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 
 		RTMP_SECOND_CCA_DETECTION(pAd);
 
-		MlmeResetRalinkCounters(pAd);
-
 #if defined(RTMP_MAC) || defined(RLT_MAC)
 #endif /* defined(RTMP_MAC) || defined(RLT_MAC) */
 
@@ -1704,18 +1690,15 @@ NTSTATUS MlmePeriodicExec(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	WSC_HDR_BTN_MR_HANDLE(pAd);
 #endif /* WSC_INCLUDED */
 
-
-
-
-	/*add for hook function on Mlme timer interrupt*/
-	RTMP_OS_TXRXHOOK_CALL(WLAN_TX_MLME_PERIOD,NULL,1,pAd);
-
 	pAd->bUpdateBcnCntDone = FALSE;
 
 #ifdef ED_MONITOR
 	if(pAd->ed_chk != FALSE)
 		ed_status_read(pAd);
 #endif
+
+	if (pAd->Mlme.PeriodicRound % MLME_TASK_EXEC_MULTIPLE == 0)
+		MlmeResetRalinkCounters(pAd);
 
 	return NDIS_STATUS_SUCCESS;
 }
@@ -1978,6 +1961,8 @@ VOID UpdateBasicRateBitmap(RTMP_ADAPTER *pAdapter)
         /* (2 ^ MAX_LEN_OF_SUPPORTED_RATES) -1 */
         return;
     }
+
+    bitmap = pAdapter->CommonCfg.BasicRateBitmap;  /* renew bitmap value */
 
     for(i=0; i<MAX_LEN_OF_SUPPORTED_RATES; i++)
     {
@@ -2251,8 +2236,10 @@ VOID MlmeUpdateTxRates(RTMP_ADAPTER *pAd, BOOLEAN bLinkUp, UCHAR apidx)
 		else
 			pAd->CommonCfg.TxRate = pAd->CommonCfg.MaxTxRate; 
 
-		if (dbm < -75)
+		if (dbm < -80)
 			pAd->CommonCfg.TxRate = RATE_11;
+		else if (dbm < -75)
+			pAd->CommonCfg.TxRate = RATE_18;
 		else if (dbm < -70)
 			pAd->CommonCfg.TxRate = RATE_24;
 
@@ -2290,7 +2277,7 @@ VOID MlmeUpdateTxRates(RTMP_ADAPTER *pAd, BOOLEAN bLinkUp, UCHAR apidx)
 
 	}
 
-	if (pAd->CommonCfg.TxRate <= RATE_11)
+	if (pAd->CommonCfg.TxRate < RATE_FIRST_OFDM_RATE)
 	{
 		pMaxHtPhy->field.MODE = MODE_CCK;
 
@@ -2342,11 +2329,11 @@ VOID MlmeUpdateTxRates(RTMP_ADAPTER *pAd, BOOLEAN bLinkUp, UCHAR apidx)
 		
 		/* Keep Basic Mlme Rate.*/
 		pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word = pAd->CommonCfg.MlmeTransmit.word;
-		if (pAd->CommonCfg.MlmeTransmit.field.MODE == MODE_OFDM)
+		if (pAd->CommonCfg.MlmeTransmit.field.MODE == MODE_CCK)
+			pAd->MacTab.Content[MCAST_WCID].HTPhyMode.field.MCS = RATE_1;
+		else
 			/* MTK patch fix dhcp issue on new Apple and others buggy clients (use RATE_6 instead of 24) */
 			pAd->MacTab.Content[MCAST_WCID].HTPhyMode.field.MCS = OfdmRateToRxwiMCS[RATE_6];
-		else
-			pAd->MacTab.Content[MCAST_WCID].HTPhyMode.field.MCS = RATE_1;
 		pAd->CommonCfg.BasicMlmeRate = pAd->CommonCfg.MlmeRate;
 
 #ifdef CONFIG_AP_SUPPORT
@@ -2550,6 +2537,12 @@ VOID BATableInit(RTMP_ADAPTER *pAd, BA_TABLE *Tab)
 	Tab->numAsRecipient = 0;
 	Tab->numDoneOriginator = 0;
 	NdisAllocateSpinLock(pAd, &pAd->BATabLock);
+#ifdef CONFIG_BA_REORDER_MONITOR
+#define REORDERING_PACKET_TIMEOUT		((100 * OS_HZ)/1000)	/* system ticks -- 100 ms*/
+	pAd->BATable.ba_timeout_check = FALSE;
+	pAd->BATable.ba_reordering_packet_timeout = REORDERING_PACKET_TIMEOUT;
+	NdisZeroMemory((UCHAR *)&pAd->BATable.ba_timeout_bitmap[0], sizeof(UINT32) * 16);
+#endif /* CONFIG_BA_REORDER_MONITOR */
 	for (i = 0; i < MAX_LEN_OF_BA_REC_TABLE; i++) 
 	{
 		Tab->BARecEntry[i].REC_BA_Status = Recipient_NONE;
@@ -2790,6 +2783,7 @@ VOID BssEntrySet(
 	COPY_MAC_ADDR(pBss->Bssid, ie_list->Bssid);
 	/* Default Hidden SSID to be TRUE, it will be turned to FALSE after coping SSID*/
 	pBss->Hidden = 1;	
+	pBss->FromBcnReport = ie_list->FromBcnReport;
 	if (ie_list->SsidLen > 0)
 	{
 		/* For hidden SSID AP, it might send beacon with SSID len equal to 0*/
@@ -4076,6 +4070,12 @@ BOOLEAN MlmeEnqueueForRecv(
 		return FALSE;
 	}
 
+	if (Msg == NULL)
+	{
+		DBGPRINT_ERR(("MlmeEnqueueForRecv: : frame is Null \n"));
+		return FALSE;
+	}
+
 #ifdef EAPOL_QUEUE_SUPPORT
 	if (MlmeQueueFull(Queue, 0) && EAPMlmeQueueFull(EAP_Queue)) 
 #else /* EAPOL_QUEUE_SUPPORT */
@@ -4090,6 +4090,12 @@ BOOLEAN MlmeEnqueueForRecv(
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
 	{
+
+		if(MAC_ADDR_EQUAL(ZERO_MAC_ADDR,pFrame->Hdr.Addr1) && pFrame->Hdr.FC.SubType == SUBTYPE_DEAUTH)
+		{
+			DBGPRINT_ERR(("%s(): receiving DEAUTH with (DA/BSSID) all zero mac addr, skip \n", __FUNCTION__));
+			return FALSE;
+		}
 
 #ifdef APCLI_SUPPORT
 		/*
@@ -4837,22 +4843,21 @@ CHAR RTMPAvgRssi(RTMP_ADAPTER *pAd, RSSI_SAMPLE *pRssi)
 	return Rssi;
 }
 
-
 CHAR RTMPMaxRssi(RTMP_ADAPTER *pAd, CHAR Rssi0, CHAR Rssi1, CHAR Rssi2)
 {
 	CHAR	larger = -127;
 	
-	if ((pAd->Antenna.field.RxPath == 1) && (Rssi0 != 0))
+	if ((pAd->Antenna.field.RxPath == 1) && (Rssi0 < 0))
 	{
 		larger = Rssi0;
 	}
 
-	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 != 0))
+	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 < 0))
 	{
 		larger = max(Rssi0, Rssi1);
 	}
 	
-	if ((pAd->Antenna.field.RxPath == 3) && (Rssi2 != 0))
+	if ((pAd->Antenna.field.RxPath == 3) && (Rssi2 < 0))
 	{
 		larger = max(larger, Rssi2);
 	}
@@ -4867,17 +4872,17 @@ CHAR RTMPMinRssi(RTMP_ADAPTER *pAd, CHAR Rssi0, CHAR Rssi1, CHAR Rssi2)
 {
 	CHAR	smaller = -127;
 
-	if ((pAd->Antenna.field.RxPath == 1) && (Rssi0 != 0))
+	if ((pAd->Antenna.field.RxPath == 1) && (Rssi0 < 0))
 	{
 		smaller = Rssi0;
 	}
 
-	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 != 0))
+	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 < 0))
 	{
 		smaller = min(Rssi0, Rssi1);
 	}
 	
-	if ((pAd->Antenna.field.RxPath == 3) && (Rssi2 != 0))
+	if ((pAd->Antenna.field.RxPath == 3) && (Rssi2 < 0))
 	{
 		smaller = min(smaller, Rssi2);
 	}

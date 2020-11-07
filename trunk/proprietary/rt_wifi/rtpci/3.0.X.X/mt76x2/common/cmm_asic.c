@@ -302,7 +302,7 @@ INT AsicAutoFallbackInit(RTMP_ADAPTER *pAd)
 {
 #ifdef RANGE_EXTEND
 	RTMP_IO_WRITE32(pAd, HT_FBK_CFG1, 0xedcba980);
-#endif // RANGE_EXTEND //
+#endif
 #ifdef DOT11N_SS3_SUPPORT
 	if (pAd->CommonCfg.TxStream >= 3)
 	{
@@ -414,7 +414,7 @@ VOID AsicUpdateProtect(
 	ProtCfg.field.TxopAllowCck = 1;
 	ProtCfg.field.RTSThEn = 1;
 	ProtCfg.field.ProtectNav = ASIC_SHORTNAV;
-
+#if 0
 #ifdef DOT11_VHT_AC
 #ifdef RT65xx
 	// TODO: shiang, is that a correct way to set 0x2000 here??
@@ -422,7 +422,7 @@ VOID AsicUpdateProtect(
 		PhyMode = 0x2000; /* Bit 15:13, 0:Legacy CCK, 1: Legacy OFDM, 2: HT mix mode, 3: HT green field, 4: VHT mode, 5-7: Reserved */
 #endif /* RT65xx */
 #endif /* DOT11_VHT_AC */
-
+#endif
 	/* update PHY mode and rate*/
 	if (pAd->OpMode == OPMODE_AP)
 	{
@@ -1283,6 +1283,7 @@ INT AsicSetRxFilter(RTMP_ADAPTER *pAd)
 	{
 		rx_filter_flag = APNORMAL;
 
+#if 0  /* BBP allways must filter not me packets, this more safe and speed */
 #ifdef CONFIG_AP_SUPPORT
 #ifdef IDS_SUPPORT
 		IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
@@ -1292,6 +1293,7 @@ INT AsicSetRxFilter(RTMP_ADAPTER *pAd)
 		}
 #endif /* IDS_SUPPORT */			
 #endif /* CONFIG_AP_SUPPORT */
+#endif
 	}
 #ifdef CONFIG_STA_SUPPORT
 	else
@@ -1534,8 +1536,35 @@ VOID AsicEnableApBssSync(
 	IN PRTMP_ADAPTER pAd) 
 {
 	BCN_TIME_CFG_STRUC csr;
+#ifdef APCLI_SUPPORT 
+	UCHAR apidx;
+	BOOLEAN bMaskBcn;     
+#endif /* APCLI_SUPPORT */
+
 
 	DBGPRINT(RT_DEBUG_TRACE, ("--->AsicEnableBssSync(INFRA mode)\n"));
+
+#ifdef APCLI_SUPPORT 
+	// for apcli DFS, if ra0 not up, don,t send bcn
+	bMaskBcn = TRUE;
+                
+	for(apidx=0; apidx<pAd->ApCfg.BssidNum; apidx++)
+	{
+		if(BeaconTransmitRequired(pAd, apidx, &pAd->ApCfg.MBSSID[apidx]))
+		{
+			bMaskBcn = FALSE;
+			break;
+		}
+	}
+
+	if (bMaskBcn &&  APCLI_IF_UP_CHECK(pAd, 0)) {
+		DBGPRINT(RT_DEBUG_OFF, ("Apcli DFS need mask beacon!!!\n"));					
+			AsicCtrlBcnMask(pAd, 0xFF);
+	}
+	else {
+		AsicCtrlBcnMask(pAd, 0x0);
+	}
+#endif /* APCLI_SUPPORT */
 
 	RTMP_IO_READ32(pAd, BCN_TIME_CFG, &csr.word);
 
@@ -1727,8 +1756,8 @@ VOID AsicSetEdcaParm(RTMP_ADAPTER *pAd, PEDCA_PARM pEdcaParm)
 		}
 		else
 		{
-			Ac2Cfg.field.AcTxop = 96;	/* AC_VI: 96*32us ~= 3ms*/
-			Ac3Cfg.field.AcTxop = 48;	/* AC_VO: 48*32us ~= 1.5ms*/
+			Ac2Cfg.field.AcTxop = 94;	/* AC_VI: 94*32us ~= 3ms*/
+			Ac3Cfg.field.AcTxop = 47;	/* AC_VO: 47*32us ~= 1.5ms*/
 		}
 		Ac2Cfg.field.Cwmin = pAd->wmm_cw_min;
 		Ac2Cfg.field.Cwmax = pAd->wmm_cw_max;
@@ -2604,7 +2633,6 @@ VOID AsicAddPairwiseKeyEntry(
 	UCHAR *pKey = pCipherKey->Key;
 	UCHAR *pTxMic = pCipherKey->TxMic;
 	UCHAR *pRxMic = pCipherKey->RxMic;
-	UCHAR CipherAlg = pCipherKey->CipherAlg;
 #ifdef RTMP_MAC
 #ifdef RTMP_MAC_PCI
 #ifdef SPECIFIC_BCN_BUF_SUPPORT
@@ -2612,7 +2640,9 @@ VOID AsicAddPairwiseKeyEntry(
 #endif /* SPECIFIC_BCN_BUF_SUPPORT */
 #endif /* RTMP_MAC_PCI */
 #endif /* RTMP_MAC */
-
+#ifdef DBG
+	UCHAR CipherAlg = pCipherKey->CipherAlg;
+#endif
 #ifdef RLT_MAC
 	if (pAd->chipCap.hif_type == HIF_RLT) {
 		pairwise_key_base = RLT_PAIRWISE_KEY_TABLE_BASE;
@@ -3829,8 +3859,7 @@ VOID RT28xxAndesWOWDisable(
 VOID thermal_protection(
 	IN RTMP_ADAPTER 	*pAd)
 {
-	RTMP_CHIP_OP *pChipOps = &pAd->chipOps;
-	INT32 temp_diff = 0, current_temp = 0;
+	INT32 temp_diff = 0, current_temp = 0;	
 #ifdef CONFIG_STA_SUPPORT
 #endif /* RTMP_MAC_USB  */
 
@@ -3975,12 +4004,13 @@ VOID asic_drop_mask_reset(
 
 #ifdef MULTI_CLIENT_SUPPORT
 VOID asic_change_tx_retry(
-	IN PRTMP_ADAPTER pAd, 
+	IN PRTMP_ADAPTER pAd,
 	IN USHORT num)
 {
 	UINT32	TxRtyCfg, MacReg = 0;
 
-	if (num < 3)
+#if 0   /* big retry limit is poor work at interference, allways use 7/11 */
+	if (num < 2)
 	{
 		/* Tx data retry 31/15 (thres 2000) */
 		RTMP_IO_READ32(pAd, TX_RTY_CFG, &TxRtyCfg);
@@ -3996,10 +4026,11 @@ VOID asic_change_tx_retry(
 	}
 	else
 	{
-		/* Tx data retry 8/10 (thres 256)  */
+#endif
+		/* Tx data retry 7/11 (thres 256)  */
 		RTMP_IO_READ32(pAd, TX_RTY_CFG, &TxRtyCfg);
 		TxRtyCfg &= 0xf0000000;
-		TxRtyCfg |= 0x0100080A;
+		TxRtyCfg |= 0x0100070B;
 		RTMP_IO_WRITE32(pAd, TX_RTY_CFG, TxRtyCfg);
 
 		/* Tx RTS retry 3, enable RTS fallback */
@@ -4007,7 +4038,11 @@ VOID asic_change_tx_retry(
 		MacReg &= 0xFEFFFF00;
 		MacReg |= 0x01000003;
 		RTMP_IO_WRITE32(pAd, TX_RTS_CFG, MacReg);
+#if 0
+		/* enable fallback to legacy (MCS0 -> OFDM 6, default for MT76x2) */
+		RTMP_IO_WRITE32(pAd, HT_FBK_TO_LEGACY, 0x1818);
 	}
+#endif
 }
 
 VOID pkt_aggr_num_change(
@@ -4034,7 +4069,7 @@ VOID pkt_aggr_num_change(
 			RTMP_IO_WRITE32(pAd, AMPDU_MAX_LEN_40M2S, 0x77765544);
 		}
 	}
-#endif
+#endif /* RT6352 */
 }
 
 VOID asic_tune_be_wmm(

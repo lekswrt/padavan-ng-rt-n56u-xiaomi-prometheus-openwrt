@@ -71,7 +71,7 @@ VOID RTMPResetTxRxRingMemory(RTMP_ADAPTER *pAd)
 	UCHAR tx_hw_info[TXD_SIZE];
 #endif /* RT_BIG_ENDIAN */
 	PNDIS_PACKET pPacket;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 
 
 	/* Free TxSwQueue Packet*/
@@ -86,7 +86,8 @@ VOID RTMPResetTxRxRingMemory(RTMP_ADAPTER *pAd)
 		{
 			pEntry = RemoveHeadQueue(pQueue);
 			pPacket = QUEUE_ENTRY_TO_PACKET(pEntry);
-			RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
+			if (pPacket)
+			    RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 		}
 		RTMP_IRQ_UNLOCK(&pAd->irq_lock, IrqFlags);
 	}
@@ -110,20 +111,20 @@ VOID RTMPResetTxRxRingMemory(RTMP_ADAPTER *pAd)
 			
 			if (pPacket)
 			{
+				/*Always assign pNdisPacket as NULL after clear*/
+				pTxRing->Cell[j].pNdisPacket = NULL;
 				PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr0, pTxD->SDLen0, RTMP_PCI_DMA_TODEVICE);
 				RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_SUCCESS);
 			}
-			/*Always assign pNdisPacket as NULL after clear*/
-			pTxRing->Cell[j].pNdisPacket = NULL;
 					
 			pPacket = pTxRing->Cell[j].pNextNdisPacket;
 			if (pPacket)
 			{
+				/*Always assign pNextNdisPacket as NULL after clear*/
+				pTxRing->Cell[pTxRing->TxSwFreeIdx].pNextNdisPacket = NULL;
 				PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr1, pTxD->SDLen1, RTMP_PCI_DMA_TODEVICE);
 				RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_SUCCESS);
 			}
-			/*Always assign pNextNdisPacket as NULL after clear*/
-			pTxRing->Cell[pTxRing->TxSwFreeIdx].pNextNdisPacket = NULL;
 #ifdef RT_BIG_ENDIAN
 			RTMPDescriptorEndianChange((PUCHAR)pTxD, TYPE_TXD);
 			WriteBackToDescriptor((PUCHAR)pDestTxD, (PUCHAR)pTxD, FALSE, TYPE_TXD);
@@ -401,7 +402,7 @@ NDIS_STATUS RTMPInitTxRxRingMemory(RTMP_ADAPTER *pAd)
 		}
 
 		/* Zero init this memory block */
-		NdisZeroMemory(pDmaBuf->AllocVa, pDmaBuf->AllocSize);
+		// NdisZeroMemory(pDmaBuf->AllocVa, pDmaBuf->AllocSize);
 
 		/* Write RxD buffer address & allocated buffer length */
 		pRxD = (PRXD_STRUC) pAd->RxRing.Cell[index].AllocVa;
@@ -525,8 +526,10 @@ NDIS_STATUS RTMPInitTxRxRingMemory(RTMP_ADAPTER *pAd)
 
 	pAd->PrivateInfo.TxRingFullCnt = 0;
 		
-	return Status;
+	/* Init timer to flush completed packets from TX queues */
+	RTMPInitTimer(pAd, &pAd->TxDoneCleanupTimer, GET_TIMER_FUNCTION(TxDoneCleanupExec), pAd, FALSE);
 
+	return Status;
 }
 
 
@@ -1118,7 +1121,7 @@ VOID RTMPFreeTxRxRingMemory(RTMP_ADAPTER *pAd)
 	UCHAR tx_hw_info[TXD_SIZE];
 #endif /* RT_BIG_ENDIAN */
 	PNDIS_PACKET pPacket;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 
 	/* Free TxSwQueue Packet*/
 	for (index=0; index <NUM_OF_TX_RING; index++)
@@ -1132,7 +1135,8 @@ VOID RTMPFreeTxRxRingMemory(RTMP_ADAPTER *pAd)
 		{
 			pEntry = RemoveHeadQueue(pQueue);
 			pPacket = QUEUE_ENTRY_TO_PACKET(pEntry);
-			RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
+			if (pPacket)
+			    RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 		}
 		RTMP_IRQ_UNLOCK(&pAd->irq_lock, IrqFlags);
 	}
@@ -1156,20 +1160,20 @@ VOID RTMPFreeTxRxRingMemory(RTMP_ADAPTER *pAd)
 			
 			if (pPacket)
 			{
+				/*Always assign pNdisPacket as NULL after clear*/
+				pTxRing->Cell[j].pNdisPacket = NULL;
 				PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr0, pTxD->SDLen0, RTMP_PCI_DMA_TODEVICE);
 				RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_SUCCESS);
 			}
-			/*Always assign pNdisPacket as NULL after clear*/
-			pTxRing->Cell[j].pNdisPacket = NULL;
 					
 			pPacket = pTxRing->Cell[j].pNextNdisPacket;
 			if (pPacket)
 			{
+				/*Always assign pNextNdisPacket as NULL after clear*/
+				pTxRing->Cell[pTxRing->TxSwFreeIdx].pNextNdisPacket = NULL;
 				PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr1, pTxD->SDLen1, RTMP_PCI_DMA_TODEVICE);
 				RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_SUCCESS);
 			}
-			/*Always assign pNextNdisPacket as NULL after clear*/
-			pTxRing->Cell[pTxRing->TxSwFreeIdx].pNextNdisPacket = NULL;
 #ifdef RT_BIG_ENDIAN
 			RTMPDescriptorEndianChange((PUCHAR)pTxD, TYPE_TXD);
 			WriteBackToDescriptor((PUCHAR)pDestTxD, (PUCHAR)pTxD, FALSE, TYPE_TXD);
@@ -1269,7 +1273,7 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 	QUEUE_ENTRY *pEntry;
 	PNDIS_PACKET pPacket;
 	RTMP_TX_RING *pTxRing;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 	int i;
 
 	DBGPRINT(RT_DEBUG_TRACE,("RTMPRingCleanUp(RingIdx=%d, Pending-NDIS=%ld)\n", RingType, pAd->RalinkCounters.PendingNdisPacketCount));
@@ -1280,9 +1284,14 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 		case QID_AC_VI:
 		case QID_AC_VO:
 		case QID_HCCA:
-			
+
+			if (NUM_OF_TX_RING <= RingType)
+			{
+				break;
+			}
+
 			pTxRing = &pAd->TxRing[RingType];
-			
+
 			RTMP_IRQ_LOCK(&pAd->irq_lock, IrqFlags);
 			/* We have to clean all descriptors in case some error happened with reset*/
 			for (i=0; i<TX_RING_SIZE; i++) /* We have to scan all TX ring*/
@@ -1293,16 +1302,16 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 				/* release scatter-and-gather NDIS_PACKET*/
 				if (pPacket)
 				{
-					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 					pTxRing->Cell[i].pNdisPacket = NULL;
+					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 				}
 
 				pPacket = (PNDIS_PACKET) pTxRing->Cell[i].pNextNdisPacket;
 				/* release scatter-and-gather NDIS_PACKET*/
 				if (pPacket)
 				{
-					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 					pTxRing->Cell[i].pNextNdisPacket = NULL;
+					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 				}
 			}
 
@@ -1326,7 +1335,8 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 			{
 				pEntry = RemoveHeadQueue(&pAd->TxSwQueue[RingType]);
 				pPacket = QUEUE_ENTRY_TO_PACKET(pEntry);
-				RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
+				if (pPacket)
+				    RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 				DBGPRINT(RT_DEBUG_TRACE,("Release 1 NDIS packet from s/w backlog queue\n"));
 			}
 			RTMP_IRQ_UNLOCK(&pAd->irq_lock, IrqFlags);
@@ -1353,19 +1363,19 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 				/* rlease scatter-and-gather NDIS_PACKET*/
 				if (pPacket)
 				{
+					pAd->MgmtRing.Cell[i].pNdisPacket = NULL;
 					PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr0, pTxD->SDLen0, RTMP_PCI_DMA_TODEVICE);
 					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 				}
-				pAd->MgmtRing.Cell[i].pNdisPacket = NULL;
 
 				pPacket = (PNDIS_PACKET) pAd->MgmtRing.Cell[i].pNextNdisPacket;
 				/* release scatter-and-gather NDIS_PACKET*/
 				if (pPacket)
 				{
+					pAd->MgmtRing.Cell[i].pNdisPacket = NULL;
 					PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr1, pTxD->SDLen1, RTMP_PCI_DMA_TODEVICE);			
 					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
-			}
-				pAd->MgmtRing.Cell[i].pNextNdisPacket = NULL;
+				}
 
 #ifdef RT_BIG_ENDIAN
 				RTMPDescriptorEndianChange((PUCHAR)pTxD, TYPE_TXD);
@@ -1480,19 +1490,19 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 				/* rlease scatter-and-gather NDIS_PACKET*/
 				if (pPacket)
 				{
+					pAd->CtrlRing.Cell[i].pNdisPacket = NULL;
 					PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr0, pTxD->SDLen0, RTMP_PCI_DMA_TODEVICE);
 					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 				}
-				pAd->CtrlRing.Cell[i].pNdisPacket = NULL;
 
 				pPacket = (PNDIS_PACKET) pAd->CtrlRing.Cell[i].pNextNdisPacket;
 				/* release scatter-and-gather NDIS_PACKET*/
 				if (pPacket)
 				{
+					pAd->CtrlRing.Cell[i].pNextNdisPacket = NULL;
 					PCI_UNMAP_SINGLE(pAd, pTxD->SDPtr1, pTxD->SDLen1, RTMP_PCI_DMA_TODEVICE);			
 					RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 				}
-				pAd->CtrlRing.Cell[i].pNextNdisPacket = NULL;
 
 #ifdef RT_BIG_ENDIAN
 				RTMPDescriptorEndianChange((PUCHAR)pTxD, TYPE_TXD);
@@ -1957,7 +1967,7 @@ VOID RT28xxPciMlmeRadioOn(RTMP_ADAPTER *pAd)
     	
     	/* Clear Radio off flag*/
     	RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF);
-		RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF);
+	RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF);
 
 #ifdef LED_CONTROL_SUPPORT
 	    /* Set LED*/

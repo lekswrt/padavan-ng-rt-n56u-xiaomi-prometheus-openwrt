@@ -331,8 +331,9 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 		INT matchFlag = FALSE;
 
 		ULONG   Bssidx;
-        LONG    RealRssi = -127;
 #ifdef RT_CFG80211_P2P_CONCURRENT_DEVICE
+    		LONG    RealRssi = -127;
+
 		RealRssi = (LONG)(RTMPMaxRssi(pAd, ConvertToRssi(pAd, Elem->Rssi0, RSSI_0), 
 						   ConvertToRssi(pAd, Elem->Rssi1, RSSI_1), 
 						   ConvertToRssi(pAd, Elem->Rssi2, RSSI_2)));		
@@ -557,6 +558,12 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 					goto LabelErr;
 				else
 					pApCliEntry->MlmeAux.Rssi = RealMaxRssi;
+
+				if (ie_list->Channel != pApCliEntry->MlmeAux.Channel)
+				{
+					DBGPRINT(RT_DEBUG_TRACE, ("\x1b[33mSYNC - current rootap ie channel=%d, apcli channel=%d! \x1b[m\n", ie_list->Channel, pApCliEntry->MlmeAux.Channel));
+					goto LabelErr;
+				}
 			}
 			else
 			{
@@ -643,6 +650,17 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 				RTMPZeroMemory(&pApCliEntry->MlmeAux.AddHtInfo, SIZE_ADD_HT_INFO_IE);
 				pApCliEntry->MlmeAux.HtCapabilityLen = 0;
 			}
+#ifdef DOT11_VHT_AC
+			if (ie_list->vht_op_len)
+			{
+				/*
+					To save the VHT Channel Width of AP.
+				*/
+				RTMPZeroMemory(&pApCliEntry->MlmeAux.vht_op, sizeof(VHT_OP_IE));
+				NdisCopyMemory(&pApCliEntry->MlmeAux.vht_op, &(ie_list->vht_op_ie), ie_list->vht_op_len);
+			}
+#endif /* DOT11_VHT_AC */
+
 			ApCliUpdateMlmeRate(pAd, ifIndex);
 
 #ifdef DOT11_N_SUPPORT
@@ -675,7 +693,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 #ifdef APCLI_AUTO_BW_SUPPORT
 			if ((ie_list->HtCapabilityLen > 0) &&
 			    (ie_list->HtCapability.HtCapInfo.ChannelWidth == BW_40))
-			{
+				{
 				ApCliAutoBwAction(pAd, ifIndex);
 			}
 #endif /* APCLI_AUTO_BW_SUPPORT */	
@@ -860,9 +878,12 @@ static VOID ApCliEnqueueProbeRequest(
 	UCHAR ssidLen;
 	CHAR ssid[MAX_LEN_OF_SSID];
 	APCLI_STRUCT *pApCliEntry = NULL;
+#ifdef WSC_AP_SUPPORT
 	BOOLEAN bHasWscIe = FALSE;
+#endif
+#if defined(DOT11_VHT_AC) || defined(APCLI_AUTO_BW_SUPPORT)
 	UCHAR   PhyMode = pAd->CommonCfg.PhyMode;
-	
+#endif
 	DBGPRINT(RT_DEBUG_TRACE, ("force out a ProbeRequest ...\n"));
 
 	if (ifIndex >= MAX_APCLI_NUM)
@@ -870,7 +891,7 @@ static VOID ApCliEnqueueProbeRequest(
 
 	pApCliEntry = &pAd->ApCfg.ApCliTab[ifIndex];
 #ifdef APCLI_AUTO_BW_SUPPORT
-    PhyMode = pApCliEntry->wdev.PhyMode;
+	PhyMode = pApCliEntry->wdev.PhyMode;
 #endif /* APCLI_AUTO_BW_SUPPORT */	
 	
 	NState = MlmeAllocateMemory(pAd, &pOutBuffer);  /* Get an unused nonpaged memory */
@@ -927,11 +948,9 @@ static VOID ApCliEnqueueProbeRequest(
 		if (WMODE_CAP_AC(PhyMode) &&
 			(pAd->CommonCfg.Channel > 14))
 		{
-
 			build_vht_cap_ie(pAd, (UCHAR *)&pApCliEntry->MlmeAux.vht_cap);
 			pApCliEntry->MlmeAux.vht_cap_len = sizeof(VHT_CAP_IE);
-
-            FrameLen += build_vht_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen), SUBTYPE_PROBE_REQ);
+        		FrameLen += build_vht_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen), SUBTYPE_PROBE_REQ);
 		}
 #endif /* DOT11_VHT_AC */
 #ifdef WSC_AP_SUPPORT

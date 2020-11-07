@@ -37,6 +37,12 @@
 #endif	/* WSC_LED_SUPPORT */
 #endif /* VENDOR_FEATURE3_SUPPORT */
 
+#ifdef VENDOR_FEATURE1_SUPPORT
+#define FIFO_STAT_READ_PERIOD		4
+#else
+#define FIFO_STAT_READ_PERIOD		0
+#endif /* VENDOR_FEATURE1_SUPPORT */
+
 /* ======================== Before include files ============================ */ 
 /*
 	14 channels @2.4G +  12@UNII(lower/middle) + 16@HiperLAN2 + 11@UNII(upper) + 0 @Japan + 1 as NULL termination
@@ -221,7 +227,7 @@ typedef enum _RTMP_INF_TYPE_
 	RTMP_DEV_INF_PCIE = 5,
 }RTMP_INF_TYPE;
 
-#if defined(CONFIG_AP_SUPPORT) && defined(CONFIG_STA_SUPPORT)
+#if defined(CONFIG_AP_SUPPORT)
 #define IF_DEV_CONFIG_OPMODE_ON_AP(_pAd)		if(_pAd->OpMode == OPMODE_AP)
 #define IF_DEV_CONFIG_OPMODE_ON_STA(_pAd)		if(_pAd->OpMode == OPMODE_STA)
 #define RT_CONFIG_IF_OPMODE_ON_AP(__OpMode)		if (__OpMode == OPMODE_AP)
@@ -358,135 +364,6 @@ typedef struct  _PACKET_INFO    {
 
 
 #define MAC_ADDR_LEN                    6
-    
-/* 2-byte Frame control field */
-    typedef struct GNU_PACKED {
-	
-#ifdef RT_BIG_ENDIAN
-	USHORT Order:1;		/* Strict order expected */
-	USHORT Wep:1;		/* Wep data */
-	USHORT MoreData:1;	/* More data bit */
-	USHORT PwrMgmt:1;	/* Power management bit */
-	USHORT Retry:1;		/* Retry status bit */
-	USHORT MoreFrag:1;	/* More fragment bit */
-	USHORT FrDs:1;		/* From DS indication */
-	USHORT ToDs:1;		/* To DS indication */
-	USHORT SubType:4;	/* MSDU subtype */
-	USHORT Type:2;		/* MSDU type */
-	USHORT Ver:2;		/* Protocol version */
-#else
-        USHORT Ver:2;		/* Protocol version */
-	USHORT Type:2;		/* MSDU type */
-	USHORT SubType:4;	/* MSDU subtype */
-	USHORT ToDs:1;		/* To DS indication */
-	USHORT FrDs:1;		/* From DS indication */
-	USHORT MoreFrag:1;	/* More fragment bit */
-	USHORT Retry:1;		/* Retry status bit */
-	USHORT PwrMgmt:1;	/* Power management bit */
-	USHORT MoreData:1;	/* More data bit */
-	USHORT Wep:1;		/* Wep data */
-	USHORT Order:1;		/* Strict order expected */
-#endif	/* !RT_BIG_ENDIAN */
-} FRAME_CONTROL, *PFRAME_CONTROL;
-
-
-typedef struct GNU_PACKED _HEADER_802_11 {
-        FRAME_CONTROL   FC;
-        USHORT          Duration;
-        UCHAR           Addr1[MAC_ADDR_LEN];
-        UCHAR           Addr2[MAC_ADDR_LEN];
-	UCHAR			Addr3[MAC_ADDR_LEN];
-#ifdef RT_BIG_ENDIAN
-	USHORT			Sequence:12;
-	USHORT			Frag:4;
-#else
-	USHORT			Frag:4;
-	USHORT			Sequence:12;
-#endif /* !RT_BIG_ENDIAN */
-	UCHAR			Octet[0];
-}	HEADER_802_11, *PHEADER_802_11;
-
-enum {
-	DIDmsg_lnxind_wlansniffrm		= 0x00000044,
-	DIDmsg_lnxind_wlansniffrm_hosttime	= 0x00010044,
-	DIDmsg_lnxind_wlansniffrm_mactime	= 0x00020044,
-	DIDmsg_lnxind_wlansniffrm_channel	= 0x00030044,
-	DIDmsg_lnxind_wlansniffrm_rssi		= 0x00040044,
-	DIDmsg_lnxind_wlansniffrm_sq		= 0x00050044,
-	DIDmsg_lnxind_wlansniffrm_signal	= 0x00060044,
-	DIDmsg_lnxind_wlansniffrm_noise		= 0x00070044,
-	DIDmsg_lnxind_wlansniffrm_rate		= 0x00080044,
-	DIDmsg_lnxind_wlansniffrm_istx		= 0x00090044,
-	DIDmsg_lnxind_wlansniffrm_frmlen	= 0x000A0044
-};
-enum { 
-P80211ENUM_msgitem_status_no_value = 0x00 
-};
-
-enum { 
-P80211ENUM_truth_false = 0x00, 
-P80211ENUM_truth_true = 0x01 
-};
-
-
-/* Definition from madwifi */
-typedef struct {
-        UINT32 did;
-        UINT16 status;
-        UINT16 len;
-        UINT32 data;
-} p80211item_uint32_t;
-
-typedef struct {
-        UINT32 msgcode;
-        UINT32 msglen;
-#define WLAN_DEVNAMELEN_MAX 16
-        UINT8 devname[WLAN_DEVNAMELEN_MAX];
-        p80211item_uint32_t hosttime;
-        p80211item_uint32_t mactime;
-        p80211item_uint32_t channel;
-        p80211item_uint32_t rssi;
-        p80211item_uint32_t sq;
-        p80211item_uint32_t signal;
-        p80211item_uint32_t noise;
-        p80211item_uint32_t rate;
-        p80211item_uint32_t istx;
-        p80211item_uint32_t frmlen;
-} wlan_ng_prism2_header;
-
-#ifdef MONITOR_FLAG_11N_SNIFFER_SUPPORT
-/*
-	Note: 2009/11/10
-	Used in WiFi Sigma Test Engine RT3593 (replace RT2883).
-*/
-
-#ifdef RT_BIG_ENDIAN
-typedef struct _ETHEREAL_RADIO {
-        UCHAR Flag_80211n;
-        UCHAR signal_level; /* dBm */
-        UCHAR data_rate; /* rate index */
-        UCHAR channel; /* Channel number */
-} ETHEREAL_RADIO, *PETHEREAL_RADIO;
-#else
-typedef struct _ETHEREAL_RADIO {
-        UCHAR channel; /* Channel number */
-        UCHAR data_rate; /* rate index */
-        UCHAR signal_level; /* dBm */
-        UCHAR Flag_80211n;      
-} ETHEREAL_RADIO, *PETHEREAL_RADIO;
-#endif
-
-#define WIRESHARK_11N_FLAG_3x3             	0x01
-#define WIRESHARK_11N_FLAG_GF              	0x02
-#define WIRESHARK_11N_FLAG_AMPDU     	 	0x04
-#define WIRESHARK_11N_FLAG_STBC          	0x08
-#define WIRESHARK_11N_FLAG_SGI             	0x10
-#define WIRESHARK_11N_FLAG_BW20U      		0x20
-#define WIRESHARK_11N_FLAG_BW20D      		0x40
-#define WIRESHARK_11N_FLAG_BW40             0x80
-#endif /* MONITOR_FLAG_11N_SNIFFER_SUPPORT */
-    
-
 
 #endif /* __RT_COMM_H__ */
 

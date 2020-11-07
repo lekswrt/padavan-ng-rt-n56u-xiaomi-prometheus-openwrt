@@ -626,7 +626,7 @@ void mt7628_get_tx_pwr_per_rate(RTMP_ADAPTER *pAd)
 
 void mt7628_get_tx_pwr_info(RTMP_ADAPTER *pAd)
 {
-    bool is_empty = 0;
+    bool is_empty = false;
     UINT16 value = 0;
 	struct MT_TX_PWR_CAP *cap = &pAd->chipCap.MTTxPwrCap;
 
@@ -884,7 +884,9 @@ static const RTMP_CHIP_CAP MT7628_ChipCap = {
 	.WPDMABurstSIZE = 3,
 #endif
 	.SnrFormula = SNR_FORMULA4,
+#ifdef WAPI_SUPPORT
 	.FlgIsHwWapiSup = TRUE,
+#endif /* WAPI_SUPPORT */
 	.FlgIsHwAntennaDiversitySup = FALSE,
 #ifdef STREAM_MODE_SUPPORT
 	.FlgHwStreamMode = FALSE,
@@ -948,6 +950,7 @@ static const RTMP_CHIP_CAP MT7628_ChipCap = {
 #endif /* CONFIG_WIFI_TEST */
 	.hif_type = HIF_MT,
 	.rf_type = RF_MT,
+	.TxAggLimit = 21;
 	.RxBAWinSize = 21,
 	.AMPDUFactor = 2,
 };

@@ -91,6 +91,7 @@ NDIS_STATUS MATDBEntryFree(
 	}
 #else
 	os_free_mem(NULL, NodeEntry);
+	NodeEntry = NULL;
 #endif
 
 	return TRUE;

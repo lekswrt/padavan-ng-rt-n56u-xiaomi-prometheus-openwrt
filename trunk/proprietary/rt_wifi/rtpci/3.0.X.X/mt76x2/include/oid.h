@@ -42,7 +42,7 @@
 #define BAND_WIDTH_20		0
 #define BAND_WIDTH_40		1
 #define BAND_WIDTH_80		2
-#define BAND_WIDTH_BOTH	3
+#define BAND_WIDTH_BOTH		3
 #define BAND_WIDTH_10		4	/* 802.11j has 10MHz. This definition is for internal usage. doesn't fill in the IE or other field. */
 #define BAND_WIDTH_160		3
 
@@ -71,14 +71,9 @@
 #define OID_P2P_DEVICE_NAME_LEN	32
 /*#define MAX_NUM_OF_CHS					49 */ /* 14 channels @2.4G +  12@UNII + 4 @MMAC + 11 @HiperLAN2 + 7 @Japan + 1 as NULL terminationc */
 /*#define MAX_NUM_OF_CHS             		54 */ /* 14 channels @2.4G +  12@UNII(lower/middle) + 16@HiperLAN2 + 11@UNII(upper) + 0 @Japan + 1 as NULL termination */
-#define MAX_NUMBER_OF_EVENT			10	/* entry # in EVENT table */
+#define MAX_NUMBER_OF_EVENT				10	/* entry # in EVENT table */
 
-#ifdef CONFIG_RT_MAX_CLIENTS
-#define MAX_NUMBER_OF_MAC			CONFIG_RT_MAX_CLIENTS
-#else
-#define MAX_NUMBER_OF_MAC			32
-#endif
-
+#define MAX_NUMBER_OF_MAC			CONFIG_MAX_CLIENTS
 #define MAX_NUMBER_OF_ACL			64
 #define MAX_LENGTH_OF_SUPPORT_RATES		12	/* 1, 2, 5.5, 11, 6, 9, 12, 18, 24, 36, 48, 54 */
 #define MAX_NUMBER_OF_DLS_ENTRY			4
@@ -682,6 +677,7 @@ typedef struct GNU_PACKED _DOT1X_CMM_CONF {
 	UINT32 Length;		/* Length of this structure */
 	UCHAR mbss_num;		/* indicate multiple BSS number */
 	UINT32 own_ip_addr;
+	UINT32 own_radius_port; /* for compat stubs */
 	UINT32 retry_interval;
 	UINT32 session_timeout_interval;
 	UINT32 quiet_interval;
@@ -690,6 +686,8 @@ typedef struct GNU_PACKED _DOT1X_CMM_CONF {
 	UCHAR PreAuthifname[8][IFNAMSIZ];
 	UCHAR PreAuthifname_len[8];
 	DOT1X_BSS_INFO Dot1xBssInfo[8];
+	UCHAR RadiusAclEnable[8]; /* for compat stubs */
+	UINT32 AclCacheTimeout[8];/* for compat stubs */
 } DOT1X_CMM_CONF, *PDOT1X_CMM_CONF;
 
 typedef struct GNU_PACKED _DOT1X_IDLE_TIMEOUT {
@@ -989,7 +987,7 @@ typedef struct _AP_BSSID_INFO {
 	BOOLEAN Valid;
 } AP_BSSID_INFO, *PAP_BSSID_INFO;
 
-#define MAX_PMKID_COUNT		8
+#define MAX_PMKID_COUNT	128
 typedef struct _NDIS_AP_802_11_PMKID {
 	AP_BSSID_INFO BSSIDInfo[MAX_PMKID_COUNT];
 } NDIS_AP_802_11_PMKID, *PNDIS_AP_802_11_PMKID;
@@ -1011,7 +1009,7 @@ typedef struct _NDIS_802_11_CAPABILITY {
 
 
 
-#if defined(DBG) || defined(RALINK_ATE)
+#ifdef DBG
 /*
 	When use private ioctl oid get/set the configuration, we can use following flags to provide specific rules when handle the cmd
  */
@@ -1149,29 +1147,16 @@ typedef struct _NDIS_802_11_CAPABILITY {
 
 /* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
 typedef union _HTTRANSMIT_SETTING {
-#ifdef RT_BIG_ENDIAN
 	struct {
-		USHORT MODE:3;	/* Use definition MODE_xxx. */
-		USHORT iTxBF:1;
-		USHORT eTxBF:1;
-		USHORT STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
-		USHORT ShortGI:1;
-		USHORT BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
+		USHORT MCS:6;		/* MCS */
 		USHORT ldpc:1;
-		USHORT MCS:6;	/* MCS */
-	} field;
-#else
-	struct {
-		USHORT MCS:6;
-		USHORT ldpc:1;
-		USHORT BW:2;
+		USHORT BW:2;		/* channel bandwidth 20MHz/40/80 MHz */
 		USHORT ShortGI:1;
-		USHORT STBC:1;
+		USHORT STBC:1;		/* only support in HT/VHT mode with MCS0~7 */
 		USHORT eTxBF:1;
 		USHORT iTxBF:1;
-		USHORT MODE:3;
+		USHORT MODE:3;		/* Use definition MODE_xxx. */
 	} field;
-#endif
 	USHORT word;
 } HTTRANSMIT_SETTING, *PHTTRANSMIT_SETTING;
 
@@ -1253,34 +1238,6 @@ typedef struct _RT_802_11_EVENT_TABLE {
 } RT_802_11_EVENT_TABLE, *PRT_802_11_EVENT_TABLE;
 #endif /* SYSTEM_LOG_SUPPORT */
 
-/* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
-typedef union _MACHTTRANSMIT_SETTING {
-#ifdef RT_BIG_ENDIAN
-	struct {
-		USHORT MODE:3;	/* Use definition MODE_xxx. */
-		USHORT iTxBF:1;
-		USHORT eTxBF:1;
-		USHORT STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
-		USHORT ShortGI:1;
-		USHORT BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
-		USHORT ldpc:1;
-		USHORT MCS:6;	/* MCS */
-	} field;
-#else
-	struct {
-		USHORT MCS:6;
-		USHORT ldpc:1;
-		USHORT BW:2;
-		USHORT ShortGI:1;
-		USHORT STBC:1;
-		USHORT eTxBF:1;
-		USHORT iTxBF:1;
-		USHORT MODE:3;
-	} field;
-#endif
-	USHORT word;
-} MACHTTRANSMIT_SETTING, *PMACHTTRANSMIT_SETTING;
-
 typedef struct _RT_802_11_MAC_ENTRY {
 	UCHAR ApIdx;
 	UCHAR Addr[MAC_ADDR_LEN];
@@ -1290,8 +1247,10 @@ typedef struct _RT_802_11_MAC_ENTRY {
 	CHAR AvgRssi0;
 	CHAR AvgRssi1;
 	CHAR AvgRssi2;
+	UINT64 TxBytes;
+	UINT64 RxBytes;
 	UINT32 ConnectedTime;
-	MACHTTRANSMIT_SETTING TxRate;
+	HTTRANSMIT_SETTING TxRate;
 	UINT32 LastRxRate;
 } RT_802_11_MAC_ENTRY, *PRT_802_11_MAC_ENTRY;
 
@@ -1329,17 +1288,6 @@ typedef struct _RT_802_11_HARDWARE_REGISTER {
 	ULONG Offset;		/* Q/S register offset addr */
 	ULONG Data;		/* R/W data buffer */
 } RT_802_11_HARDWARE_REGISTER, *PRT_802_11_HARDWARE_REGISTER;
-
-typedef struct _RT_802_11_AP_CONFIG {
-	ULONG EnableTxBurst;	/* 0-disable, 1-enable */
-	ULONG EnableTurboRate;	/* 0-disable, 1-enable 72/100mbps turbo rate */
-	ULONG IsolateInterStaTraffic;	/* 0-disable, 1-enable isolation */
-	ULONG HideSsid;		/* 0-disable, 1-enable hiding */
-	ULONG UseBGProtection;	/* 0-AUTO, 1-always ON, 2-always OFF */
-	ULONG UseShortSlotTime;	/* 0-no use, 1-use 9-us short slot time */
-	ULONG Rsv1;		/* must be 0 */
-	ULONG SystemErrorBitmap;	/* ignore upon SET, return system error upon QUERY */
-} RT_802_11_AP_CONFIG, *PRT_802_11_AP_CONFIG;
 
 /* structure to query/set STA_CONFIG */
 typedef struct _RT_802_11_STA_CONFIG {
@@ -1432,7 +1380,7 @@ typedef struct _RT_LLTD_ASSOICATION_ENTRY {
 
 typedef struct _RT_LLTD_ASSOICATION_TABLE {
 	unsigned int Num;
-	RT_LLTD_ASSOICATION_ENTRY Entry[64]; /* sync from LLTD daemon */
+	RT_LLTD_ASSOICATION_ENTRY Entry[MAX_NUMBER_OF_MAC];
 } RT_LLTD_ASSOICATION_TABLE, *PRT_LLTD_ASSOICATION_TABLE;
 #endif /* LLTD_SUPPORT */
 

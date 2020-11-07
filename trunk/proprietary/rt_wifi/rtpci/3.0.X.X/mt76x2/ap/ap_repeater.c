@@ -31,9 +31,6 @@
 
 #include "rt_config.h"
 
-#define IS_MULTICAST_MAC_ADDR(Addr)			((((Addr[0]) & 0x01) == 0x01) && ((Addr[0]) != 0xff))
-#define IS_BROADCAST_MAC_ADDR(Addr)			((((Addr[0]) & 0xff) == 0xff))
-
 REPEATER_CLIENT_ENTRY *RTMPLookupRepeaterCliEntry(
 	IN PVOID pData,
 	IN BOOLEAN bRealMAC,
@@ -75,7 +72,7 @@ REPEATER_CLIENT_ENTRY *RTMPLookupRepeaterCliEntry(
 					pEntry = NULL;
 				}
 				
-				break;			
+				break;
 			}
 			else
 			{
@@ -1048,6 +1045,8 @@ INT	Show_Repeater_Cli_Dump_Proc(
 				printk("\n");
 			}
 		}	
+
+	return TRUE;
 }
 #endif /* MAC_REPEATER_SUPPORT */
 

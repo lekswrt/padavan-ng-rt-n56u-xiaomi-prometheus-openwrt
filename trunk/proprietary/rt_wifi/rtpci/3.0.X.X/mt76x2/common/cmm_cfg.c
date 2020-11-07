@@ -186,8 +186,9 @@ static UCHAR CFG_WMODE_MAP[]={
 	PHY_MODE_MAX, WMODE_INVALID /* default phy mode if not match */
 };
 
-
+#ifdef DBG
 static PSTRING BAND_STR[] = {"Invalid", "2.4G", "5G", "2.4G/5G"};
+#endif
 static PSTRING WMODE_STR[]= {"", "A", "B", "G", "gN", "aN", "AC"};
 
 UCHAR *wmode_2_str(UCHAR wmode)
@@ -225,7 +226,7 @@ UCHAR *wmode_2_str(UCHAR wmode)
 
 RT_802_11_PHY_MODE wmode_2_cfgmode(UCHAR wmode)
 {
-	INT i, mode_cnt = sizeof(CFG_WMODE_MAP) / sizeof(UCHAR);
+	INT i, mode_cnt = sizeof(CFG_WMODE_MAP) / (sizeof(UCHAR) * 2);
 
 	for (i = 1; i < mode_cnt; i+=2)
 	{	
@@ -260,7 +261,6 @@ BOOLEAN wmode_valid(RTMP_ADAPTER *pAd, enum WIFI_MODE wmode)
 	else
 		return TRUE;
 }
-
 
 BOOLEAN wmode_band_equal(UCHAR smode, UCHAR tmode)
 {
@@ -301,10 +301,9 @@ INT RT_CfgSetWirelessMode(RTMP_ADAPTER *pAd, PSTRING arg)
 {
 	LONG cfg_mode;
 	UCHAR wmode, *mode_str;
-#ifdef MT76x2
+#ifdef DOT11_VHT_AC
 	RTMP_CHIP_CAP *pChipCap = &pAd->chipCap;
-#endif /* MT76x2 */
-
+#endif /* DOT11_VHT_AC */
 	cfg_mode = simple_strtol(arg, 0, 10);
 
 	/* check if chip support 5G band when WirelessMode is 5G band */
@@ -317,14 +316,12 @@ INT RT_CfgSetWirelessMode(RTMP_ADAPTER *pAd, PSTRING arg)
 		return FALSE;
 	}
 
-#ifdef MT76x2
 #ifdef DOT11_VHT_AC
 	if (pChipCap->ac_off_mode && WMODE_CAP_AC(wmode)) {
 		DBGPRINT(RT_DEBUG_ERROR, ("it doesn't support VHT AC!\n"));
 		wmode &= ~(WMODE_AC);
 	}
 #endif /* DOT11_VHT_AC */
-#endif /* MT76x2 */
 
 	if (wmode_band_equal(pAd->CommonCfg.PhyMode, wmode) == TRUE)
 		DBGPRINT(RT_DEBUG_OFF, ("wmode_band_equal(): Band Equal!\n"));
@@ -390,9 +387,9 @@ INT RT_CfgSetMbssWirelessMode(RTMP_ADAPTER *pAd, PSTRING arg)
 {
 	INT cfg_mode;
 	UCHAR wmode;
-#ifdef MT76x2
+#ifdef DOT11_VHT_AC
 	RTMP_CHIP_CAP *pChipCap = &pAd->chipCap;
-#endif /* MT76x2 */
+#endif /* DOT11_VHT_AC */
 
 	cfg_mode = simple_strtol(arg, 0, 10);
 
@@ -411,15 +408,12 @@ INT RT_CfgSetMbssWirelessMode(RTMP_ADAPTER *pAd, PSTRING arg)
 		return FALSE;
 	}
 
-
-#ifdef MT76x2
 #ifdef DOT11_VHT_AC
 	if (pChipCap->ac_off_mode && WMODE_CAP_AC(wmode)) {
 		DBGPRINT(RT_DEBUG_ERROR, ("it doesn't support VHT AC!\n"));
 		wmode &= ~(WMODE_AC);
 	}
 #endif /* DOT11_VHT_AC */
-#endif /* MT76x2 */
 
 	if (pAd->ApCfg.BssidNum > 1)
 	{
@@ -630,8 +624,7 @@ INT	RT_CfgSetFixedTxPhyMode(PSTRING arg)
 	}
 
 	return fix_tx_mode;
-					
-}	
+}
 
 INT	RT_CfgSetMacAddress(
 	IN 	PRTMP_ADAPTER 	pAd,
@@ -1167,6 +1160,9 @@ INT RTMP_COM_IoctlHandle(
 				extern VOID  APUpdateAllBeaconFrame(IN PRTMP_ADAPTER pAd);
 				APMakeAllBssBeacon(pAd);
 				APUpdateAllBeaconFrame(pAd);
+
+				if (pAd->Dot11_H.RDMode == RD_NORMAL_MODE)
+					AsicEnableBssSync(pAd);
 #endif /* CONFIG_AP_SUPPORT */
 			}
 			VIRTUAL_IF_INC(pAd);
@@ -1409,7 +1405,6 @@ INT RTMP_COM_IoctlHandle(
 				return NDIS_STATUS_FAILURE;
 			break;
 #endif /* WDS_SUPPORT */
-
 #ifdef APCLI_SUPPORT
 		case CMD_RTPRIV_IOCTL_APCLI_STATS_GET:
 			if (Data == INT_APCLI)
@@ -1537,8 +1532,11 @@ INT Set_SiteSurvey_Proc(
 	IN	PSTRING			arg)
 {
 	NDIS_802_11_SSID Ssid;
+#ifndef APCLI_CONNECTION_TRIAL
+#ifdef APCLI_SUPPORT
 	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
-
+#endif
+#endif
 	//check if the interface is down
 	if (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_INTERRUPT_IN_USE))
 	{
@@ -1633,10 +1631,10 @@ ret:
 		else
 #endif /* APCLI_SUPPORT */
 		{
-			if (Ssid.SsidLength == 0)
-				ApSiteSurvey(pAd, &Ssid, SCAN_PASSIVE, FALSE);
-			else
-				ApSiteSurvey(pAd, &Ssid, SCAN_ACTIVE, FALSE);
+		if (Ssid.SsidLength == 0)
+			ApSiteSurvey(pAd, &Ssid, SCAN_PASSIVE, FALSE);
+		else
+			ApSiteSurvey(pAd, &Ssid, SCAN_ACTIVE, FALSE);
 		}
 #else
 		/*for shorter scan time. use active scan and send probe req.*/
@@ -1864,7 +1862,7 @@ INT set_pbf_loopback(RTMP_ADAPTER *pAd, PSTRING arg)
 INT set_pbf_rx_drop(RTMP_ADAPTER *pAd, PSTRING arg)
 {
 	UINT8 enable = 0;
-	UINT32 value;
+	UINT32 value = 0;
 
 	enable = simple_strtol(arg, 0, 10);
 
@@ -2382,7 +2380,7 @@ INT edcca_tx_stop_start(RTMP_ADAPTER *pAd, BOOLEAN stop)
 {	
 	UINT32 macCfg, macCfg_2, macStatus,MacValue;	
 	UINT32 MTxCycle;
-	ULONG stTime, mt_time, mr_time;
+	ULONG stTime, mt_time;
 #ifdef CONFIG_STA_SUPPORT	
 	static BOOLEAN orig_auto_reconnect_setting;
 #endif /* CONFIG_STA_SUPPORT */
@@ -2498,10 +2496,8 @@ VOID ed_testing_timeout(
 
 INT ed_status_read(RTMP_ADAPTER *pAd)
 {
-	UINT32 period_us = pAd->ed_chk_period * 1000;
 	ULONG irqflag;
-	BOOLEAN stop_edcca = FALSE;
-	BOOLEAN stop_tx = FALSE;
+	UINT32 period_us = pAd->ed_chk_period * 1000;
 		
 	INT percent;
 	RX_STA_CNT1_STRUC RxStaCnt1;
@@ -3016,7 +3012,6 @@ INT show_ed_stat_proc(RTMP_ADAPTER *pAd, PSTRING arg)
 INT report_ed_count(RTMP_ADAPTER *pAd, PSTRING arg)
 {
 	INT period_us = 0;
-	INT irqflags = 0;
 	UINT32 ed_stat, percentage = 0;
 
 
@@ -3036,13 +3031,13 @@ INT report_ed_count(RTMP_ADAPTER *pAd, PSTRING arg)
 
 INT set_channel_ed_monitor_enable(RTMP_ADAPTER *pAd, PSTRING arg)
 {
-	UCHAR ED_TH = (pAd->CommonCfg.Channel > 14)?0x0e:0x20;
+	DBGPRINT(RT_DEBUG_OFF, ("=====> %s \n", __FUNCTION__));
 	/* A band 0x0e , G band 0x20 , 20150331 */
 	UINT32 mac_val = 0;
+#ifdef RLT_BBP
+	UCHAR ED_TH = (pAd->CommonCfg.Channel > 14)?0x0e:0x20;
 	UINT32 bbp_val;
-
-	DBGPRINT(RT_DEBUG_OFF, ("=====> %s \n", __FUNCTION__));
-	
+#endif
 	RTMP_IO_READ32(pAd, CH_TIME_CFG, &mac_val);
 	mac_val |= 0x40;
 	RTMP_IO_WRITE32(pAd, CH_TIME_CFG, mac_val);
@@ -3053,9 +3048,9 @@ INT set_channel_ed_monitor_enable(RTMP_ADAPTER *pAd, PSTRING arg)
 
 #ifdef RLT_BBP
 	if (IS_MT76x0(pAd) || IS_MT76x2(pAd)) {
-		RTMP_BBP_IO_READ32(pAd, AGC1_R2, &bbp_val);
-		bbp_val = (bbp_val & 0xFFFF0000) | (ED_TH << 8) | ED_TH;
-		RTMP_BBP_IO_WRITE32(pAd, AGC1_R2, bbp_val);
+	    RTMP_BBP_IO_READ32(pAd, AGC1_R2, &bbp_val);
+	    bbp_val = (bbp_val & 0xFFFF0000) | (ED_TH << 8) | ED_TH;
+	    RTMP_BBP_IO_WRITE32(pAd, AGC1_R2, bbp_val);
 	}
 #endif
 
@@ -3066,6 +3061,7 @@ INT set_channel_ed_monitor_enable(RTMP_ADAPTER *pAd, PSTRING arg)
 	return TRUE;
 }
 
+#ifdef ED_MONITOR
 INT show_ed_cnt_for_channel_quality(RTMP_ADAPTER *pAd, PSTRING arg)
 {
 	if(pAd->ed_chk == FALSE)
@@ -3074,14 +3070,8 @@ INT show_ed_cnt_for_channel_quality(RTMP_ADAPTER *pAd, PSTRING arg)
 	}
 	else
 	{
-#ifdef ED_MONITOR
 		report_ed_count(pAd, arg);
-#else
-		DBGPRINT(RT_DEBUG_OFF, ("%s : unexpected ed_chk = %d  without ED_MONITOR compile flag\n", __FUNCTION__,pAd->ed_chk));
-		pAd->ed_chk = 0;
-#endif /* ED_MONITOR */
 	}
-	
 	return TRUE;
 }
-
+#endif /* ED_MONITOR */

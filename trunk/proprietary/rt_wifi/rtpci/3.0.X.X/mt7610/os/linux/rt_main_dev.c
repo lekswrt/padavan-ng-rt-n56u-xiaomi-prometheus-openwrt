@@ -33,7 +33,7 @@
 #include "rtmp_comm.h"
 #include "rt_os_util.h"
 #include "rt_os_net.h"
-
+#include <net/pkt_sched.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #ifndef SA_SHIRQ
@@ -41,9 +41,9 @@
 #endif
 #endif
 
-#ifdef RTMP_MAC_PCI
 MODULE_LICENSE("GPL");
-#endif /* RTMP_MAC_PCI */
+MODULE_AUTHOR("Mediatek");
+MODULE_DESCRIPTION("MT7610 WiFi driver");
 
 #ifdef CONFIG_APSTA_MIXED_SUPPORT
 /*UINT32 CW_MAX_IN_BITS;*/
@@ -394,6 +394,11 @@ PNET_DEV RtmpPhyNetDevInit(
 
 	RTMP_DRIVER_OP_MODE_GET(pAd, &OpMode);
 
+	/* set default txqlen, may be overwriten by ifconfig (see include/net/pkt_sched.h) */
+        net_dev->tx_queue_len = DEFAULT_TX_QUEUE_LEN_WLAN;
+
+	/* put private data structure */
+	RTMP_OS_NETDEV_SET_PRIV(net_dev, pAd);
 
 #ifdef CONFIG_APSTA_MIXED_SUPPORT
 #if WIRELESS_EXT >= 12
@@ -403,9 +408,6 @@ PNET_DEV RtmpPhyNetDevInit(
 	}
 #endif /*WIRELESS_EXT >= 12 */
 #endif /* CONFIG_APSTA_MIXED_SUPPORT */
-
-	/* put private data structure */
-	RTMP_OS_NETDEV_SET_PRIV(net_dev, pAd);
 
 	/* double-check if pAd is associated with the net_dev */
 	if (RTMP_OS_NETDEV_GET_PRIV(net_dev) == NULL)

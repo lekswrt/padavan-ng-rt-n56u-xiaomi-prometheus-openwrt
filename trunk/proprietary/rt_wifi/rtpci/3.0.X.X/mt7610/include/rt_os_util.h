@@ -19,6 +19,21 @@
 #ifndef __RT_OS_UTIL_H__
 #define __RT_OS_UTIL_H__
 
+#include "dot11_base.h"
+
+#ifdef LINUX
+/* use native linux mcast/bcast adress checks. */
+#include <linux/etherdevice.h>
+
+#define IS_MULTICAST_MAC_ADDR(Addr)			(is_multicast_ether_addr(Addr) && !is_broadcast_ether_addr(Addr))
+#define IS_IPV6_MULTICAST_MAC_ADDR(Addr)                (is_multicast_ether_addr(Addr) && ((Addr[0]) == 0x33))
+#define IS_BROADCAST_MAC_ADDR(Addr)			(is_broadcast_ether_addr(Addr))
+#else
+#define IS_MULTICAST_MAC_ADDR(Addr)			((((Addr[0]) & 0x01) == 0x01) && ((Addr[0]) != 0xff))
+#define IS_IPV6_MULTICAST_MAC_ADDR(Addr)		((((Addr[0]) & 0x01) == 0x01) && ((Addr[0]) == 0x33))
+#define IS_BROADCAST_MAC_ADDR(Addr)			((((Addr[0]) & 0xff) == 0xff))
+#endif
+
 /* ============================ rt_linux.c ================================== */
 /* General */
 VOID RtmpUtilInit(VOID);
@@ -168,11 +183,13 @@ BOOLEAN RTMPL2FrameTxAction(
 	IN	UINT32					data_len,
 	IN	UCHAR			OpMode);
 
+#ifdef SOFT_ENCRYPT
 PNDIS_PACKET ExpandPacket(
 	IN	VOID					*pReserved,
 	IN	PNDIS_PACKET			pPacket,
 	IN	UINT32					ext_head_len,
 	IN	UINT32					ext_tail_len);
+#endif /* SOFT_ENCRYPT */
 
 PNDIS_PACKET ClonePacket(
 	IN	VOID					*pReserved,
@@ -743,9 +760,9 @@ PNDIS_PACKET RTMP_AllocateRxPacketBuffer(
 
 
 
-ra_dma_addr_t linux_pci_map_single(void *pPciDev, void *ptr, size_t size, int sd_idx, int direction);
+ra_dma_addr_t linux_pci_map_single(struct pci_dev *pPciDev, void *ptr, size_t size, int sd_idx, int direction);
 
-void linux_pci_unmap_single(void *pPciDev, ra_dma_addr_t dma_addr, size_t size, int direction);
+void linux_pci_unmap_single(struct pci_dev *pPciDev, ra_dma_addr_t dma_addr, size_t size, int direction);
 
 /* ============================ rt_usb_util.c =============================== */
 
@@ -873,7 +890,7 @@ BOOLEAN CFG80211OS_RxMgmt(
 	IN PNET_DEV pNetDev, 
 	IN INT32 freq, 
 	IN PUCHAR frame, 
-	IN UINT32 len);;
+	IN UINT32 len);
 #endif /* RT_CFG80211_SUPPORT */
 
 

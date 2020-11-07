@@ -19,7 +19,6 @@ void mt76x2_calibration(struct _RTMP_ADAPTER *ad, u8 channel);
 void mt76x2_external_pa_rf_dac_control(struct _RTMP_ADAPTER *ad, u8 channel);
 void mt76x2_tssi_calibration(struct _RTMP_ADAPTER *ad, u8 channel);
 void mt76x2_tssi_compensation(struct _RTMP_ADAPTER *ad, u8 channel);
-
 int mt76x2_reinit_agc_gain(struct _RTMP_ADAPTER *ad, u8 channel);
 int mt76x2_reinit_hi_lna_gain(struct _RTMP_ADAPTER *ad, u8 channel);
 void mt76x2_get_external_lna_gain(struct _RTMP_ADAPTER *ad);
@@ -27,12 +26,9 @@ void mt76x2_get_agc_gain(struct _RTMP_ADAPTER *ad, BOOLEAN init_phase);
 int get_chl_grp(u8 channel);
 VOID mt76x2_ePA_per_rate_compensate_init(struct _RTMP_ADAPTER *pAd , BOOLEAN is_ePA);
 
-
 int get_low_mid_hi_index(u8 channel);
 void mt76x2_tx_pwr_gain(struct _RTMP_ADAPTER *ad, u8 channel, u8 bw);
-
 void percentage_delta_pwr(struct _RTMP_ADAPTER *ad);
-
 void mt76x2_update_tx_power_percentage(struct _RTMP_ADAPTER *ad);
 
 void mt76x2_get_current_temp(struct _RTMP_ADAPTER *ad);

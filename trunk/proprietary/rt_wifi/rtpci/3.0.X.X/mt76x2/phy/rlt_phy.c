@@ -170,7 +170,6 @@ static INT rlt_bbp_set_rxpath(struct _RTMP_ADAPTER *pAd, INT rxpath)
 	return TRUE;
 }
 
-	
 static INT rlt_bbp_set_ctrlch(struct _RTMP_ADAPTER *pAd, UINT8 ext_ch)
 {
 	UINT32 agc, agc_r0 = 0;
@@ -276,10 +275,8 @@ static INT rlt_bbp_set_ctrlch(struct _RTMP_ADAPTER *pAd, UINT8 ext_ch)
 */
 static INT rlt_bbp_set_bw(struct _RTMP_ADAPTER *pAd, UINT8 bw)
 {
-	UINT32 core, core_r1 = 0;
-	UINT32 agc, agc_r0 = 0;
-
-
+	UINT32 core = 0, core_r1 = 0;
+	UINT32 agc = 0, agc_r0 = 0;
 
 	RTMP_BBP_IO_READ32(pAd, CORE_R1, &core_r1);
 		core = (core_r1 & (~0x18));

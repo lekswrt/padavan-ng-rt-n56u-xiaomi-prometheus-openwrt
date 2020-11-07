@@ -326,7 +326,7 @@ VOID MlmeDeauthReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	}
 #ifdef WAPI_SUPPORT
 	WAPI_InternalCmdAction(pAd,
-			       pAd->StaCfg.AuthMode,
+			       pAd->StaCfg.wdev.AuthMode,
 			       BSS0, pAd->MlmeAux.Bssid, WAI_MLME_DISCONNECT);
 #endif /* WAPI_SUPPORT */
 

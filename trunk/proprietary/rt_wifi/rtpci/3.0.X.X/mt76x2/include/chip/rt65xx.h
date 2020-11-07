@@ -20,6 +20,7 @@
 #ifndef __MT65XX_H__
 #define __MT65XX_H__
 
+#include "../mcu/mcu_and.h"
 
 #ifdef MT76x2
 #include "mt76x2.h"

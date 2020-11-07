@@ -68,9 +68,13 @@ UCHAR SelectBestChannel(
 	IN PRTMP_ADAPTER pAd,
 	IN ChannelSel_Alg Alg);
 
+#ifdef AP_SCAN_SUPPORT
+VOID AutoChannelSelCheck(
+	IN PRTMP_ADAPTER pAd);
+#endif /* AP_SCAN_SUPPORT */
+
 UCHAR APAutoSelectChannel(
 	IN PRTMP_ADAPTER pAd,
 	IN ChannelSel_Alg Alg);
-
 #endif /* __AUTOCHSELECT_H__ */
 

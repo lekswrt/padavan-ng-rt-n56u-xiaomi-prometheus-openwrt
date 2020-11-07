@@ -238,6 +238,13 @@ BOOLEAN ApCliCheckHt(
 	aux_ht_cap->HtCapInfo.ShortGIfor40 =  (rt_ht_cap->ShortGIfor40) & (pHtCapability->HtCapInfo.ShortGIfor40);
 	aux_ht_cap->HtCapInfo.TxSTBC =  (rt_ht_cap->TxSTBC)&(pHtCapability->HtCapInfo.RxSTBC);
 	aux_ht_cap->HtCapInfo.RxSTBC =  (rt_ht_cap->RxSTBC)&(pHtCapability->HtCapInfo.TxSTBC);
+	
+	/* Fix throughput issue for some vendor AP with AES mode */
+	if (pAddHtInfo->AddHtInfo.RecomWidth & rt_ht_cap->ChannelWidth)
+		aux_ht_cap->HtCapInfo.CCKmodein40 = pHtCapability->HtCapInfo.CCKmodein40;
+	else 
+		aux_ht_cap->HtCapInfo.CCKmodein40 = 0;
+	
 	aux_ht_cap->HtCapParm.MaxRAmpduFactor = rt_ht_cap->MaxRAmpduFactor;
 	aux_ht_cap->HtCapParm.MpduDensity = pHtCapability->HtCapParm.MpduDensity;
 	aux_ht_cap->ExtHtCapInfo.PlusHTC = pHtCapability->ExtHtCapInfo.PlusHTC;
@@ -245,11 +252,53 @@ BOOLEAN ApCliCheckHt(
 	{
 		aux_ht_cap->ExtHtCapInfo.RDGSupport = pHtCapability->ExtHtCapInfo.RDGSupport;
 	}
-	
+
+	if (pAd->CommonCfg.Channel <= 14) {
+		pApCliEntry->ApCliMlmeAux.AddHtInfo.AddHtInfo.RecomWidth = pAddHtInfo->AddHtInfo.RecomWidth;
+		pApCliEntry->ApCliMlmeAux.AddHtInfo.AddHtInfo.ExtChanOffset = pAddHtInfo->AddHtInfo.ExtChanOffset;
+		pApCliEntry->ApCliMlmeAux.AddHtInfo.ControlChan = pAddHtInfo->ControlChan;
+	}
+
 	/*COPY_AP_HTSETTINGS_FROM_BEACON(pAd, pHtCapability); */
 	return TRUE;
 }
 #endif /* DOT11_N_SUPPORT */
+
+#ifdef DOT11_VHT_AC
+BOOLEAN ApCliCheckVht(
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR Wcid,
+	IN MAC_TABLE_ENTRY  *pEntry,
+	IN VHT_CAP_IE *vht_cap,
+	IN VHT_OP_IE *vht_op)
+{
+	VHT_CAP_INFO *vht_cap_info = &vht_cap->vht_cap;
+
+	// TODO: shiang-6590, not finish yet!!!!
+	if (Wcid >= MAX_LEN_OF_MAC_TABLE)
+		return FALSE;
+	DBGPRINT(RT_DEBUG_TRACE, ("============>ApCliCheckVht\n"));
+	/* Save Peer Capability*/
+	if (vht_cap_info->sgi_80M)
+		CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_SGI80_CAPABLE);
+
+	if (vht_cap_info->sgi_160M)
+		CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_SGI160_CAPABLE);
+
+	if (pAd->CommonCfg.vht_stbc) {
+		if (vht_cap_info->tx_stbc)
+			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_VHT_TXSTBC_CAPABLE);
+		if (vht_cap_info->rx_stbc)
+			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_VHT_RXSTBC_CAPABLE);
+	}
+
+	pEntry->VhtMaxRAmpduFactor = vht_cap_info->max_ampdu_exp;
+	DBGPRINT(RT_DEBUG_WARN, ("%s():pEntry->VhtMaxRAmpduFactor =%d\n",
+		__FUNCTION__, pEntry->VhtMaxRAmpduFactor)); 
+
+	return TRUE;
+}
+#endif /* DOT11_VHT_AC */
 
 /*
     ==========================================================================
@@ -583,7 +632,7 @@ BOOLEAN ApCliLinkUp(
 				if (pHtCapability->HtCapParm.MpduDensity < 5)
 					pMacEntry->MpduDensity = 5;
 				else
-					pMacEntry->MpduDensity = pHtCapability->HtCapParm.MpduDensity;
+				pMacEntry->MpduDensity = pHtCapability->HtCapParm.MpduDensity;
 				pMacEntry->MaxRAmpduFactor = pHtCapability->HtCapParm.MaxRAmpduFactor;
 				pMacEntry->MmpsMode = (UCHAR)pHtCapability->HtCapInfo.MimoPs;
 				pMacEntry->AMsduSize = (UCHAR)pHtCapability->HtCapInfo.AMsduSize;				
@@ -618,8 +667,10 @@ BOOLEAN ApCliLinkUp(
 
 
 #ifdef DOT11_VHT_AC
-			if (WMODE_CAP_AC(pAd->CommonCfg.PhyMode) && pApCliEntry->ApCliMlmeAux.vht_cap_len &&  pApCliEntry->ApCliMlmeAux.vht_op_len)
-                         vht_mode_adjust(pAd, pMacEntry, &(pApCliEntry->ApCliMlmeAux.vht_cap), &(pApCliEntry->ApCliMlmeAux.vht_op));
+			if (WMODE_CAP_AC(pAd->CommonCfg.PhyMode) && pApCliEntry->ApCliMlmeAux.vht_cap_len &&  pApCliEntry->ApCliMlmeAux.vht_op_len) {
+                    		vht_mode_adjust(pAd, pMacEntry, &(pApCliEntry->ApCliMlmeAux.vht_cap), &(pApCliEntry->ApCliMlmeAux.vht_op));
+				ApCliCheckVht(pAd, pMacEntry->Aid, pMacEntry, &(pApCliEntry->ApCliMlmeAux.vht_cap), &(pApCliEntry->ApCliMlmeAux.vht_op));
+			}
 #endif /* DOT11_VHT_AC */
 
 			pMacEntry->HTPhyMode.word = pMacEntry->MaxHTPhyMode.word;
@@ -639,7 +690,7 @@ BOOLEAN ApCliLinkUp(
 							&pApCliEntry->ApCliMlmeAux.HtCapability,
 							pApCliEntry->ApCliMlmeAux.HtCapabilityLen);
 
-#ifdef DISANLE_VHT80_256_QAM
+#ifdef CONFIG_DISABLE_VHT80_256_QAM
 			/*
 				To check SupportVHTMCS for APCLI again.
 			*/
@@ -654,7 +705,7 @@ BOOLEAN ApCliLinkUp(
 					}
 				}
 			}
-#endif /* DISANLE_VHT80_256_QAM */
+#endif /* DISABLE_VHT80_256_QAM */
 			
 			if (pAd->ApCfg.ApCliTab[ifIndex].bAutoTxRateSwitch == FALSE)
 			{
@@ -895,6 +946,7 @@ VOID ApCliIfUp(
 	/* Reset is in progress, stop immediately */
 	if ( RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RESET_IN_PROGRESS) ||
 		 RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS) ||
+		 RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF) ||
 		 !RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_START_UP))
 		return;
 
@@ -1084,7 +1136,7 @@ VOID ApCliIfMonitor(
 				&& (RTMP_TIME_AFTER(pAd->Mlme.Now32 , (pApCliEntry->ApCliLinkUpTime + (30 * OS_HZ)))))
 				bForceBrocken = TRUE;
  
-			if (RTMP_TIME_AFTER(pAd->Mlme.Now32 , (pApCliEntry->ApCliRcvBeaconTime + (12 * OS_HZ))))
+			if (RTMP_TIME_AFTER(pAd->Mlme.Now32 , (pApCliEntry->ApCliRcvBeaconTime + (30 * OS_HZ))))
 			{
 				printk("ApCliIfMonitor: IF(%s%d) - no Beacon is received from Root-AP.\n", INF_APCLI_DEV_NAME, index);
 				bForceBrocken = TRUE;
@@ -2117,84 +2169,6 @@ BOOLEAN 	ApCliValidateRSNIE(
 	return TRUE;	
 }
 
-/* 
-	===================================================
-	
-	Description:	
-		Check the validation of Authentication mode and Security type between 
-		entries in the Apcli table and the inputs. 
-
-	Arguments:
-		pApcliTabEntry:
-		WPA_AuthMode
-		WPA_AuthModeAux
-		WPA: WPA cipher suite
-
-	Return Value:
-		TRUE:	valid
-		FALSE:	invalid
-
-	Note:
-	===================================================
-*/
-BOOLEAN ApCliValidateAuthEncryp(
-	IN PAPCLI_STRUCT pApCliEntry,
-	IN NDIS_802_11_AUTHENTICATION_MODE WPA_AuthMode,
-	IN NDIS_802_11_AUTHENTICATION_MODE WPA_AuthModeAux,
-	IN CIPHER_SUITE WPA)
-{
-	CIPHER_SUITE tempWPA;
-	tempWPA.PairCipher = pApCliEntry->PairCipher;
-	tempWPA.GroupCipher = pApCliEntry->GroupCipher;
-	tempWPA.bMixMode = pApCliEntry->bMixCipher;
-		
-	// Recovery user-defined cipher suite
-	pApCliEntry->PairCipher  = pApCliEntry->WepStatus;
-	pApCliEntry->GroupCipher = pApCliEntry->WepStatus;
-	pApCliEntry->bMixCipher  = FALSE;
-	
-	// Check AuthMode and WPA_AuthModeAux for matching, in case AP support dual-AuthMode
-	// WPAPSK
-	if (WPA_AuthMode == pApCliEntry->AuthMode || WPA_AuthModeAux == pApCliEntry->AuthMode)
-	{
-		// Check cipher suite, AP must have more secured cipher than station setting
-		if (WPA.bMixMode == FALSE)
-		{
-			if (pApCliEntry->WepStatus != WPA.GroupCipher)
-			{
-				DBGPRINT(RT_DEBUG_ERROR, ("ApCliValidateRSNIE - WPA validate cipher suite error \n"));
-				return FALSE;
-			}
-		}
-
-		// check group cipher
-		if (pApCliEntry->WepStatus < WPA.GroupCipher)
-		{
-			DBGPRINT(RT_DEBUG_ERROR, ("ApCliValidateRSNIE - WPA validate group cipher error \n"));
-			return FALSE;
-		}
-
-		// check pairwise cipher, skip if none matched
-		// If profile set to AES, let it pass without question.
-		// If profile set to TKIP, we must find one mateched
-		if ((pApCliEntry->WepStatus == Ndis802_11Encryption2Enabled) && 
-			(pApCliEntry->WepStatus != WPA.PairCipher) && 
-			(pApCliEntry->WepStatus != WPA.PairCipherAux))
-		{
-			DBGPRINT(RT_DEBUG_ERROR, ("ApCliValidateRSNIE - WPA validate pairwise cipher error \n"));
-			return FALSE;
-		}	
-	}
-
-	/*
-		restore previous cipher suite
-	*/
-	pApCliEntry->PairCipher = tempWPA.PairCipher;
-	pApCliEntry->GroupCipher = tempWPA.GroupCipher;
-	pApCliEntry->bMixCipher = tempWPA.bMixMode;
-	return TRUE; 
-}
-
 BOOLEAN  ApCliHandleRxBroadcastFrame(
 	IN  PRTMP_ADAPTER   pAd,
 	IN	RX_BLK			*pRxBlk,
@@ -2258,7 +2232,9 @@ BOOLEAN  ApCliHandleRxBroadcastFrame(
 	}
 #endif /* MAC_APCLI_SUPPORT */
 	pRxInfo->MyBss = 1;				
-
+#ifdef APCLI_SUPPORT
+	rx_get_pn(pRxBlk,pRxInfo);
+#endif /* APCLI_SUPPORT */
 #ifdef HDR_TRANS_SUPPORT
 	if (pRxBlk->bHdrRxTrans)
 		Indicate_Legacy_Packet_Hdr_Trns(pAd, pRxBlk, FromWhichBSSID);
@@ -2518,7 +2494,7 @@ VOID ApCliUpdateMlmeRate(
 		}
 	}
 
-	DBGPRINT(RT_DEBUG_TRACE, ("RTMPUpdateMlmeRate ==>   MlmeTransmit = 0x%x  \n" , pAd->CommonCfg.MlmeTransmit.word));
+	DBGPRINT(RT_DEBUG_TRACE, ("ApCliUpdateMlmeRate ==>   MlmeTransmit = 0x%x  \n" , pAd->CommonCfg.MlmeTransmit.word));
 }
 
 
@@ -2536,7 +2512,8 @@ VOID ApCliCheckPeerExistence(RTMP_ADAPTER *pAd, CHAR *Ssid, UCHAR SsidLen, UCHAR
 			continue;
 
 		else if (Channel == pAd->CommonCfg.Channel &&
-			(NdisEqualMemory(Ssid, pApCliEntry->CfgSsid, SsidLen) || SsidLen == 0 /* Hidden */))
+			((SsidLen == pApCliEntry->CfgSsidLen && NdisEqualMemory(Ssid, pApCliEntry->CfgSsid, SsidLen)) ||
+			SsidLen == 0 /* Hidden */))
 		{
 			pApCliEntry->bPeerExist = TRUE;
 		}
@@ -2943,6 +2920,8 @@ BOOLEAN ApCliAutoConnectExec(
 	UCHAR			ifIdx, CfgSsidLen, entryIdx;
 	STRING			*pCfgSsid;
 	BSS_TABLE		*pScanTab, *pSsidBssTab;
+	PAPCLI_STRUCT pApCliEntry = NULL;
+	BOOLEAN bAddEntry	= FALSE;
 
 	DBGPRINT(RT_DEBUG_TRACE, ("---> ApCliAutoConnectExec()\n"));
 
@@ -2972,7 +2951,9 @@ BOOLEAN ApCliAutoConnectExec(
 	pScanTab = &pAd->ScanTab;
 	pSsidBssTab = &pAd->MlmeAux.SsidBssTab;
 	pSsidBssTab->BssNr = 0;
-	
+
+	pApCliEntry = &pAd->ApCfg.ApCliTab[ifIdx];
+
 	/*
 		Find out APs with the desired SSID.  
 	*/
@@ -2984,7 +2965,7 @@ BOOLEAN ApCliAutoConnectExec(
 			break;
 
 		if (NdisEqualMemory(pCfgSsid, pBssEntry->Ssid, CfgSsidLen) &&
-							(pBssEntry->SsidLen) &&
+							(CfgSsidLen == pBssEntry->SsidLen) &&
 							(pSsidBssTab->BssNr < MAX_LEN_OF_BSS_TABLE))
 		{	
 			if (ApcliCompareAuthEncryp(&pAd->ApCfg.ApCliTab[ifIdx],
@@ -3008,8 +2989,12 @@ BOOLEAN ApCliAutoConnectExec(
 						("I/F(%s%d) ApCliAutoConnectExec::(AuthMode=%s, EncrypType=%s)\n", INF_APCLI_DEV_NAME, ifIdx,
 						GetAuthMode(pBssEntry->AuthMode),
 						GetEncryptType(pBssEntry->WepStatus)) );
-				NdisMoveMemory(&pSsidBssTab->BssEntry[pSsidBssTab->BssNr++],
-								pBssEntry, sizeof(BSS_ENTRY));
+            			if(MAC_ADDR_EQUAL(pApCliEntry->CfgApCliBssid, ZERO_MAC_ADDR))
+                			bAddEntry = TRUE;
+            			else if(MAC_ADDR_EQUAL(pApCliEntry->CfgApCliBssid, pBssEntry->Bssid))
+                			bAddEntry = TRUE;
+            			if(bAddEntry)
+                			NdisMoveMemory(&pSsidBssTab->BssEntry[pSsidBssTab->BssNr++],pBssEntry, sizeof(BSS_ENTRY));
 			} 
 		}		
 	}
@@ -3127,7 +3112,6 @@ exit_and_enable:
 	ApCliSetIfState(pAd, ifIndex, TRUE);
 	DBGPRINT(RT_DEBUG_TRACE, ("---> ApCliSwitchCandidateAP()\n"));
 }
-
 
 BOOLEAN ApcliCompareAuthEncryp(
 	IN PAPCLI_STRUCT pApCliEntry,

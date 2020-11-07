@@ -6,10 +6,19 @@
 #define __DOT11_BASE_H__
 
 #include "rtmp_type.h"
+#include "dot11_base.h"
+
+#ifdef DOT11_N_SUPPORT
+#include "dot11n_ht.h"
 
 #ifdef DOT11_VHT_AC
 #include "dot11ac_vht.h"
 #endif /* DOT11_VHT_AC */
+#endif /* DOT11_N_SUPPORT */
+
+#ifdef DOT11K_RRM_SUPPORT
+#include "dot11k_rrm.h"
+#endif /* DOT11K_RRM_SUPPORT */
 
 #ifdef TXBF_SUPPORT
 /* CSI/Steering values */

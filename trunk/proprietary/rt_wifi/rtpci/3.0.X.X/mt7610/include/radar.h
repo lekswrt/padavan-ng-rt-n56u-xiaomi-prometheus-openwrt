@@ -50,6 +50,7 @@ typedef struct _DOT11_H {
 	UCHAR CSPeriod; 	/*Channel switch period (beacon count) */
 	USHORT RDCount; 	/*Radar detection counter, if RDCount >  ChMovingTime, start to send beacons*/
 	UCHAR RDMode;		/*Radar Detection mode */
+	UCHAR org_ch;
 	USHORT ChMovingTime;
 	BOOLEAN bDFSIndoor;
 	ULONG InServiceMonitorCount;	/* unit: sec */

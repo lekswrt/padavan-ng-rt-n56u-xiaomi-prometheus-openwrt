@@ -32,12 +32,21 @@ VOID mgmt_tb_set_mcast_entry(RTMP_ADAPTER *pAd)
 {
 	MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[MCAST_WCID];
 
-	pEntry->EntryType = ENTRY_WDEV;	
+	pEntry->EntryType = ENTRY_WDEV;
 	pEntry->Sst = SST_ASSOC;
 	pEntry->Aid = MCAST_WCID;	/* Softap supports 1 BSSID and use WCID=0 as multicast Wcid index*/
 	pEntry->wcid = MCAST_WCID;
 	pEntry->PsMode = PWR_ACTIVE;
+	pEntry->NoDataIdleCount = 0;
+	pEntry->ContinueTxFailCnt = 0;
 	pEntry->CurrTxRate = pAd->CommonCfg.MlmeRate;
+
+	pEntry->Addr[0] = 0x01;
+	pEntry->HTPhyMode.field.MODE = MODE_OFDM;
+	pEntry->HTPhyMode.field.MCS = 3;
+
+	NdisMoveMemory(pEntry->Addr, &BROADCAST_ADDR[0], MAC_ADDR_LEN);
+
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd){
 		pEntry->wdev = &pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev;
@@ -238,14 +247,17 @@ BOOLEAN StaUpdateMacTableEntry(
 		if (ht_cap->ExtHtCapInfo.MCSFeedback == 0x03)
 			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_MCSFEEDBACK_CAPABLE);
 		NdisMoveMemory(&pEntry->HTCapability, ht_cap, htcap_len);
-
+#ifdef DBG
 		assoc_ht_info_debugshow(pAd, pEntry, htcap_len, ht_cap);
+#endif
 #ifdef DOT11_VHT_AC
 		if (WMODE_CAP_AC(pAd->CommonCfg.PhyMode) &&
 			(ie_list != NULL) && (ie_list->vht_cap_len) && (ie_list->vht_op_len))
 		{
 			vht_mode_adjust(pAd, pEntry, &ie_list->vht_cap, &ie_list->vht_op);
+#ifdef DBG
 			assoc_vht_info_debugshow(pAd, pEntry, &ie_list->vht_cap, &ie_list->vht_op);
+#endif
 			NdisMoveMemory(&pEntry->vht_cap_ie, &ie_list->vht_cap, sizeof(VHT_CAP_IE));
 		}
 #endif /* DOT11_VHT_AC */
@@ -289,8 +301,8 @@ BOOLEAN StaUpdateMacTableEntry(
 	if (wdev->bAutoTxRateSwitch == TRUE) {
 		UCHAR TableSize = 0;
 
-		MlmeSelectTxRateTable(pAd, pEntry, &pEntry->pTable, &TableSize, &pEntry->CurrTxRateIndex);
 		pEntry->bAutoTxRateSwitch = TRUE;
+		MlmeSelectTxRateTable(pAd, pEntry, &pEntry->pTable, &TableSize, &pEntry->CurrTxRateIndex);
 	} else {
 		pEntry->HTPhyMode.field.MODE = wdev->HTPhyMode.field.MODE;
 		pEntry->HTPhyMode.field.MCS = wdev->HTPhyMode.field.MCS;
@@ -889,6 +901,10 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 
 		if (pAd->CommonCfg.bWmm)
 			asic_tune_be_wmm(pAd, size);
+
+		/* force retune tx_burst settings */
+		if (pAd->CommonCfg.bEnableTxBurst)
+		    pAd->MacTab.fTxBurstRetune = TRUE;
 	}
 #endif /* MULTI_CLIENT_SUPPORT */
 #endif // CONFIG_AP_SUPPORT //
@@ -909,6 +925,9 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 	USHORT HashIdx;
 	MAC_TABLE_ENTRY *pEntry, *pPrevEntry, *pProbeEntry;
 	BOOLEAN Cancelled;
+
+	if (!pAd)
+		return FALSE;
 
 	if (wcid >= MAX_LEN_OF_MAC_TABLE)
 		return FALSE;
@@ -1146,8 +1165,6 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 			pEntry->EnqueueEapolStartTimerRunning = EAPOL_START_DISABLE;
 		}
 		RTMPReleaseTimer(&pEntry->EnqueueStartForPSKTimer, &Cancelled);
-
-
 #ifdef CONFIG_AP_SUPPORT
 #ifdef WSC_AP_SUPPORT
             if (IS_ENTRY_CLIENT(pEntry))
@@ -1175,38 +1192,31 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 #endif /* WSC_AP_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
+#ifdef CONFIG_AP_SUPPORT
+#ifdef RTMP_MAC_PCI
+			/* clear ring for prevent tx ring stub after client delete */
+			/* Clear TXWI ack in Tx Ring*/
+			ClearTxRingClientAck(pAd, pEntry);
+#endif /* RTMP_MAC_PCI */
+#endif /* CONFIG_AP_SUPPORT */
+
 #ifdef DROP_MASK_SUPPORT
 			drop_mask_release_per_client(pAd, pEntry);
 #endif /* DROP_MASK_SUPPORT */
 
 
 #ifdef PEER_DELBA_TX_ADAPT
-			RTMPCancelTimer(&pEntry->DelBA_tx_AdaptTimer, &Cancelled);
-#ifdef RT6352
-			if (IS_RT6352(pAd))
-			{
-				UINT32 MacReg = 0;
-				
-				if (pEntry->bPeerDelBaTxAdaptEn)
-				{
-					/* Disable Tx Mac look up table (Ressume original setting) */
-					RTMP_IO_READ32(pAd, TX_FBK_LIMIT, &MacReg);
-					MacReg &= ~(1 << 18);
-					RTMP_IO_WRITE32(pAd, TX_FBK_LIMIT, MacReg);
-					DBGPRINT(RT_DEBUG_TRACE, ("%s():TX_FBK_LIMIT = 0x%08x\n", __FUNCTION__, MacReg));
-				}
-			}
-#endif /* RT6352 */
+			Peer_DelBA_Tx_Adapt_Disable(pAd, pEntry);
 			pEntry->bPeerDelBaTxAdaptEn = 0;
 			RTMPReleaseTimer(&pEntry->DelBA_tx_AdaptTimer, &Cancelled);
 #endif /* PEER_DELBA_TX_ADAPT */
 
 //   			NdisZeroMemory(pEntry, sizeof(MAC_TABLE_ENTRY));
-			NdisZeroMemory(pEntry->Addr, MAC_ADDR_LEN);
 			/* invalidate the entry */
 			SET_ENTRY_NONE(pEntry);
 			pEntry->PortSecured = WPA_802_1X_PORT_NOT_SECURED;
 
+			NdisZeroMemory(pEntry->Addr, MAC_ADDR_LEN);
 			pAd->MacTab.Size--;
 
 #ifdef TXBF_SUPPORT
@@ -1245,6 +1255,10 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 
 			if (pAd->CommonCfg.bWmm)
 				asic_tune_be_wmm(pAd, size);
+
+			/* force retune tx_burst settings */
+			if (pAd->CommonCfg.bEnableTxBurst)
+				pAd->MacTab.fTxBurstRetune = TRUE;
 		}
 #endif /* MULTI_CLIENT_SUPPORT */
 
@@ -1269,7 +1283,7 @@ VOID MacTableReset(RTMP_ADAPTER *pAd)
 	BOOLEAN Cancelled;    
 #ifdef CONFIG_AP_SUPPORT
 #ifdef RTMP_MAC_PCI
-	unsigned long	IrqFlags=0;
+	ULONG IrqFlags = 0;
 #endif /* RTMP_MAC_PCI */
 	UCHAR *pOutBuffer = NULL;
 	NDIS_STATUS NStatus;
@@ -1280,6 +1294,9 @@ VOID MacTableReset(RTMP_ADAPTER *pAd)
 #endif /* CONFIG_AP_SUPPORT */
 	MAC_TABLE_ENTRY *pMacEntry;
 
+	if (!pAd)
+		return;
+
 	DBGPRINT(RT_DEBUG_TRACE, ("MacTableReset\n"));
 	/*NdisAcquireSpinLock(&pAd->MacTabLock);*/
 
@@ -1287,6 +1304,7 @@ VOID MacTableReset(RTMP_ADAPTER *pAd)
 	for (i=1; i < MAX_LEN_OF_MAC_TABLE; i++)
 	{
 		pMacEntry = &pAd->MacTab.Content[i];
+
 		if (IS_ENTRY_CLIENT(pMacEntry))
 		{
 			RTMPReleaseTimer(&pMacEntry->EnqueueStartForPSKTimer, &Cancelled);
@@ -1306,6 +1324,7 @@ VOID MacTableReset(RTMP_ADAPTER *pAd)
 				/* Before reset MacTable, send disassociation packet to client.*/
 				if (pMacEntry->Sst == SST_ASSOC)
 				{
+
 					/*  send out a De-authentication request frame*/
 					NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);
 					if (NStatus != NDIS_STATUS_SUCCESS)
@@ -1392,7 +1411,7 @@ MAC_TABLE_ENTRY *InsertMacRepeaterEntry(RTMP_ADAPTER *pAd, UCHAR *pAddr, UCHAR I
 		pApCliEntry = &pAd->ApCfg.ApCliTab[IfIdx];
 		pEntry->Aid = pApCliEntry->MacTabWCID + 1; // TODO: We need to record count of STAs
 		COPY_MAC_ADDR(pEntry->Addr, pApCliEntry->MlmeAux.Bssid);
-		DBGPRINT(RT_DEBUG_OFF, ("sn - InsertMacRepeaterEntry: Aid = %d\n", pEntry->Aid));
+		printk("sn - InsertMacRepeaterEntry: Aid = %d\n", pEntry->Aid);
 		hex_dump("sn - InsertMacRepeaterEntry pEntry->Addr", pEntry->Addr, 6);
 		/* Add this entry into ASIC RX WCID search table */
 		RTMP_STA_ENTRY_ADD(pAd, pEntry);

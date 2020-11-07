@@ -347,6 +347,12 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 					goto LabelErr;
 				else
 					pApCliEntry->ApCliMlmeAux.Rssi = RealRssi;
+
+				if (ie_list->Channel != pAd->MlmeAux.Channel)
+				{
+					DBGPRINT(RT_DEBUG_TRACE, ("\x1b[33mSYNC - current rootap ie channel=%d, apcli channel=%d! \x1b[m\n", ie_list->Channel, pAd->MlmeAux.Channel));
+					goto LabelErr;
+				}
 			} else
 			{
 				BOOLEAN Cancelled;

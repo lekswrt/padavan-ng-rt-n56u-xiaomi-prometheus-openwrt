@@ -1369,7 +1369,7 @@ VOID CFG80211_RegRuleApply(
 	UINT32 IdBand, IdChan, IdPwr;
 	UINT32 ChanNum, ChanId, Power, RecId, DfsType;
 	BOOLEAN FlgIsRadar;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 #ifdef DFS_SUPPORT	
 	RADAR_DETECT_STRUCT	*pRadarDetect;
 #endif /* DFS_SUPPORT */

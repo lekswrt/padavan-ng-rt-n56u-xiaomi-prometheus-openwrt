@@ -112,7 +112,14 @@ NDIS_STATUS RTEnqueueInternalCmd(
 {
 	NDIS_STATUS	status;
 	PCmdQElmt	cmdqelmt = NULL;
+	ULONG  flag;
 	
+
+	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("--->RTEnqueueInternalCmd - NIC is not exist!!\n"));
+		return NDIS_STATUS_FAILURE;
+	}
 
 	status = os_alloc_mem(pAd, (PUCHAR *)&cmdqelmt, sizeof(CmdQElmt));
 	if ((status != NDIS_STATUS_SUCCESS) || (cmdqelmt == NULL))
@@ -144,7 +151,8 @@ NDIS_STATUS RTEnqueueInternalCmd(
 
 	if (cmdqelmt != NULL)
 	{
-		NdisAcquireSpinLock(&pAd->CmdQLock);
+		//NdisAcquireSpinLock(&pAd->CmdQLock);
+		RTMP_SPIN_LOCK_IRQSAVE(&pAd->CmdQLock,&flag);
 		if (pAd->CmdQ.CmdQState & RTMP_TASK_CAN_DO_INSERT)
 		{
 			EnqueueCmd((&pAd->CmdQ), cmdqelmt);
@@ -154,7 +162,8 @@ NDIS_STATUS RTEnqueueInternalCmd(
 		{
 			status = NDIS_STATUS_FAILURE;
 		}
-		NdisReleaseSpinLock(&pAd->CmdQLock);
+		//NdisReleaseSpinLock(&pAd->CmdQLock);
+		RTMP_SPIN_UNLOCK_IRQRESTORE(&pAd->CmdQLock,&flag);
 
 		if (status == NDIS_STATUS_FAILURE)
 		{

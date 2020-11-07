@@ -37,11 +37,10 @@ extern int CoexChannelBw;
 #endif
 
 #ifdef DOT11_N_SUPPORT
+#ifdef DOT11N_DRAFT3
 
 int DetectOverlappingPeriodicRound;
 
-
-#ifdef DOT11N_DRAFT3
 VOID Bss2040CoexistTimeOut(
 	IN PVOID SystemSpecific1, 
 	IN PVOID FunctionContext, 
@@ -69,10 +68,6 @@ VOID Bss2040CoexistTimeOut(
 		SendBSS2040CoexistMgmtAction(pAd, MCAST_WCID, apidx, 0);
 	
 }
-#endif /* DOT11N_DRAFT3 */
-
-#endif /* DOT11_N_SUPPORT */
-
 
 VOID APDetectOverlappingExec(
 	IN PVOID SystemSpecific1, 
@@ -80,7 +75,6 @@ VOID APDetectOverlappingExec(
 	IN PVOID SystemSpecific2, 
 	IN PVOID SystemSpecific3) 
 {
-#ifdef DOT11_N_SUPPORT
 	PRTMP_ADAPTER	pAd = (RTMP_ADAPTER *)FunctionContext;
 
 	if (DetectOverlappingPeriodicRound == 0)
@@ -106,9 +100,9 @@ VOID APDetectOverlappingExec(
 		}
 		DetectOverlappingPeriodicRound--;
 	}
-#endif /* DOT11_N_SUPPORT */
 }
-
+#endif /* DOT11N_DRAFT3 */
+#endif /* DOT11_N_SUPPORT */
 
 /*
     ==========================================================================
@@ -123,6 +117,7 @@ VOID APDetectOverlappingExec(
 VOID APMlmePeriodicExec(
     PRTMP_ADAPTER pAd)
 {
+	INT i;
     /* 
 		Reqeust by David 2005/05/12
 		It make sense to disable Adjust Tx Power on AP mode, since we can't 
@@ -195,6 +190,17 @@ VOID APMlmePeriodicExec(
 	{
 		/* one second timer */
 	    MacTableMaintenance(pAd);
+
+	    /* increase block count every secons for time limit probe temp limit function */
+	    for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
+		if (pAd->ApCfg.MBSSID[i].TmpBlockAfterKickTimes != 0 && pAd->ApCfg.MBSSID[i].TmpBlockAfterKickCount < pAd->ApCfg.MBSSID[i].TmpBlockAfterKickTimes) {
+		    if (!MAC_ADDR_EQUAL(pAd->ApCfg.MBSSID[i].TmpBlockAfterKickMac, ZERO_MAC_ADDR))
+			pAd->ApCfg.MBSSID[i].TmpBlockAfterKickCount++;
+		} else {
+		    /* cleanup blocked mac address */
+		    NdisZeroMemory(pAd->ApCfg.MBSSID[i].TmpBlockAfterKickMac, MAC_ADDR_LEN);
+		}
+	    }
 
 #ifdef CONFIG_FPGA_MODE
 	if (pAd->fpga_ctl.fpga_tr_stop)
@@ -312,7 +318,7 @@ VOID APMlmePeriodicExec(
 							{
 									Ac1Cfg.field.Aifsn = 0x1;
 									RTMP_IO_WRITE32(pAd, EDCA_AC1_CFG, Ac1Cfg.word);
-									DBGPRINT(RT_DEBUG_TRACE, ("Change EDCA_AC1_CFG to %x \n", Ac1Cfg.word));
+									printk("Change EDCA_AC1_CFG to %x \n", Ac1Cfg.word);
 							}
 						}
 						else if ((pAd->RalinkCounters.OneSecOsTxCount[QID_AC_VO] == 0) &&
@@ -325,7 +331,7 @@ VOID APMlmePeriodicExec(
 							{
 								Ac1Cfg.field.Aifsn = 0x7;
 								RTMP_IO_WRITE32(pAd, EDCA_AC1_CFG, Ac1Cfg.word);
-								DBGPRINT(RT_DEBUG_TRACE, ("Restore EDCA_AC1_CFG to %x \n", Ac1Cfg.word));
+								printk("Restore EDCA_AC1_CFG to %x \n", Ac1Cfg.word);
 							}
 						}       
 
@@ -425,6 +431,51 @@ VOID APMlmePeriodicExec(
 #endif /* DOT11N_DRAFT3 */
 #endif /* DOT11_N_SUPPORT */
 #endif /* APCLI_SUPPORT */
+#ifdef DOT11K_RRM_SUPPORT
+	if (!ApScanRunning(pAd)) {
+	    BOOLEAN ReadyScan = TRUE;
+	    BOOLEAN PeriodicScan = TRUE;
+#ifdef APCLI_SUPPORT
+	    UCHAR idx;
+
+	    for (idx = 0; idx < MAX_APCLI_NUM; idx++) {
+		PAPCLI_STRUCT  pApCliEntry = &pAd->ApCfg.ApCliTab[idx];
+
+		if (pApCliEntry && pApCliEntry->Enable == TRUE)
+			    PeriodicScan = FALSE;
+	    }
+#endif
+
+	    /* hw not ready or disabled - skip scan */
+	    if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_BSS_SCAN_IN_PROGRESS) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_SUSPEND) ||
+		    RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF) ||
+		    !RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_START_UP)) {
+		PeriodicScan = FALSE;
+		ReadyScan = FALSE;
+	    }
+
+	    /* after boot need force first scan at 15sec */
+	    if (ReadyScan && ((PeriodicScan && pAd->Mlme.OneSecPeriodicRound % 240 == 0) ||
+		    (pAd->Mlme.OneSecPeriodicRound % 15 == 0 && pAd->CommonCfg.RRMFirstScan == TRUE)))
+	    {
+		    if (pAd->MacTab.Size == 0 || pAd->CommonCfg.RRMFirstScan == TRUE) {
+			INT needscan = 0;
+			for (i = 0; i < MAX_MBSSID_NUM(pAd); i++) {
+				if (pAd->OpMode == OPMODE_AP && IS_RRM_ENABLE(pAd, i))
+					needscan = 1;
+			}
+			if (needscan == 1) {
+				DBGPRINT(RT_DEBUG_TRACE, ("RRM: rescan every 240sec for update neighbour info\n"));
+				pAd->CommonCfg.RRMFirstScan = FALSE;
+				ApSiteSurvey(pAd, NULL, SCAN_ACTIVE, FALSE);
+			}
+		    }
+	    }
+	}
+#endif /* DOT11K_RRM_SUPPORT */
 }
 
 

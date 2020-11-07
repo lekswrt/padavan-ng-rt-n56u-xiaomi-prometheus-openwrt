@@ -26,6 +26,9 @@
 	--------    ----------    ----------------------------------------------
 */
 #include	"rt_config.h"
+#ifdef DOT11R_FT_SUPPORT
+#include	"ft.h"
+#endif /* DOT11R_FT_SUPPORT */
 
 
 
@@ -96,11 +99,28 @@ RTMP_BUILD_DRV_OPS_FUNCTION_BODY
 int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 {
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)pAdSrc;
-	UINT index;
 	NDIS_STATUS Status;
 
 	if (pAd == NULL)
 		return FALSE;
+
+	/* reset Adapter flags*/
+	RTMP_CLEAR_FLAGS(pAd);
+
+	/* Init BssTab & ChannelInfo tabbles for auto channel select.*/
+#ifdef CONFIG_AP_SUPPORT	
+	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+	{
+		AutoChBssTableInit(pAd);
+		ChannelInfoInit(pAd);
+	}
+#endif /* CONFIG_AP_SUPPORT */
+
+#ifdef DOT11_N_SUPPORT
+	/* Allocate BA Reordering memory*/
+	if (ba_reordering_resource_init(pAd, MAX_REORDERING_MPDU_NUM) != TRUE)		
+		goto err1;
+#endif /* DOT11_N_SUPPORT */
 
 #ifdef RT65xx
 	if (pAd->WlanFunCtrl.field.WLAN_EN == 0)
@@ -154,27 +174,7 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 	}
 #endif /* RT3290 */
 
-
-	/* reset Adapter flags*/
-	RTMP_CLEAR_FLAGS(pAd);
-
-	/* Init BssTab & ChannelInfo tabbles for auto channel select.*/
-#ifdef CONFIG_AP_SUPPORT	
-	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-	{
-		AutoChBssTableInit(pAd);
-		ChannelInfoInit(pAd);
-	}
-#endif /* CONFIG_AP_SUPPORT */
-
-#ifdef DOT11_N_SUPPORT
-	/* Allocate BA Reordering memory*/
-	if (ba_reordering_resource_init(pAd, MAX_REORDERING_MPDU_NUM) != TRUE)		
-		goto err1;
-#endif /* DOT11_N_SUPPORT */
-
 	/* Make sure MAC gets ready.*/
-	index = 0;
 	if (WaitForAsicReady(pAd) != TRUE)
 		goto err1;
 
@@ -281,8 +281,12 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 	CfgInitHook(pAd);
 
 #ifdef CONFIG_AP_SUPPORT
-	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
 		APInitialize(pAd);
+#ifdef DOT11K_RRM_SUPPORT
+                RRM_CfgInit(pAd);
+#endif /* DOT11K_RRM_SUPPORT */
+	}
 #endif /* CONFIG_AP_SUPPORT */	
 
 #ifdef BLOCK_NET_IF
@@ -358,7 +362,6 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 #endif /* DOT11_N_SUPPORT */
 
 	/* after reading Registry, we now know if in AP mode or STA mode*/
-
 	DBGPRINT(RT_DEBUG_OFF, ("2. Phy Mode = %d\n", pAd->CommonCfg.PhyMode));
 
 	/* We should read EEPROM for all cases.  rt2860b*/
@@ -573,12 +576,10 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 #endif /* CLIENT_WDS */
 	}
 #endif /* CONFIG_AP_SUPPORT */
-
-
 	/* auto-fall back settings */
 #ifdef RANGE_EXTEND
 	RTMP_IO_WRITE32(pAd, HT_FBK_CFG1, 0xedcba980);
-#endif // RANGE_EXTEND //
+#endif /* RANGE_EXTEND */
 #ifdef DOT11N_SS3_SUPPORT
 	if (pAd->CommonCfg.TxStream >= 3)
 	{
@@ -835,11 +836,15 @@ VOID RTMPDrvOpen(
 #endif /* APCLI_SUPPORT */
 	}
 #endif /* CONFIG_AP_SUPPORT */
-
-
 	/* WSC hardware push button function 0811 */
 	WSC_HDR_BTN_Init(pAd);
 #endif /* WSC_INCLUDED */
+#ifdef CONFIG_AP_SUPPORT
+#ifdef MULTI_CLIENT_SUPPORT
+	/* for Multi-Clients */
+	asic_change_tx_retry(pAd, 1);
+#endif /* MULTI_CLIENT_SUPPORT */
+#endif // CONFIG_AP_SUPPORT //
 
 }
 
@@ -853,6 +858,13 @@ VOID RTMPDrvClose(
 
 
 	Cancelled = FALSE;
+
+	 /* restore RF state before down */
+	 if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF))
+	 {
+	 	DBGPRINT(RT_DEBUG_TRACE, ("Radio_ON first....\n"));
+    		MlmeRadioOn(pAd);
+	 }
 
 
 #ifdef CONFIG_AP_SUPPORT
@@ -880,7 +892,7 @@ VOID RTMPDrvClose(
 	WdsDown(pAd);
 #endif /* WDS_SUPPORT */
 
-	RtmpOsMsDelay(20); /* wait for disconnect requests transmitted */
+	RtmpOsMsDelay(150); /* wait for disconnect requests transmitted */
 
 	for (i = 0 ; i < NUM_OF_TX_RING; i++)
 	{
@@ -1048,7 +1060,7 @@ VOID RTMPDrvClose(
 	NdisZeroMemory(&pAd->MacTab, sizeof(MAC_TABLE));
 
 	/* release all timers */
-	RTMPusecDelay(2000);
+	RTMPusecDelay(3000);
 	RTMP_TimerListRelease(pAd);
 
 #ifdef RTMP_TIMER_TASK_SUPPORT

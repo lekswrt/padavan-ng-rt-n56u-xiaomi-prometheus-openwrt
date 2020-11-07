@@ -25,9 +25,6 @@
 
 #include "rt_config.h"
 
-
-#define TYPE_FUNC
-
 #ifdef CONFIG_STA_SUPPORT
 /* ----- RIC Linked List ----- */
 /* insert a resource request of a AP */
@@ -831,12 +828,16 @@ extern BOOLEAN BARecSessionAdd(
 		return Status;
 
 	BaParm.BAPolicy = IMMED_BA;
+
 	BaParm.AMSDUSupported = 0;
+	if (pAd->CommonCfg.DesiredHtPhy.AmsduEnable)
+		BaParm.AMSDUSupported = 1;
+
 	BaParm.TID = AddreqFrame.BaParm.TID;
 	BaParm.BufSize = min(((UCHAR)AddreqFrame.BaParm.BufSize), (UCHAR)pAd->CommonCfg.BACapability.field.RxBAWinLimit);
 	if (BaParm.BufSize == 0)
 	{
-		BaParm.BufSize = 64; 
+		BaParm.BufSize = 64;
 	}
 	TimeOutValue = 0;
 

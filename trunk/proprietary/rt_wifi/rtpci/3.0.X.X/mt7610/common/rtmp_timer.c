@@ -41,6 +41,7 @@ BUILD_TIMER_FUNCTION(EnqueueStartForPSKExec);
 
 
 #ifdef CONFIG_AP_SUPPORT
+#ifdef DOT11N_DRAFT3
 extern VOID APDetectOverlappingExec(
 				IN PVOID SystemSpecific1, 
 				IN PVOID FunctionContext, 
@@ -48,8 +49,6 @@ extern VOID APDetectOverlappingExec(
 				IN PVOID SystemSpecific3);
 
 BUILD_TIMER_FUNCTION(APDetectOverlappingExec);
-
-#ifdef DOT11N_DRAFT3
 BUILD_TIMER_FUNCTION(Bss2040CoexistTimeOut);
 #endif /* DOT11N_DRAFT3 */
 
@@ -64,6 +63,9 @@ BUILD_TIMER_FUNCTION(APQuickResponeForRateUpExec);
 BUILD_TIMER_FUNCTION(RTMPIdsPeriodicExec);
 #endif /* IDS_SUPPORT */
 
+#ifdef DOT11R_FT_SUPPORT
+BUILD_TIMER_FUNCTION(FT_KDP_InfoBroadcast);
+#endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
 
@@ -95,8 +97,6 @@ BUILD_TIMER_FUNCTION(WscSetupLockTimeout);
 BUILD_TIMER_FUNCTION(BndStrg_PeriodicExec);
 #endif /* BAND_STEERING && !BNDSTRG_DAEMON */
 
-
-
 #ifdef TXBF_SUPPORT
 BUILD_TIMER_FUNCTION(eTxBfProbeTimerExec);
 #endif /* TXBF_SUPPORT */
@@ -124,6 +124,10 @@ BUILD_TIMER_FUNCTION(ed_testing_timeout);
 
 
 
+
+#ifdef RTMP_MAC_PCI
+BUILD_TIMER_FUNCTION(TxDoneCleanupExec);
+#endif /* RTMP_MAC_PCI */
 
 #ifdef RTMP_TIMER_TASK_SUPPORT
 static void RtmpTimerQHandle(RTMP_ADAPTER *pAd)

@@ -223,7 +223,7 @@ int rtinet_aton(PSTRING cp, unsigned int *addr)
 	unsigned int 	val;
 	int         	base, n;
 	STRING        	c;
-	unsigned int    parts[4];
+	unsigned int    parts[4] = {0};
 	unsigned int    *pp = parts;
 
 	for (;;)
@@ -892,6 +892,7 @@ static void rtmp_read_ap_client_from_file(
 				wdev->AuthMode = Ndis802_11AuthModeWPAPSK;
 			else if ((strncmp(macptr, "WPA2PSK", 7) == 0) || (strncmp(macptr, "wpa2psk", 7) == 0))
 				wdev->AuthMode = Ndis802_11AuthModeWPA2PSK;
+	
 			else
 				wdev->AuthMode = Ndis802_11AuthModeOpen;
 
@@ -2097,7 +2098,7 @@ static void HTParametersHook(
 		}
 		else
 		{
-            pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = 64;
+			pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = 64;
 			pAd->CommonCfg.BACapability.field.RxBAWinLimit = 64;
 			DBGPRINT(RT_DEBUG_TRACE, ("HT: BA Windw Size = 64 (Defualt)\n"));
 		}
@@ -2663,25 +2664,28 @@ NDIS_STATUS StoreConnectInfo(
 
 #endif /* CONFIG_STA_SUPPORT */ 
 
-
 void RTMPSetCountryCode(RTMP_ADAPTER *pAd, PSTRING CountryCode)
 {
-	NdisMoveMemory(pAd->CommonCfg.CountryCode, CountryCode , 2);
-	pAd->CommonCfg.CountryCode[2] = ' ';
 #ifdef CONFIG_STA_SUPPORT
 #ifdef EXT_BUILD_CHANNEL_LIST
 	IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
 		NdisMoveMemory(pAd->StaCfg.StaOriCountryCode, CountryCode , 2);
 #endif /* EXT_BUILD_CHANNEL_LIST */
 #endif /* CONFIG_STA_SUPPORT */
-	if (strlen((PSTRING) pAd->CommonCfg.CountryCode) != 0)
+	if (strlen((PSTRING)CountryCode) != 0) {
+		NdisZeroMemory(pAd->CommonCfg.CountryCode,
+				sizeof(pAd->CommonCfg.CountryCode));
+		NdisMoveMemory(pAd->CommonCfg.CountryCode, CountryCode , 2);
+		pAd->CommonCfg.CountryCode[2] = ' ';
 		pAd->CommonCfg.bCountryFlag = TRUE;
-	else
+	} else {
+		NdisZeroMemory(pAd->CommonCfg.CountryCode,
+				sizeof(pAd->CommonCfg.CountryCode));
 		pAd->CommonCfg.bCountryFlag = FALSE;
+	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("CountryCode=%s\n", pAd->CommonCfg.CountryCode));
 }
-
 
 NDIS_STATUS	RTMPSetProfileParameters(
 	IN RTMP_ADAPTER *pAd,
@@ -2902,7 +2906,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			if (pAd->CommonCfg.Channel > 14)
 				pAd->Dot11_H.org_ch = pAd->CommonCfg.Channel;
 		}
-
+#if defined (CONFIG_WIFI_PKT_FWD)
 		/* EtherTrafficBand */
 		if (RTMPGetKeyParameter("EtherTrafficBand", tmpbuf, 10, pBuffer, TRUE))
 		{
@@ -2912,7 +2916,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			if (pAd->CommonCfg.EtherTrafficBand > EtherTrafficBand5G)
 				pAd->CommonCfg.EtherTrafficBand = EtherTrafficBand5G;
 		}
-
+#endif
 		/*WirelessMode*/
 		/*Note: BssidNum must be put before WirelessMode in dat file*/
 		if(RTMPGetKeyParameter("WirelessMode", tmpbuf, 32, pBuffer, TRUE))
@@ -3145,12 +3149,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 	    /*TxPower*/
 		if(RTMPGetKeyParameter("TxPower", tmpbuf, 10, pBuffer, TRUE))
 		{
-			pAd->CommonCfg.TxPowerPercentage = (ULONG) simple_strtol(tmpbuf, 0, 10);
-#ifdef CONFIG_STA_SUPPORT
-			IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
-				pAd->CommonCfg.TxPowerDefault = pAd->CommonCfg.TxPowerPercentage;
-#endif /* CONFIG_STA_SUPPORT */
-			DBGPRINT(RT_DEBUG_TRACE, ("TxPower=%ld\n", pAd->CommonCfg.TxPowerPercentage));
+			Set_TxPower_Proc(pAd, tmpbuf);
 		}
 		/*BGProtection*/
 		if(RTMPGetKeyParameter("BGProtection", tmpbuf, 10, pBuffer, TRUE))
@@ -3201,6 +3200,9 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			{
 				case Rt802_11PreambleShort:
 					pAd->CommonCfg.TxPreamble = Rt802_11PreambleShort;
+					break;
+				case Rt802_11PreambleAuto:
+					pAd->CommonCfg.TxPreamble = Rt802_11PreambleAuto;
 					break;
 				case Rt802_11PreambleLong:
 				default:
@@ -3425,13 +3427,13 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			}
 
 			/*AutoChannelSkipList*/
-			if (RTMPGetKeyParameter("AutoChannelSkipList", tmpbuf, 50, pBuffer, FALSE))
+			if (RTMPGetKeyParameter("AutoChannelSkipList", tmpbuf, 100, pBuffer, FALSE))
 			{		
 				pAd->ApCfg.AutoChannelSkipListNum = delimitcnt(tmpbuf, ";") + 1;
-				if ( pAd->ApCfg.AutoChannelSkipListNum > 10 )
+				if ( pAd->ApCfg.AutoChannelSkipListNum > 20 )
 				{
-					DBGPRINT(RT_DEBUG_TRACE, ("Your no. of AutoChannelSkipList( %d ) is larger than 10 (boundary)\n",pAd->ApCfg.AutoChannelSkipListNum));
-					pAd->ApCfg.AutoChannelSkipListNum = 10;
+					DBGPRINT(RT_DEBUG_TRACE, ("Your no. of AutoChannelSkipList( %d ) is larger than 20 (boundary)\n",pAd->ApCfg.AutoChannelSkipListNum));
+					pAd->ApCfg.AutoChannelSkipListNum = 20;
 				}
 						
 				for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr ; macptr = rstrtok(NULL,";"), i++)
@@ -3519,20 +3521,20 @@ NDIS_STATUS	RTMPSetProfileParameters(
 		{
 			UINT8 count = simple_strtol(tmpbuf, 0, 10);
 			pAd->ed_threshold = count;
-			DBGPRINT(RT_DEBUG_TRACE, ("pAd->ed_threshold = %u\n", count));
+			DBGPRINT(RT_DEBUG_ERROR, ("pAd->ed_threshold = %u\n", count));
 		}
 		if (RTMPGetKeyParameter("ED_MODE", tmpbuf, 32, pBuffer, TRUE))
 		{
 			 UINT8 mode = simple_strtol(tmpbuf, 0, 10);
 			 pAd->ed_chk = mode;
-			 DBGPRINT(RT_DEBUG_TRACE, ("pAd->ed_chk = %u\n", mode));
+			 DBGPRINT(RT_DEBUG_OFF, ("pAd->ed_chk = %u\n", mode));
 		}
 
 		if (RTMPGetKeyParameter("EDCCA_FALSE_CCA_TH", tmpbuf, 32, pBuffer, TRUE))
 		{
 			INT count = simple_strtol(tmpbuf, 0, 10);
 			pAd->ed_false_cca_threshold = count;
-			DBGPRINT(RT_DEBUG_TRACE, ("pAd->ed_false_cca_threshold = %u\n", count));
+			DBGPRINT(RT_DEBUG_ERROR, ("pAd->ed_false_cca_threshold = %u\n", count));
 		}
 
 		
@@ -3601,13 +3603,6 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			{
 				pAd->CommonCfg.ITxBfCalibMode = simple_strtol(tmpbuf, 0, 10);
 				DBGPRINT(RT_DEBUG_TRACE, ("ITxBfCalibMode = %ld\n", pAd->CommonCfg.ITxBfCalibMode));
-			}
-
-			/* ETxBfeeEn*/
-			if(RTMPGetKeyParameter("ETxBfeeEn", tmpbuf, 32, pBuffer, TRUE))
-			{
-				pAd->CommonCfg.ETxBfeeEn = simple_strtol(tmpbuf, 0, 10);
-				DBGPRINT(RT_DEBUG_TRACE, ("ETxBfeeEn = %d\n", pAd->CommonCfg.ETxBfeeEn));
 			}
 
 			/* ETxBfTimeout*/
@@ -4675,11 +4670,16 @@ NDIS_STATUS	RTMPSetProfileParameters(
 #ifdef DOT11_N_SUPPORT
 							case MCAST_HTMIX: /* HTMIX*/
 								pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_HTMIX;
+								if (pAd->CommonCfg.BBPCurrentBW > BW_20)
+									pAd->CommonCfg.MCastPhyMode.field.BW =  BW_40;
+								else
+									pAd->CommonCfg.MCastPhyMode.field.BW =  BW_20;
 								break;
 #endif /* DOT11_N_SUPPORT */	
 #ifdef DOT11_VHT_AC
 							case MCAST_VHT:	/* VHT */
 								pAd->CommonCfg.MCastPhyMode.field.MODE = MODE_VHT;
+								pAd->CommonCfg.MCastPhyMode.field.BW = pAd->CommonCfg.BBPCurrentBW;
 								break;
 #endif /* DOT11_VHT_AC */	
 
@@ -4838,7 +4838,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 					else
 						pAd->ApCfg.EntryLifeCheck = MAC_ENTRY_LIFE_CHECK_CNT;
 
-					DBGPRINT(RT_DEBUG_TRACE, ("EntryLifeCheck=%ld\n", pAd->ApCfg.EntryLifeCheck));
+					DBGPRINT(RT_DEBUG_ERROR, ("EntryLifeCheck=%ld\n", pAd->ApCfg.EntryLifeCheck));
 				}
 
 #ifdef DOT11K_RRM_SUPPORT
@@ -4918,7 +4918,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 					else
 					{
 						pAd->CommonCfg.bMcastTest = FALSE;
-						DBGPRINT(RT_DEBUG_TRACE, ("WiFi Mcast disabled=%d\n", pAd->CommonCfg.bMcastTest));
+						DBGPRINT(RT_DEBUG_ERROR, ("WiFi Mcast disabled=%d\n", pAd->CommonCfg.bMcastTest));
 					}
 				}
 #endif /* CONFIG_AP_SUPPORT */
@@ -5053,13 +5053,12 @@ BOOLEAN RTMP_CardInfoRead(
 	INT32 card_select_method;
 	INT32 card_free_id, card_nouse_id, card_same_mac_id, card_match_id;
 	EEPROM_ANTENNA_STRUC antenna;
-	USHORT addr01, addr23, addr45;
 	UINT8 mac[6];
 #ifdef RTMP_FLASH_SUPPORT
 	UINT8 mac_maybe[EEPROM_SEG_IN_NVM][MAC_ADDR_LEN];
 	INT segment = 0;
 #endif /* RTMP_FLASH_SUPPORT */
-	UINT32 data, card_index;
+	UINT32 card_index;
 	UCHAR *start_ptr;
 	RTMP_OS_FS_INFO osFSInfo;
 
@@ -5486,7 +5485,6 @@ NDIS_STATUS	RTMPSetSingleSKUParameters(
 	PSTRING ptr;
 	int index, i;
 	CH_POWER *StartCh = NULL;
-	UCHAR MaxPwr;
 	UCHAR channel, *temp;
 	RTMP_OS_FS_INFO osFSInfo;
 
@@ -5742,7 +5740,7 @@ UINT32 RalinkRate_VHT_1NSS[Rate_BW_MAX][Rate_GI_MAX][Rate_MCS] =
 UINT8 newRateGetAntenna(UINT8 MCS, UINT8 PhyMode)
 {
 	if(PhyMode >= MODE_VHT)    
-	    return ((MCS>>4) + 1);
+	return ((MCS>>4) + 1);
     else
         return ((MCS>>3) + 1);
 }

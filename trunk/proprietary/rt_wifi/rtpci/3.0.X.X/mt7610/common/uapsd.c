@@ -2203,7 +2203,7 @@ VOID UAPSD_TriggerFrameHandle(
 			DBGPRINT(RT_DEBUG_TRACE,
 					 ("uapsd> No data, send a Qos-Null frame with ESOP bit on and "
 					  "UP=%d to end USP\n", UpOfFrame));
-#endif /* RELEASE_EXCLUDE */
+#endif /* UAPSD_DEBUG */
 		}
 		else
         {
@@ -2215,7 +2215,7 @@ VOID UAPSD_TriggerFrameHandle(
 			DBGPRINT(RT_DEBUG_TRACE,
 					("uapsd> Only one packet with UP = %d\n",
 					RTMP_GET_PACKET_UP(pQuedPkt)));
-#endif /* RELEASE_EXCLUDE */
+#endif /* UAPSD_DEBUG */
 		} /* End of if */
 
 		/*

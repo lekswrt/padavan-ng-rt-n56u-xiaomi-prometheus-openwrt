@@ -1254,7 +1254,7 @@ INT32 AndesRltRandomWrite(RTMP_ADAPTER *ad, RTMP_REG_PAIR *reg_pair, UINT32 num)
 			/* UpdateData */
 			value = cpu2le32(reg_pair[i + cur_index].Value);
 			AndesAppendCmdMsg(msg, (char *)&value, 4);
-		};
+		}
 
 		ret = AndesSendCmdMsg(ad, msg);
 
@@ -1380,7 +1380,7 @@ INT32 AndesBbpRandomWrite(RTMP_ADAPTER *ad, RTMP_REG_PAIR *reg_pair, UINT32 num)
 			/* UpdateData */
 			value = cpu2le32(reg_pair[i + cur_index].Value);
 			AndesAppendCmdMsg(msg, (char *)&value, 4);
-		};
+		}
 
 		ret = AndesSendCmdmsg(ad, msg);
 

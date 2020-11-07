@@ -98,7 +98,7 @@ BOOLEAN PeerFtAuthRspSanity(
 		return FALSE;
 	}
 
-	if (pAd->StaCfg.AuthMode >= Ndis802_11AuthModeWPA)
+	if (pAd->StaCfg.wdev.AuthMode >= Ndis802_11AuthModeWPA)
 	{
 		if ((Sanity & 0x07) == 0)
 		{
@@ -219,7 +219,7 @@ VOID FT_OTA_MlmeAuthReqAction(
 	FT_InsertMdIE(pAd, pOutBuffer, &FrameLen, pFtOtaAuthReq->MdIe.MdId, pFtOtaAuthReq->MdIe.FtCapPlc);
 
 	/* work in an RSN */
-	if (pAd->StaCfg.AuthMode >= Ndis802_11AuthModeWPA)
+	if (pAd->StaCfg.wdev.AuthMode >= Ndis802_11AuthModeWPA)
 	{
 		FT_ConstructAuthReqInRsn(pAd, pOutBuffer, &FrameLen);
 	}
@@ -319,7 +319,7 @@ VOID FT_OTA_PeerAuthRspAction(
 
 					/* Send Auth Confirm */
 					/* RSNIE */
-					if (pAd->StaCfg.AuthMode >= Ndis802_11AuthModeWPA)
+					if (pAd->StaCfg.wdev.AuthMode >= Ndis802_11AuthModeWPA)
 					{
 						FT_ConstructAuthReqInRsn(pAd, pOutBuffer, &FrameLen);
 					}

@@ -71,6 +71,9 @@ VOID ActionStateMachineInit(
 #ifdef DOT11_N_SUPPORT
 	StateMachineSetAction(S, ACT_IDLE, MT2_PEER_BA_CATE, (STATE_MACHINE_FUNC)PeerBAAction);
 	StateMachineSetAction(S, ACT_IDLE, MT2_PEER_HT_CATE, (STATE_MACHINE_FUNC)PeerHTAction);
+#ifdef DOT11_VHT_AC
+	StateMachineSetAction(S, ACT_IDLE, MT2_PEER_VHT_CATE, (STATE_MACHINE_FUNC)PeerVHTAction);
+#endif /* DOT11_VHT_AC */
 	StateMachineSetAction(S, ACT_IDLE, MT2_MLME_ADD_BA_CATE, (STATE_MACHINE_FUNC)MlmeADDBAAction);
 	StateMachineSetAction(S, ACT_IDLE, MT2_MLME_ORI_DELBA_CATE, (STATE_MACHINE_FUNC)MlmeDELBAAction);
 	StateMachineSetAction(S, ACT_IDLE, MT2_MLME_REC_DELBA_CATE, (STATE_MACHINE_FUNC)MlmeDELBAAction);
@@ -85,6 +88,9 @@ VOID ActionStateMachineInit(
 
 
 #ifdef CONFIG_AP_SUPPORT
+#ifdef DOT11R_FT_SUPPORT
+	StateMachineSetAction(S, ACT_IDLE, FT_CATEGORY_BSS_TRANSITION, (STATE_MACHINE_FUNC)FT_FtAction);
+#endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
 
@@ -104,14 +110,15 @@ VOID MlmeADDBAAction(
 	ULONG		Idx;
 	FRAME_ADDBA_REQ  Frame;
 	ULONG		FrameLen;
-	BA_ORI_ENTRY			*pBAEntry = NULL;
+	//BA_ORI_ENTRY			*pBAEntry = NULL;
 #ifdef CONFIG_AP_SUPPORT
 	UCHAR			apidx;
 #endif /* CONFIG_AP_SUPPORT */
+	MAC_TABLE_ENTRY *pEntry;
 
 	pInfo = (MLME_ADDBA_REQ_STRUCT *)Elem->Msg;
 	NdisZeroMemory(&Frame, sizeof(FRAME_ADDBA_REQ));
-	
+
 	if(MlmeAddBAReqSanity(pAd, Elem->Msg, Elem->MsgLen, Addr) &&
 		VALID_WCID(pInfo->Wcid)) 
 	{
@@ -122,6 +129,7 @@ VOID MlmeADDBAAction(
 			return;
 		}
 		/* 1. find entry */
+		pEntry = &pAd->MacTab.Content[pInfo->Wcid];
 		Idx = pAd->MacTab.Content[pInfo->Wcid].BAOriWcidArray[pInfo->TID];
 		if (Idx == 0)
 		{
@@ -131,7 +139,7 @@ VOID MlmeADDBAAction(
 		} 
 		else
 		{
-			pBAEntry =&pAd->BATable.BAOriEntry[Idx];
+			//pBAEntry =&pAd->BATable.BAOriEntry[Idx];
 		}
 		
 #ifdef CONFIG_AP_SUPPORT
@@ -140,10 +148,6 @@ VOID MlmeADDBAAction(
 #ifdef APCLI_SUPPORT
 			if (IS_ENTRY_APCLI(&pAd->MacTab.Content[pInfo->Wcid]))
 			{
-#ifdef MAC_REPEATER_SUPPORT
-				MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[pInfo->Wcid];
-#endif /* MAC_REPEATER_SUPPORT */
-
 				apidx = pAd->MacTab.Content[pInfo->Wcid].MatchAPCLITabIdx;
 #ifdef MAC_REPEATER_SUPPORT
 				if (pEntry && pEntry->bReptCli)
@@ -163,7 +167,12 @@ VOID MlmeADDBAAction(
 
 		Frame.Category = CATEGORY_BA;
 		Frame.Action = ADDBA_REQ;
+
 		Frame.BaParm.AMSDUSupported = 0;
+#ifdef DOT11_VHT_AC
+		if (pEntry && IS_VHT_STA(pEntry) && pAd->CommonCfg.DesiredHtPhy.AmsduEnable)
+			Frame.BaParm.AMSDUSupported = 1;
+#endif
 		Frame.BaParm.BAPolicy = IMMED_BA;
 		Frame.BaParm.TID = pInfo->TID;
 		Frame.BaParm.BufSize = pInfo->BaBufSize;
@@ -335,6 +344,13 @@ VOID MlmeDELBAAction(
 		              END_OF_ARGS);
 		MiniportMMRequest(pAd, QID_AC_BE, pOutBuffer, FrameLen);
 		MlmeFreeMemory(pAd, pOutBuffer);
+		{
+			int tid=0;
+			MAC_TABLE_ENTRY *pEntry;
+			pEntry = &pAd->MacTab.Content[pInfo->Wcid];
+			for (tid=0; tid<NUM_OF_TID; tid++)
+				pEntry->TxBarSeq[tid] = -1;
+		}
 		DBGPRINT(RT_DEBUG_TRACE, ("BA - MlmeDELBAAction() . 3 DELBA sent. Initiator(%d)\n", pInfo->Initiator));
     	}
 }
@@ -782,11 +798,38 @@ VOID PeerRMAction(
 
 {
 #ifdef CONFIG_AP_SUPPORT
+#ifdef DOT11K_RRM_SUPPORT
+	UCHAR Action = Elem->Msg[LENGTH_802_11+1];
+	MAC_TABLE_ENTRY *pEntry = NULL;
+
+	if (VALID_WCID(Elem->Wcid))
+		pEntry = &pAd->MacTab.Content[Elem->Wcid];
+	else
+		return;
+
+	if ((pEntry->apidx < pAd->ApCfg.BssidNum) &&
+		!IS_RRM_ENABLE(pAd, pEntry->apidx))
+		return;
+
+	switch(Action)
+	{
+		case RRM_MEASURE_REP:
+			DBGPRINT(RT_DEBUG_TRACE, ("%s: Get RRM Measure report.\n",
+				__FUNCTION__));
+
+			RRM_PeerMeasureRepAction(pAd, Elem);
+			break;
+
+		case RRM_NEIGHTBOR_REQ:
+			RRM_PeerNeighborReqAction(pAd, Elem);
+			break;
+	}
+#endif /* DOT11K_RRM_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 	return;
 }
 
-#ifdef DOT11_N_SUPPORT
+#ifdef DOT11N_DRAFT3
 static VOID respond_ht_information_exchange_action(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM *Elem) 
@@ -859,7 +902,6 @@ static VOID respond_ht_information_exchange_action(
 
 
 #ifdef CONFIG_AP_SUPPORT
-#ifdef DOT11N_DRAFT3
 VOID SendNotifyBWActionFrame(
 	IN PRTMP_ADAPTER pAd,
 	IN UCHAR  Wcid,
@@ -902,16 +944,18 @@ VOID SendNotifyBWActionFrame(
 	DBGPRINT(RT_DEBUG_TRACE,("ACT - SendNotifyBWAction(NotifyBW= %d)!\n", pAd->CommonCfg.AddHTInfo.AddHtInfo.RecomWidth));
 
 }
-#endif /* DOT11N_DRAFT3 */
 #endif /* CONFIG_AP_SUPPORT */
+#endif /* DOT11N_DRAFT3 */
 
 
+#ifdef DOT11_N_SUPPORT
 VOID PeerHTAction(
 	IN PRTMP_ADAPTER pAd, 
 	IN MLME_QUEUE_ELEM *Elem) 
 {
 	UCHAR Action = Elem->Msg[LENGTH_802_11+1];
 	MAC_TABLE_ENTRY *pEntry;
+	UCHAR oldMmpsMode;
 	UINT32 MaxWcidNum = MAX_LEN_OF_MAC_TABLE;
 
 #ifdef MAC_REPEATER_SUPPORT
@@ -942,6 +986,7 @@ VOID PeerHTAction(
 		case SMPS_ACTION:
 			/* 7.3.1.25*/
  			DBGPRINT(RT_DEBUG_TRACE,("ACTION - SMPS action----> \n"));
+			oldMmpsMode = pEntry->MmpsMode;
 			if (((Elem->Msg[LENGTH_802_11+2] & 0x1) == 0))
 				pEntry->MmpsMode = MMPS_ENABLE;
 			else if (((Elem->Msg[LENGTH_802_11+2] & 0x2) == 0))
@@ -949,6 +994,16 @@ VOID PeerHTAction(
 			else
 				pEntry->MmpsMode = MMPS_DYNAMIC;
 
+#ifdef CONFIG_AP_SUPPORT
+			if (oldMmpsMode != pEntry->MmpsMode)
+			{
+				if (!pEntry->MmpsMode == MMPS_DYNAMIC) {
+					IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+						APMlmeDynamicTxRateSwitching(pAd);
+
+				}
+			}
+#endif /* CONFIG_AP_SUPPORT */
 			DBGPRINT(RT_DEBUG_TRACE,("Aid(%d) MIMO PS = %d\n", Elem->Wcid, pEntry->MmpsMode));
 			/* rt2860c : add something for smps change.*/
 			break;
@@ -959,6 +1014,7 @@ VOID PeerHTAction(
 		case MIMO_CHA_MEASURE_ACTION:
 			break;
 			
+#ifdef DOT11N_DRAFT3
 		case HT_INFO_EXCHANGE:
 			{			
 				HT_INFORMATION_OCTET *pHT_info;
@@ -971,7 +1027,6 @@ VOID PeerHTAction(
     					respond_ht_information_exchange_action(pAd, Elem);
     				}
 #ifdef CONFIG_AP_SUPPORT
-#ifdef DOT11N_DRAFT3
 				IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
 				{
 	    				if (pHT_info->Forty_MHz_Intolerant)
@@ -979,13 +1034,46 @@ VOID PeerHTAction(
 	    					Handle_BSS_Width_Trigger_Events(pAd);
 	    				}
 				}
-#endif /* DOT11N_DRAFT3 */
 #endif /* CONFIG_AP_SUPPORT */
 			}
-    		break;
+    			break;
+#endif /* DOT11N_DRAFT3 */
+		default:
+			break;
 	}
 }
 
+#ifdef DOT11_VHT_AC
+VOID PeerVHTAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
+{
+	UCHAR Action = Elem->Msg[LENGTH_802_11+1];
+	
+	if (Elem->Wcid >= MAX_LEN_OF_MAC_TABLE)
+		return;
+
+	switch(Action)
+	{
+		case ACT_VHT_OPMODE_NOTIFY:
+			{
+				OPERATING_MODE *op_mode = (OPERATING_MODE *)&Elem->Msg[LENGTH_802_11+2];
+				MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[Elem->Wcid];
+
+				DBGPRINT(RT_DEBUG_TRACE,("ACTION - Operating Mode Notification action---->\n"));
+				hex_dump("OperatingModeNotify", &Elem->Msg[0], Elem->MsgLen);
+				DBGPRINT(RT_DEBUG_TRACE, ("\t RxNssType=%d, RxNss=%d, ChBW=%d\n",
+							op_mode->rx_nss_type, op_mode->rx_nss, op_mode->ch_width));
+
+				if (op_mode->rx_nss_type == 0) {
+					pEntry->force_op_mode = TRUE;
+					NdisMoveMemory(&pEntry->operating_mode, op_mode, 1);
+				}
+			}
+			break;
+		default:
+			break;
+	}
+}
+#endif /* DOT11_VHT_AC */
 
 /*
 	==========================================================================
@@ -1078,6 +1166,11 @@ VOID SendRefreshBAR(
 		{
 			TID = pBAEntry->TID;
 
+			if (pEntry->TxBarSeq[TID] == pEntry->TxSeq[TID])
+			{
+				continue;
+			}
+
 			ASSERT(pBAEntry->Wcid < MaxWcidNum);
 
 			NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);  /*Get an unused nonpaged memory*/
@@ -1088,6 +1181,8 @@ VOID SendRefreshBAR(
 			}
 				
 			Sequence = pEntry->TxSeq[TID];
+
+			pEntry->TxBarSeq[TID] = pEntry->TxSeq[TID];
 
 #ifdef CONFIG_AP_SUPPORT
 			IF_DEV_CONFIG_OPMODE_ON_AP(pAd)

@@ -111,14 +111,20 @@ VOID BuildChannelList(
 					if (pChannelList[i] == pAd->TxPower[j].Channel)
 						NdisMoveMemory(&pAd->ChannelList[index+i], &pAd->TxPower[j], sizeof(CHANNEL_TX_POWER));
 						pAd->ChannelList[index + i].Flags = pChannelListFlag[i];
+						// TODO: shiang-7603, NdisMoveMemory may replace the pAd->ChannelList[index+i].Channel as other values!
+						pAd->ChannelList[index + i].Channel = pChannelList[i];
 				}
 
 #ifdef DOT11_N_SUPPORT
 						if (N_ChannelGroupCheck(pAd, pAd->ChannelList[index + i].Channel))
 							pAd->ChannelList[index + i].Flags |= CHANNEL_40M_CAP;
+#ifdef DOT11_VHT_AC
+						if (vht80_channel_group(pAd, pAd->ChannelList[index + i].Channel))
+							pAd->ChannelList[index + i].Flags |= CHANNEL_80M_CAP;
+#endif /* DOT11_VHT_AC */
 #endif /* DOT11_N_SUPPORT */
 
-				pAd->ChannelList[index+i].MaxTxPwr = 20;
+				pAd->ChannelList[index+i].MaxTxPwr = 30;
 			}
 
 			index += num;
@@ -152,7 +158,7 @@ VOID BuildChannelList(
 
 		if (num > 0)
 		{
-			UCHAR RadarCh[15]={52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140};
+			UCHAR RadarCh[16]={52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144};
 #ifdef CONFIG_AP_SUPPORT
 			UCHAR q=0;
 #endif /* CONFIG_AP_SUPPORT */
@@ -193,7 +199,7 @@ VOID BuildChannelList(
 						(pAd->CommonCfg.RDDurRegion == FCC) &&
 						(pAd->Dot11_H.bDFSIndoor == 1))
 				{
-					if((GetChannel_5GHZ(pChDesc, i) < 116) || (GetChannel_5GHZ(pChDesc, i) > 128))
+					if((GetChannel_5GHZ(pChDesc, i) < 120) || (GetChannel_5GHZ(pChDesc, i) > 128))
 					{
 						pChannelList[q] = GetChannel_5GHZ(pChDesc, i);
 						pChannelListFlag[q] = GetChannelFlag(pChDesc, i);
@@ -223,11 +229,17 @@ VOID BuildChannelList(
 					if (pChannelList[i] == pAd->TxPower[j].Channel)
 						NdisMoveMemory(&pAd->ChannelList[index+i], &pAd->TxPower[j], sizeof(CHANNEL_TX_POWER));
 						pAd->ChannelList[index + i].Flags = pChannelListFlag[i];
+						// TODO: shiang-7603, NdisMoveMemory may replace the pAd->ChannelList[index+i].Channel as other values!
+						pAd->ChannelList[index + i].Channel = pChannelList[i];
 				}
 
 #ifdef DOT11_N_SUPPORT
 				if (N_ChannelGroupCheck(pAd, pAd->ChannelList[index + i].Channel))
 					pAd->ChannelList[index + i].Flags |= CHANNEL_40M_CAP;
+#ifdef DOT11_VHT_AC
+				if (vht80_channel_group(pAd, pAd->ChannelList[index + i].Channel))
+					pAd->ChannelList[index + i].Flags |= CHANNEL_80M_CAP;
+#endif /* DOT11_VHT_AC */	
 #endif /* DOT11_N_SUPPORT */	
 
 				for (j=0; j<15; j++)
@@ -235,7 +247,7 @@ VOID BuildChannelList(
 					if (pChannelList[i] == RadarCh[j])
 						pAd->ChannelList[index+i].DfsReq = TRUE;
 				}
-				pAd->ChannelList[index+i].MaxTxPwr = 20;
+				pAd->ChannelList[index+i].MaxTxPwr = 30;
 			}
 			index += num;
 
@@ -392,7 +404,7 @@ CHAR ConvertToRssi(RTMP_ADAPTER *pAd, CHAR Rssi, UCHAR rssi_idx)
 	UCHAR	RssiOffset, LNAGain;
 
 	/* Rssi equals to zero or rssi_idx larger than 3 should be an invalid value*/
-	if (Rssi == 0 || rssi_idx >= 3)
+	if (Rssi == 0 || rssi_idx >= pAd->Antenna.field.RxPath)
 		return -99;
 
 	LNAGain = GET_LNA_GAIN(pAd);
@@ -408,7 +420,7 @@ CHAR ConvertToRssi(RTMP_ADAPTER *pAd, CHAR Rssi, UCHAR rssi_idx)
 		2.4G : RSSI_report = RSSI_bpp + EEPROM_0x46[15:8 or 7:0] - EEPROM_0x44[7:0]
 		5G : RSSI_report = RSSI_bbp + EEPROM_0x4A[15:8 or 7:0] - EEPROM_0x44 or 0x48 or 0x4c[15:8]
 	*/
-	if (IS_MT76x0(pAd))
+	if (IS_MT76x0(pAd) || IS_RT65XX(pAd))
 		return (Rssi + (CHAR)RssiOffset - (CHAR)LNAGain);
 	else
 #endif /* MT76x0 */

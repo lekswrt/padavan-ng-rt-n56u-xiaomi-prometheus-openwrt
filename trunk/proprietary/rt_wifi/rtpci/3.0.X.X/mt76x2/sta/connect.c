@@ -1812,7 +1812,7 @@ VOID LinkUp(RTMP_ADAPTER *pAd, UCHAR BssType)
 				       pAd->MlmeAux.FtIeInfo.R0khIdLen);
 			pAd->StaCfg.Dot11RCommInfo.R0khIdLen = pAd->MlmeAux.FtIeInfo.R0khIdLen;
 
-			if (pAd->StaCfg.AuthMode == Ndis802_11AuthModeWPA2PSK) {
+			if (pAd->StaCfg.wdev.AuthMode == Ndis802_11AuthModeWPA2PSK) {
 				/* Update PMK. */
 				if (pAd->StaCfg.WpaPassPhraseLen == 64) {
 					AtoH(pAd->StaCfg.WpaPassPhrase, pAd->StaCfg.PMK, 32);
@@ -3730,6 +3730,7 @@ VOID AdjustChannelRelatedValue(
 {
 	UCHAR rf_channel;
 	UINT8 rf_bw = BW_20, ext_ch;
+
 
 	// TODO: shiang-6590, this function need to revise to make sure two purpose can achieved!
 	//	1. Channel-binding rule between STA and P2P-GO mode

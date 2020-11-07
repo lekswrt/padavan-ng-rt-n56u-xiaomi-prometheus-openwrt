@@ -29,7 +29,7 @@ VOID RtmpDrvRateGet(
 	IN	UINT8					ShortGI,
 	IN	UINT8					BW,
 	IN	UINT8					MCS,
-	IN  UINT8                   Antenna,
+	IN      UINT8                                   Antenna,
 	OUT	UINT32					*pRate)
 {
 	UINT32 MCS_1NSS = (UINT32) MCS;
@@ -46,8 +46,8 @@ VOID RtmpDrvRateGet(
 #ifdef DOT11_VHT_AC
     if (MODE >= MODE_VHT)
     {
-		 if(MCS_1NSS > 9)
-            MCS_1NSS %= 16;
+	if(MCS_1NSS > 9)
+	    MCS_1NSS %= 16;
         *pRate = RalinkRate_VHT_1NSS[BW][ShortGI][MCS_1NSS];
     }
     else
@@ -67,6 +67,8 @@ VOID RtmpDrvRateGet(
 	else 
 		*pRate = RalinkRate_Legacy[MCS_1NSS];
 
+
+	
 	*pRate *= 500000;
 #if defined(DOT11_VHT_AC) || defined(DOT11_N_SUPPORT)
     if (MODE >= MODE_HTMIX)

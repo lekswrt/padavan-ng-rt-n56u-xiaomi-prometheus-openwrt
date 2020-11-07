@@ -37,43 +37,41 @@ struct dev_type_name_map{
 };
 
 
-#define SECOND_INF_MAIN_DEV_NAME	"rai"
-#define SECOND_INF_MBSSID_DEV_NAME	"rai"
+#define SECOND_INF_MAIN_DEV_NAME       "rai"
+#define SECOND_INF_MBSSID_DEV_NAME "rai"
 #define SECOND_INF_WDS_DEV_NAME		"wdsi"
 #define SECOND_INF_APCLI_DEV_NAME	"apclii"
-#define SECOND_INF_MESH_DEV_NAME	"meshi"
+#define SECOND_INF_MESH_DEV_NAME		"meshi"
 #define SECOND_INF_P2P_DEV_NAME		"p2pi"
-#define SECOND_INF_MONITOR_DEV_NAME	"moni"
+#define SECOND_INF_MONITOR_DEV_NAME		"moni"
 
-#define xdef_to_str(s)			def_to_str(s)
-#define def_to_str(s)			#s
+#define xdef_to_str(s)   def_to_str(s) 
+#define def_to_str(s)    #s
 
-#define FIRST_AP_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860AP.dat"
-#define FIRST_STA_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860STA.dat"
-#define FIRST_IF_SINGLE_SKU_PATH	"/etc/Wireless/RT2860/SingleSKU.dat"
-#define FIRST_CHIP_ID			xdef_to_str(CONFIG_RT_FIRST_CARD)
+#define FIRST_AP_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860.dat"
+#define FIRST_AP_SINGLE_SKU_PATH	"/etc/Wireless/RT2860/SingleSKU.dat"
+#define FIRST_CHIP_ID	xdef_to_str(CONFIG_RT_FIRST_CARD)
 
-#define SECOND_AP_PROFILE_PATH		"/etc/Wireless/iNIC/iNIC_ap.dat"
-#define SECOND_STA_PROFILE_PATH		"/etc/Wireless/iNIC/iNIC_sta.dat"
-#define SECOND_IF_SINGLE_SKU_PATH	"/etc/Wireless/iNIC/SingleSKU.dat"
-#define SECOND_CHIP_ID			xdef_to_str(CONFIG_RT_SECOND_CARD)
+#define SECOND_AP_PROFILE_PATH 		"/etc/Wireless/iNIC/iNIC_ap.dat"
+#define SECOND_AP_SINGLE_SKU_PATH	"/etc/Wireless/iNIC/SingleSKU.dat"
+#define SECOND_CHIP_ID	xdef_to_str(CONFIG_RT_SECOND_CARD)
 
 static struct dev_type_name_map prefix_map[] =
 {
-	{INT_MAIN,		{INF_MAIN_DEV_NAME, SECOND_INF_MAIN_DEV_NAME}},
+	{INT_MAIN, 		{INF_MAIN_DEV_NAME, SECOND_INF_MAIN_DEV_NAME}},
 #ifdef CONFIG_AP_SUPPORT
 #ifdef MBSS_SUPPORT
-	{INT_MBSSID,		{INF_MBSSID_DEV_NAME, SECOND_INF_MBSSID_DEV_NAME}},
+	{INT_MBSSID, 	{INF_MBSSID_DEV_NAME, SECOND_INF_MBSSID_DEV_NAME}},
 #endif /* MBSS_SUPPORT */
 #ifdef APCLI_SUPPORT
-	{INT_APCLI,		{INF_APCLI_DEV_NAME, SECOND_INF_APCLI_DEV_NAME}},
+	{INT_APCLI, 		{INF_APCLI_DEV_NAME, SECOND_INF_APCLI_DEV_NAME}},
 #endif /* APCLI_SUPPORT */
 #ifdef WDS_SUPPORT
-	{INT_WDS,		{INF_WDS_DEV_NAME, SECOND_INF_WDS_DEV_NAME}},
+	{INT_WDS, 		{INF_WDS_DEV_NAME, SECOND_INF_WDS_DEV_NAME}},
 #endif /* WDS_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 #ifdef CONFIG_SNIFFER_SUPPORT
-	{INT_MONITOR,		{INF_MONITOR_DEV_NAME, SECOND_INF_MONITOR_DEV_NAME}},
+	{INT_MONITOR,	{INF_MONITOR_DEV_NAME, SECOND_INF_MONITOR_DEV_NAME}},
 #endif /* CONFIG_SNIFFER_SUPPORT */
 	{0},
 };
@@ -114,8 +112,7 @@ VOID get_dev_config_idx(RTMP_ADAPTER *pAd)
 			idx = 1;
 	}
 
-	DBGPRINT(RT_DEBUG_OFF, ("chip_id1=0x%x, chip_id2=0x%x, pAd->MACVersion=0x%x, pAd->ChipID=0x%x, dev_idx=%d\n",
-		first_card, second_card, pAd->MACVersion, pAd->ChipID, idx));
+	printk("chip_id1=0x%x, chip_id2=0x%x, pAd->MACVersion=0x%x, pAd->ChipID=0x%x, dev_idx=%d\n", first_card, second_card, pAd->MACVersion, pAd->ChipID, idx);
 #endif
 
 	pAd->dev_idx = idx;
@@ -185,14 +182,13 @@ static UCHAR *get_dev_profile(RTMP_ADAPTER *pAd)
 		{
 #if defined (DRIVER_HAS_MULTI_DEV)
 			INT card_idx = pAd->dev_idx;
-
 			if (card_idx == 0)
 				src = FIRST_STA_PROFILE_PATH;
 			else if (card_idx == 1)
 				src = SECOND_STA_PROFILE_PATH;
 			else
 #endif
-				src = STA_PROFILE_PATH;
+			src = STA_PROFILE_PATH;
 		}
 #endif /* CONFIG_STA_SUPPORT */
 	}
@@ -212,9 +208,9 @@ static CHAR *get_sku_profile(RTMP_ADAPTER *pAd)
 	INT card_idx = pAd->dev_idx;
 
 	if (card_idx == 0)
-		src = FIRST_IF_SINGLE_SKU_PATH;
+		src = FIRST_AP_SINGLE_SKU_PATH;
 	else if (card_idx == 1)
-		src = SECOND_IF_SINGLE_SKU_PATH;
+		src = SECOND_AP_SINGLE_SKU_PATH;
 #endif
 
 	return src;
@@ -447,7 +443,7 @@ void tbtt_tasklet(unsigned long data)
 				PQUEUE_ENTRY pEntry;
 			BOOLEAN bPS = FALSE;
 			UINT count = 0;
-			unsigned long IrqFlags;
+			ULONG IrqFlags = 0;
 			
 			RTMP_IRQ_LOCK(&pAd->irq_lock, IrqFlags);
 			while (pAd->MacTab.McastPsQueue.Head)
@@ -512,8 +508,6 @@ void pretbtt_tasklet(unsigned long data)
 #endif /* WORKQUEUE_BH */
 {
 #ifdef CONFIG_AP_SUPPORT
-	UINT32 mac_414_value = 0;
-
 #ifdef WORKQUEUE_BH
 	POS_COOKIE pObj = container_of(work, struct os_cookie, pretbtt_work);
 	PRTMP_ADAPTER pAd = pObj->pAd_va;
@@ -535,7 +529,7 @@ void pretbtt_tasklet(unsigned long data)
 		PQUEUE_ENTRY pEntry;
 		BOOLEAN bPS = FALSE;
 		UINT count = 0;
-		unsigned long IrqFlags;
+		ULONG IrqFlags = 0;
 
 #ifdef RLT_MAC
 		if (pAd->chipCap.hif_type == HIF_RLT) 
@@ -698,7 +692,7 @@ void announce_802_3_packet(
 	IN PNDIS_PACKET pNetPkt,
 	IN UCHAR OpMode)
 {
-	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)pAdSrc;
+	RTMP_ADAPTER __maybe_unused *pAd = (RTMP_ADAPTER *)pAdSrc;
 	struct sk_buff *pRxPkt;
 
 	ASSERT(pNetPkt);
@@ -717,7 +711,7 @@ void announce_802_3_packet(
 			BOOLEAN	 need_drop = FALSE;
 
 			ApCliLinkCoverRxPolicy(pAd, pNetPkt, &need_drop);
-			
+
 			if (need_drop == TRUE) {
 				RELEASE_NDIS_PACKET(pAd, pRxPkt, NDIS_STATUS_FAILURE);
 				return;
@@ -891,11 +885,10 @@ void announce_802_3_packet(
 			}
 		}
 
-		if (wf_fwd_rx_hook != NULL)
+		if (wf_fwd_rx_hook!= NULL)
 		{
 			struct ethhdr *mh = eth_hdr(pRxPkt);
 			int ret = 0;
-
 			if ((mh->h_dest[0] & 0x1) == 0x1)
 			{
 				if (NdisEqualMemory(pOsRxPkt->dev->name, "apcli", 5)) 
@@ -904,11 +897,11 @@ void announce_802_3_packet(
 					if ((pAd->ApCfg.bMACRepeaterEn == TRUE) &&
 						(RTMPQueryLookupRepeaterCliEntry(pAd, mh->h_source) == TRUE)) {
 						RELEASE_NDIS_PACKET(pAd, pRxPkt, NDIS_STATUS_FAILURE);
-						return;
-					}
+				return;
+			}
 					else
 #endif /* MAC_REPEATER_SUPPORT */
-					{
+			{
 						VOID *opp_band_tbl = NULL;
 						VOID *band_tbl = NULL;
 
@@ -921,9 +914,9 @@ void announce_802_3_packet(
 #endif /* APCLI_GUEST_NETWORK_SUPPORT */
 						if ((opp_band_tbl != NULL) 
 							&& MAC_ADDR_EQUAL(((UCHAR *)((REPEATER_ADAPTER_DATA_TABLE *)opp_band_tbl)->Wdev_ifAddr), mh->h_source)) {
-							RELEASE_NDIS_PACKET(pAd, pRxPkt, NDIS_STATUS_FAILURE);
-							return;
-						}
+				RELEASE_NDIS_PACKET(pAd, pRxPkt, NDIS_STATUS_FAILURE);
+				return;
+			}
 #ifdef APCLI_GUEST_NETWORK_SUPPORT
 						} else {
 							if ((opp_band_pad != NULL) 
@@ -936,7 +929,7 @@ void announce_802_3_packet(
 					}
 				}
 			}
-			
+
 			ret = wf_fwd_rx_hook(pRxPkt);
 
 			if (ret == 0) {
@@ -1229,7 +1222,7 @@ VOID RTMPFreeAdapter(VOID *pAdSrc)
 	RTMP_OS_FREE_SEM(pAd);
 	RTMP_OS_FREE_ATOMIC(pAd);
 
-	RtmpOsVfree(pAd); /* pci_free_consistent(os_cookie->pci_dev,sizeof(RTMP_ADAPTER),pAd,os_cookie->pAd_pa); */
+	RtmpOsVfree(pAd);
 	if (os_cookie)
 		os_free_mem(NULL, os_cookie);
 }
@@ -1283,6 +1276,13 @@ int RTMPSendPackets(
 
 	ASSERT(wdev->sys_handle);
 	pAd = (RTMP_ADAPTER *)wdev->sys_handle;
+
+	if(pAd == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s(): pAd is NULL!\n", __FUNCTION__));
+		return 0;
+	}
+
 	INC_COUNTER64(pAd->WlanCounters.TransmitCountFrmOs);
 #ifdef RTMP_MAC_PCI
 	/* Update timer to flush tx ring buffer */

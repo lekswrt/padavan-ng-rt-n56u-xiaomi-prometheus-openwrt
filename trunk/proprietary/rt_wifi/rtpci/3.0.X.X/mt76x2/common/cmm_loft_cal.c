@@ -304,8 +304,6 @@ UINT32 Read_FFT_Accumulation(IN RTMP_ADAPTER *pAd, UCHAR tone_idx)
 	UINT32 MacValue = 0;
 	int fftout_i = 0, fftout_q = 0;
 	UINT32 power_tmp=0, power_int = 0;
-	UCHAR BBPValue = 0;
-	UCHAR tone_idx_int;
 
 	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R158, 0xba);
 	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R159, tone_idx);

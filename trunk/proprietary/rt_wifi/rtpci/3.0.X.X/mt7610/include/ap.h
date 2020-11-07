@@ -31,6 +31,10 @@
 #ifndef __AP_H__
 #define __AP_H__
 
+#ifdef DOT11R_FT_SUPPORT
+#include "ft_cmm.h"
+#endif /* DOT11R_FT_SUPPORT */
+
 
 
 
@@ -81,6 +85,7 @@ NDIS_STATUS APInsertPsQueue(
 	IN PRTMP_ADAPTER pAd,
 	IN PNDIS_PACKET pPacket,
 	IN MAC_TABLE_ENTRY *pMacEntry,
+	IN UCHAR Wcid,
 	IN UCHAR QueIdx);
 
 NDIS_STATUS APHardTransmit(
@@ -98,11 +103,6 @@ NDIS_STATUS APCheckRxError(
 	IN RTMP_ADAPTER *pAd,
 	IN RXINFO_STRUC *pRxInfo,
 	IN UCHAR Wcid);
-
-BOOLEAN APCheckClass2Class3Error(
-    IN  PRTMP_ADAPTER   pAd,
-	IN ULONG Wcid, 
-	IN  PHEADER_802_11  pHeader);
 
 VOID APHandleRxPsPoll(
 	IN	PRTMP_ADAPTER	pAd,
@@ -397,6 +397,7 @@ BOOLEAN PeerDisassocReqSanity(
     IN PRTMP_ADAPTER pAd, 
     IN VOID *Msg, 
     IN ULONG MsgLen, 
+    OUT PUCHAR pAddr1, 
     OUT PUCHAR pAddr2, 
     OUT	UINT16	*SeqNum,
     OUT USHORT *Reason);
@@ -419,6 +420,9 @@ BOOLEAN APPeerAuthSanity(
     OUT USHORT *Seq, 
     OUT USHORT *Status, 
     OUT CHAR *ChlgText
+#ifdef DOT11R_FT_SUPPORT
+	,OUT PFT_INFO pFtInfo
+#endif /* DOT11R_FT_SUPPORT */
 	);
 
 
@@ -446,7 +450,6 @@ BOOLEAN DOT1X_EapTriggerAction(
     IN  PRTMP_ADAPTER	pAd,
     IN  MAC_TABLE_ENTRY *pEntry);
 #endif /* DOT1X_SUPPORT */
-#endif  /* __AP_H__ */
 
 VOID AP_E2PROM_IOCTL_PostCtrl(
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
@@ -456,3 +459,10 @@ VOID IAPP_L2_UpdatePostCtrl(
 	IN PRTMP_ADAPTER	pAd,
     IN UINT8 *mac_p,
     IN INT  bssid);
+
+BOOLEAN IAPP_L2_Update_Frame_Send(
+	IN PRTMP_ADAPTER	pAd,
+    IN UINT8 *mac_p,
+    IN INT  bssid);
+
+#endif  /* __AP_H__ */

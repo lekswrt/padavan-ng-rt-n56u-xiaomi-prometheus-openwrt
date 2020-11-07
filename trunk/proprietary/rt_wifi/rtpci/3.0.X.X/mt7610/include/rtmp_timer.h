@@ -118,9 +118,8 @@ DECLARE_TIMER_FUNCTION(EnqueueStartForPSKExec);
 
 
 #ifdef CONFIG_AP_SUPPORT
-DECLARE_TIMER_FUNCTION(APDetectOverlappingExec);
-
 #ifdef DOT11N_DRAFT3
+DECLARE_TIMER_FUNCTION(APDetectOverlappingExec);
 DECLARE_TIMER_FUNCTION(Bss2040CoexistTimeOut);
 #endif /* DOT11N_DRAFT3 */
 
@@ -136,6 +135,9 @@ DECLARE_TIMER_FUNCTION(APQuickResponeForRateUpExec);
 DECLARE_TIMER_FUNCTION(RTMPIdsPeriodicExec);
 #endif /* IDS_SUPPORT */
 
+#ifdef DOT11R_FT_SUPPORT
+DECLARE_TIMER_FUNCTION(FT_KDP_InfoBroadcast);
+#endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
 
@@ -188,4 +190,9 @@ DECLARE_TIMER_FUNCTION(DyncVgaLockTimeout);
 #if defined (ED_MONITOR) && defined (ED_SMART)
 DECLARE_TIMER_FUNCTION(ed_testing_timeout);
 #endif /*ED_MONITOR*/
+
+#ifdef RTMP_MAC_PCI
+DECLARE_TIMER_FUNCTION(TxDoneCleanupExec);
+#endif
+
 #endif /* __RTMP_TIMER_H__ */

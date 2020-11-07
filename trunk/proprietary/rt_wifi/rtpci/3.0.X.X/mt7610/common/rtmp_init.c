@@ -633,8 +633,8 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 		pAd->bAutoTxAgcA = pAd->bAutoTxAgcG = TRUE;
 	else
 		pAd->bAutoTxAgcA = pAd->bAutoTxAgcG = FALSE;
-	
-	
+
+
 	/* Save value for future using */
 	pAd->NicConfig2.word = NicConfig2.word;
 
@@ -713,21 +713,20 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 	if (IS_MT76x0(pAd))
 		MT76x0_AntennaSelCtrl(pAd);
 #endif /* MT76x0 */
-	
+
 	RTMP_NET_DEV_NICKNAME_INIT(pAd);
 
 	LoadTssiInfoFromEEPROM(pAd);
 
 	pAd->BbpRssiToDbmDelta = 0x0;
-	
+
 	/* Read frequency offset setting for RF*/
-		RT28xx_EEPROM_READ16(pAd, EEPROM_FREQ_OFFSET, value);
+	RT28xx_EEPROM_READ16(pAd, EEPROM_FREQ_OFFSET, value);
 
 	if ((value & 0x00FF) != 0x00FF)
 		pAd->RfFreqOffset = (ULONG) (value & 0x00FF);
 	else
 		pAd->RfFreqOffset = 0;
-	
 
 	DBGPRINT(RT_DEBUG_TRACE, ("E2PROM: RF FreqOffset=0x%lx \n", pAd->RfFreqOffset));
 
@@ -737,7 +736,7 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 		value = pAd->EEPROMDefaultValue[EEPROM_COUNTRY_REG_OFFSET] >> 8;		/* 2.4G band*/
 		value2 = pAd->EEPROMDefaultValue[EEPROM_COUNTRY_REG_OFFSET] & 0x00FF;	/* 5G band*/
 	}
-	
+
 	if ((value <= REGION_MAXIMUM_BG_BAND) || (value == REGION_32_BG_BAND) || (value == REGION_33_BG_BAND))
 	{
 		pAd->CommonCfg.CountryRegion = ((UCHAR) value) | 0x80;
@@ -748,89 +747,75 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 		pAd->CommonCfg.CountryRegionForABand = ((UCHAR) value2) | 0x80;
 	}
 #endif
-	
-	/* Get RSSI Offset on EEPROM 0x9Ah & 0x9Ch.*/
-	/* The valid value are (-10 ~ 10) */
-	/* */
-	{
-		RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_BG_OFFSET, value);
-		pAd->BGRssiOffset[0] = value & 0x00ff;
-		pAd->BGRssiOffset[1] = (value >> 8);
-	}
 
-	{
-		RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_BG_OFFSET+2, value);
-#ifdef MT76x0
-		/*
-			External LNA gain for 5GHz Band(CH100~CH128)
-		*/
-		if (IS_MT76x0(pAd))
-		{
-			pAd->ALNAGain1 = (value >> 8);
-		}
-		else
-#endif /* MT76x0 */
-		{
-/*		if (IS_RT2860(pAd))  RT2860 supports 3 Rx and the 2.4 GHz RSSI #2 offset is in the EEPROM 0x48*/
-			pAd->BGRssiOffset[2] = value & 0x00ff;
-			pAd->ALNAGain1 = (value >> 8);
-		}
-	}
+	/*
+	    Get RSSI Offset on EEPROM 0x9Ah & 0x9Ch.
+	    The valid value are (-10 ~ 10)
+	*/
+	RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_BG_OFFSET, value);
+	pAd->BGRssiOffset[0] = value & 0x00ff;
+	pAd->BGRssiOffset[1] = (value >> 8);
 
-	{
-		RT28xx_EEPROM_READ16(pAd, EEPROM_LNA_OFFSET, value);
-		pAd->BLNAGain = value & 0x00ff;
-		/*
-			External LNA gain for 5GHz Band(CH36~CH64)
-		*/
-		pAd->ALNAGain0 = (value >> 8);
-	}
-	
+	/*
+		External LNA gain for 2GHz Band(CH1~CH14)
+	*/
+	RT28xx_EEPROM_READ16(pAd, EEPROM_LNA_OFFSET, value);
+	pAd->BLNAGain = value & 0x00ff;
 
-	{
-		RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_A_OFFSET, value);
-		pAd->ARssiOffset[0] = value & 0x00ff;
-		pAd->ARssiOffset[1] = (value >> 8);
-	}
+	/*
+		External LNA gain for 5GHz Band(CH36~CH64)
+	*/
+	RT28xx_EEPROM_READ16(pAd, EEPROM_LNA_OFFSET, value);
+	pAd->ALNAGain0 = (value >> 8);
 
-	{
-		RT28xx_EEPROM_READ16(pAd, (EEPROM_RSSI_A_OFFSET+2), value);
-#ifdef MT76x0
-		if (IS_MT76x0(pAd))
-		{
-			/* 
-				External LNA gain for 5GHz Band(CH132~CH165)
-			*/
-			pAd->ALNAGain2 = (value >> 8);
-		}
-		else
-#endif /* MT76x0 */
-		{
-			pAd->ARssiOffset[2] = value & 0x00ff;
-			pAd->ALNAGain2 = (value >> 8);
-		}
-	}
+	/*
+		External LNA gain for 5GHz Band(CH100~CH128)
+	*/
+	RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_BG_OFFSET+2, value);
+	pAd->ALNAGain1 = (value >> 8);
 
 
+	/*
+		External LNA gain for 5GHz Band(CH132~CH165)
+	*/
+	RT28xx_EEPROM_READ16(pAd, (EEPROM_RSSI_A_OFFSET+2), value);
+	pAd->ALNAGain2 = (value >> 8);
+
+	if (((UCHAR)pAd->ALNAGain0 == 0xFF) || (pAd->ALNAGain0 == 0x00))
+		pAd->ALNAGain0 = 0x0A;
 	if (((UCHAR)pAd->ALNAGain1 == 0xFF) || (pAd->ALNAGain1 == 0x00))
 		pAd->ALNAGain1 = pAd->ALNAGain0;
 	if (((UCHAR)pAd->ALNAGain2 == 0xFF) || (pAd->ALNAGain2 == 0x00))
 		pAd->ALNAGain2 = pAd->ALNAGain0;
 
-	DBGPRINT(RT_DEBUG_TRACE, ("ALNAGain0 = %d, ALNAGain1 = %d, ALNAGain2 = %d\n", 
-					pAd->ALNAGain0, pAd->ALNAGain1, pAd->ALNAGain2));
+	/*
+		External LNA rssi offsets
+	*/
+	RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_A_OFFSET, value);
+	pAd->ARssiOffset[0] = value & 0x00ff;
+	pAd->ARssiOffset[1] = (value >> 8);
 
 	/* Validate 11a/b/g RSSI 0/1/2 offset.*/
-	for (i =0 ; i < 3; i++)
-	{
-		if ((pAd->BGRssiOffset[i] < -10) || (pAd->BGRssiOffset[i] > 10))
-			pAd->BGRssiOffset[i] = 0;
+	for (i = 0; i < 3; i++) {
+		if ((pAd->BGRssiOffset[i] < -10) || (pAd->BGRssiOffset[i] > 10)) {
+			if (i > 0)
+			    pAd->BGRssiOffset[i] = pAd->BGRssiOffset[i-1];
+			else
+			    pAd->BGRssiOffset[i] = 0;
+		}
 
-		if ((pAd->ARssiOffset[i] < -10) || (pAd->ARssiOffset[i] > 10))
-			pAd->ARssiOffset[i] = 0;
+		if ((pAd->ARssiOffset[i] < -10) || (pAd->ARssiOffset[i] > 10)) {
+			if (i > 0)
+			    pAd->ARssiOffset[i] = pAd->ARssiOffset[i-1];
+			else
+			    pAd->ARssiOffset[i] = 0;
+		}
 	}
 
-	
+
+	DBGPRINT(RT_DEBUG_TRACE, ("ARssiOffset0 = %d, ARssiOffset1 = %d, ARssiOffset2 = %d\n", ARssiOffset[0], ARssiOffset[1], ARssiOffset[2]));
+	DBGPRINT(RT_DEBUG_TRACE, ("ALNAGain0 = %d, ALNAGain1 = %d, ALNAGain2 = %d\n", pAd->ALNAGain0, pAd->ALNAGain1, pAd->ALNAGain2));
+
 #ifdef LED_CONTROL_SUPPORT
 	/* LED Setting */
 	RTMPGetLEDSetting(pAd);
@@ -995,8 +980,8 @@ VOID	NICInitAsicFromEEPROM(
 	/* Internal Tx ALC */
 	if (((NicConfig2.field.DynamicTxAgcControl == 1) && 
             (NicConfig2.field.bInternalTxALC == 1)) ||
-            ((!IS_RT3390(pAd)) && (!IS_RT3350(pAd)) &&
-            (!IS_RT3352(pAd)) && (!IS_RT5350(pAd)) && (!IS_RT5390(pAd)) && (!IS_RT3290(pAd))))
+            (!IS_RT3352(pAd)) && (!IS_RT5350(pAd)) &&
+            (!IS_RT5390(pAd)) && (!IS_RT3290(pAd)) && (!IS_MT7601(pAd))))
 	{
 		/*
 			If both DynamicTxAgcControl and bInternalTxALC are enabled,
@@ -1781,20 +1766,55 @@ VOID ClearTxRingClientAck(
 	}
 }
 #endif /* RTMP_MAC_PCI */
+
+VOID ApTxFailCntUpdate(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry, ULONG TxSuccess, ULONG TxRetransmit)
+{
+#ifdef RT65xx
+	if (IS_RT65XX(pAd)) {
+        	if (pAd->MacTab.Size <= 8) {
+		    if ((TxSuccess == 0) && (TxRetransmit > 0))
+		    {
+			    /* prevent fast drop long range clients */
+			    /* No TxPkt ok in this period as continue tx fail */
+			    /* error counter in ext_fifo ~3 times (with unreal big peaks) more then soft, need correction */
+			    if (TxRetransmit > 512)
+				pEntry->ContinueTxFailCnt += 170;
+			    else
+				pEntry->ContinueTxFailCnt += (TxRetransmit / 3);
+		    } else {
+			    pEntry->ContinueTxFailCnt = 0;
+		    }
+
+		    if (TxSuccess > 0) {
+			pEntry->NoDataIdleCount = 0;
+		    }
+
+		    DBGPRINT(RT_DEBUG_INFO, ("%s:(OK:%ld, FAIL:%ld, ConFail:%d) \n",__FUNCTION__, TxSuccess, TxRetransmit, pEntry->ContinueTxFailCnt));
+		}
+	}
+	else
+#endif /* RT65xx */
+	{
+		return;
+	}
+}
 #endif /* CONFIG_AP_SUPPORT */
 
 VOID NICUpdateFifoStaCounters(
 	IN PRTMP_ADAPTER pAd)
 {
-	TX_STA_FIFO_STRUC	StaFifo;
 #ifdef FIFO_EXT_SUPPORT
-	TX_STA_FIFO_EXT_STRUC StaFifoExt;
+	TX_STA_FIFO_EXT_STRUC	StaFifoExt;
 #endif /* FIFO_EXT_SUPPORT */
+	TX_STA_FIFO_STRUC	StaFifo;
 	MAC_TABLE_ENTRY		*pEntry = NULL;
 	UINT32				i = 0;
 	UCHAR				pid = 0, wcid = 0;
 	INT32				reTry;
 	UCHAR				succMCS;
+#ifdef RT65xx
+	UCHAR				PhyMode;
+#endif /* RT65xx */
 	UINT32 MaxWcidNum = MAX_LEN_OF_MAC_TABLE;
 
 #ifdef RALINK_ATE		
@@ -1803,8 +1823,17 @@ VOID NICUpdateFifoStaCounters(
 		return;
 #endif /* RALINK_ATE */
 
-
-
+#if 0 /* this break rate_adapt without fifo or with fifo at aid > 8 */
+#ifdef CONFIG_AP_SUPPORT
+#ifdef RT65xx
+	if (pAd->MacTab.Size <= 8) {
+		/* mark by UAPSD Accurate Issue */
+		if (IS_RT65XX(pAd))
+			return;
+	}
+#endif /* RT65xx */
+#endif /* CONFIG_AP_SUPPORT */
+#endif
 
 #ifdef MAC_REPEATER_SUPPORT
 	MaxWcidNum = MAX_MAC_TABLE_SIZE_WITH_REPEATER;
@@ -1813,9 +1842,7 @@ VOID NICUpdateFifoStaCounters(
 		do
 		{
 #ifdef FIFO_EXT_SUPPORT
-			if (IS_RT65XX(pAd)) {
-				RTMP_IO_READ32(pAd, TX_STA_FIFO_EXT, &StaFifoExt.word);
-			}
+			RTMP_IO_READ32(pAd, TX_STA_FIFO_EXT, &StaFifoExt.word);
 #endif /* FIFO_EXT_SUPPORT */
 			RTMP_IO_READ32(pAd, TX_STA_FIFO, &StaFifo.word);
 
@@ -1832,7 +1859,7 @@ VOID NICUpdateFifoStaCounters(
 #endif /* INCLUDE_DEBUG_QUEUE */
 #endif /* DBG_CTRL_SUPPORT */
 
-		/* ignore NoACK and MGMT frame use 0xFF as WCID */
+			/* ignore NoACK and MGMT frame use 0xFF as WCID */
 			if ((StaFifo.field.TxAckRequired == 0) || (wcid >= MaxWcidNum))
 			{
 				i++;
@@ -1841,9 +1868,22 @@ VOID NICUpdateFifoStaCounters(
 
 			/* PID store Tx MCS Rate */
 #ifdef FIFO_EXT_SUPPORT
+#ifdef RT65xx
 			if (IS_RT65XX(pAd))
-				pid = (UCHAR)StaFifoExt.field.pkt_id_65xx;
+			{
+				PhyMode = StaFifo.field.PhyMode;
+				if((PhyMode == 2) || (PhyMode == 3))
+				{
+ 					pid = (UCHAR)StaFifoExt.field.PidType & 0xF;
+				}
+				else if(PhyMode == 4)
+				{
+					pid = (UCHAR)StaFifoExt.field.PidType & 0xF;
+					pid += (((UCHAR)StaFifoExt.field.PidType & 0x10) ? 10 : 0);
+				}
+			}
 			else
+#endif /* RT65xx */
 #endif /* FIFO_EXT_SUPPORT */
 			pid = (UCHAR)StaFifo.field.PidType;
 
@@ -1914,39 +1954,31 @@ VOID NICUpdateFifoStaCounters(
 			{
 				pEntry->FIFOCount++;
 				pEntry->OneSecTxFailCount++;
-									
+
 				if (pEntry->FIFOCount >= 1)
-				{			
+				{
 					DBGPRINT(RT_DEBUG_TRACE, ("#"));
 #ifdef DOT11_N_SUPPORT
-					pEntry->NoBADataCountDown = 64;
-#endif /* DOT11_N_SUPPORT */
-
-
+					pEntry->NoBADataCountDown = 10;
+#endif
 					/* Update the continuous transmission counter.*/
+#ifdef CONFIG_AP_SUPPORT
+#ifdef FIFO_EXT_SUPPORT
+					/* fo 65xx incriment in ApTxFailCntUpdate function */
+					if (StaFifoExt.field.txRtyCnt > 0) {
+						/* limit incriment by fifo */
+						 /* error counter in ext_fifo ~3 times (with unreal big peaks) more then soft, need correction */
+						if (StaFifoExt.field.txRtyCnt > 512)
+						    pEntry->ContinueTxFailCnt += 170;
+						else
+						    pEntry->ContinueTxFailCnt += (StaFifoExt.field.txRtyCnt / 3);
+					} else
+#endif
+#endif
 					pEntry->ContinueTxFailCnt++;
 
 					if(pEntry->PsMode == PWR_ACTIVE)
 					{
-#ifdef DOT11_N_SUPPORT					
-						int tid;
-
-#ifdef NOISE_TEST_ADJUST
-						if ((pAd->MacTab.Size > 2) &&
-							(pEntry->HTPhyMode.field.MODE == MODE_VHT) &&
-							(pEntry->lowTrafficCount >= 4 /* 2 sec */))
-						{
-							pEntry->NoBADataCountDown = 10;
-						}
-						else
-						{
-							pEntry->NoBADataCountDown = 64;
-						}
-#endif /* NOISE_TEST_ADJUST */
-						for (tid=0; tid<NUM_OF_TID; tid++)
-							BAOriSessionTearDown(pAd, pEntry->Aid,  tid, FALSE, FALSE);
-#endif /* DOT11_N_SUPPORT */
-
 #ifdef WDS_SUPPORT
 						/* fix WDS Jam issue*/
 						if(IS_ENTRY_WDS(pEntry)
@@ -1963,10 +1995,10 @@ VOID NICUpdateFifoStaCounters(
 				}
 #ifdef CONFIG_AP_SUPPORT
 #ifdef RTMP_MAC_PCI
-			/* if Tx fail >= 20, then clear TXWI ack in Tx Ring*/
-			if (pEntry->ContinueTxFailCnt >= pAd->ApCfg.EntryLifeCheck)
-				ClearTxRingClientAck(pAd, pEntry);	
-#endif /* RTMP_MAC_PCI */				
+				/* if Tx fail >= 20, then clear TXWI ack in Tx Ring*/
+				if (IS_ENTRY_CLIENT(pEntry) && pEntry->ContinueTxFailCnt >= pAd->ApCfg.EntryLifeCheck)
+					ClearTxRingClientAck(pAd, pEntry);
+#endif /* RTMP_MAC_PCI */
 #endif /* CONFIG_AP_SUPPORT */
 			}
 			else
@@ -1991,10 +2023,16 @@ VOID NICUpdateFifoStaCounters(
 #ifdef WDS_SUPPORT
 				pEntry->LockEntryTx = FALSE;
 #endif /* WDS_SUPPORT */
+	}
 
-			}
+#ifdef RT65xx
+	if (IS_MT76x0(pAd) || IS_RT65XX(pAd))
+	{
+		PhyMode = StaFifo.field.PhyMode;
+		if((PhyMode == 2) || (PhyMode == 3))
+		{
+  	    		succMCS = StaFifo.field.SuccessRate & 0xF;
 
-			succMCS = StaFifo.field.SuccessRate & 0x7F;
 #ifdef DOT11N_SS3_SUPPORT
 			if (pEntry->HTCapability.MCSSet[2] == 0xff)
 			{
@@ -2008,7 +2046,79 @@ VOID NICUpdateFifoStaCounters(
 				pEntry->TXMCSExpected[pid]++;
 				if (pid == succMCS)
 					pEntry->TXMCSSuccessful[pid]++;
-				else 
+				else
+					pEntry->TXMCSAutoFallBack[pid][succMCS]++;
+			}
+			else
+				pEntry->TXMCSFailed[pid]++;
+
+#ifdef DOT11N_SS3_SUPPORT
+			if (pid >= 16 && succMCS <= 8)
+				succMCS += (2 - (succMCS >> 3)) * 7;
+#endif /* DOT11N_SS3_SUPPORT */
+
+			reTry = pid - succMCS;
+
+			if (reTry > 0)
+			{
+				/* MCS8 falls back to 0 */
+				if (pid>=8 && succMCS==0)
+					reTry -= 7;
+		    		//else if ((pid >= 12) && succMCS <=7)
+			    	//	reTry -= 4;
+
+				pEntry->OneSecTxRetryOkCount += reTry;
+			}
+		}
+		else if(PhyMode == 4)
+		{
+  	    		succMCS = StaFifo.field.SuccessRate & 0xF;
+			succMCS += ((StaFifo.field.SuccessRate & 0x10) ? 10 : 0);
+			//DBGPRINT(0, ("%s()Succ MCS :TxMCS(%d):PHYMode(%d)\n", __FUNCTION__, pid, PhyMode));
+		    	if (StaFifo.field.TxSuccess)
+		    	{
+		    		pEntry->TXMCSExpected[pid]++;
+
+			    	if (pid == succMCS)
+			    		pEntry->TXMCSSuccessful[pid]++;
+			    	else
+			    		pEntry->TXMCSAutoFallBack[pid][succMCS]++;
+		    	}
+		    	else
+			{
+				pEntry->TXMCSFailed[pid]++;
+			}
+
+			reTry = pid - succMCS;
+
+			if (reTry > 0)
+			{
+				/* MCS10 falls back to 0 */
+				if (pid >= 10 && succMCS == 0)
+					reTry -= 9;
+
+				pEntry->OneSecTxRetryOkCount += reTry;
+			}
+		}
+	} else
+#endif /* RT65xx */
+		{
+			succMCS = StaFifo.field.SuccessRate & 0x7F;
+
+#ifdef DOT11N_SS3_SUPPORT
+			if (pEntry->HTCapability.MCSSet[2] == 0xff)
+			{
+				if (succMCS > pid)
+					pid = pid + 16;
+			}
+#endif /* DOT11N_SS3_SUPPORT */
+
+			if (StaFifo.field.TxSuccess)
+			{
+				pEntry->TXMCSExpected[pid]++;
+				if (pid == succMCS)
+					pEntry->TXMCSSuccessful[pid]++;
+				else
 					pEntry->TXMCSAutoFallBack[pid][succMCS]++;
 			}
 			else
@@ -2028,36 +2138,134 @@ VOID NICUpdateFifoStaCounters(
 				/* MCS8 falls back to 0 */
 				if (pid>=8 && succMCS==0)
 					reTry -= 7;
-				else if ((pid >= 12) && succMCS <=7)
-					reTry -= 4;
+				//else if ((pid >= 12) && succMCS <=7)
+					//reTry -= 4;
 
 				pEntry->OneSecTxRetryOkCount += reTry;
 			}
+		}
 
-			i++;	/* ASIC store 16 stack*/
-		} while ( i < (TX_RING_SIZE<<1) );
+		i++;	/* ASIC store 16 stack*/
+	} while ( i < (TX_RING_SIZE<<1) );
+}
 
+#ifdef FIFO_EXT_SUPPORT
+BOOLEAN NicGetMacFifoTxCnt(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
+{
+	if (pEntry->wcid >= 1 && pEntry->bUseHwFifoExt)
+	{
+		WCID_TX_CNT_STRUC wcidTxCnt;
+
+		RTMP_IO_READ32(pAd, pAd->FifoExtTbl[pEntry->hwFifoExtIdx].hwTxCntCROffset, &wcidTxCnt.word);
+
+		pEntry->fifoTxSucCnt += wcidTxCnt.field.succCnt;
+
+		/* error counter in ext_fifo ~2 times (with unreal big peaks) more then soft, need correction
+		   step by step down thres for more accurate rate tune, this only 7610 issue */
+		if (wcidTxCnt.field.reTryCnt > 400)     /* if >400 - or really client lost connection, or this UFO value */
+		    pEntry->fifoTxRtyCnt += 400;
+		else if (wcidTxCnt.field.reTryCnt > 50) /* if txretry > 50pps really only ~80% lost true */
+		    pEntry->fifoTxRtyCnt += (wcidTxCnt.field.reTryCnt * 80 / 100);
+		else
+		    pEntry->fifoTxRtyCnt += wcidTxCnt.field.reTryCnt;
+
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 
-#ifdef FIFO_EXT_SUPPORT
-BOOLEAN NicGetMacFifoTxCnt(
-	IN RTMP_ADAPTER *pAd,
-	IN MAC_TABLE_ENTRY *pEntry)
+/*
+	The 8 entries will be dynamically replaced to apcli-repeater entry, starting from tail of table, at most replace 4 entries:
+		{ CLI, CLI, CLI, CLI, CLI, CLI, CLI, CLI}			still 4 vacancy entries
+	--> { CLI, CLI, CLI, CLI, CLI, CLI, CLI, APCLI}			still 3 vacancy entries
+	--> { CLI, CLI, CLI, CLI, CLI, CLI, APCLI, APCLI}		still 2 vacancy entries
+	--> { CLI, CLI, CLI, CLI, CLI, APCLI, APCLI, APCLI}		still 1 vacancy entry
+	--> { CLI, CLI, CLI, CLI, APCLI, APCLI, APCLI, APCLI}	no vacancy entry
+*/
+BOOLEAN IsFifoExtTblAvailable(IN RTMP_ADAPTER *pAd, IN UCHAR *pTblIdx)
 {
-	if (pEntry->Aid >= 1 && pEntry->Aid <= 8)
-	{
-		WCID_TX_CNT_STRUC wcidTxCnt;
-		UINT32 regAddr;
-		
-		regAddr = WCID_TX_CNT_0 + (pEntry->Aid - 1) * 4;
-		RTMP_IO_READ32(pAd, regAddr, &wcidTxCnt.word);
+	MAC_TABLE_ENTRY *pEntry;
+	int vacancy = -1;	/* initialized by a invalid value */
+	int i;
 
-		pEntry->fifoTxSucCnt += wcidTxCnt.field.succCnt;
-		pEntry->fifoTxRtyCnt += wcidTxCnt.field.reTryCnt;
+	for (i = (FIFO_EXT_HW_SIZE - 1); i >= 4; i --)
+	{
+		pEntry = &pAd->MacTab.Content[pAd->FifoExtTbl[i].wcid];
+
+		if (IS_ENTRY_APCLI(pEntry))
+			continue;
+
+		/* The first non-ApCli entry (starting from tail) */
+		vacancy = i;
+		break;
 	}
 
+	if (vacancy == -1)
+		return FALSE;
+
+	DBGPRINT(RT_DEBUG_TRACE, ("FIFO_EXT: find vacancy entry %d\n", vacancy));
+	*pTblIdx = (UCHAR)vacancy;
 	return TRUE;
+}
+
+
+VOID FifoExtTblUpdateEntry(IN RTMP_ADAPTER *pAd, IN UCHAR tblIdx, IN UCHAR wcid)
+{
+	MAC_TABLE_ENTRY *pNewEntry, *pOldEntry;
+	UCHAR oldWcid;
+
+	if (tblIdx >= FIFO_EXT_HW_SIZE)
+		return;
+
+	oldWcid = pAd->FifoExtTbl[tblIdx].wcid;
+	if (oldWcid == wcid)
+		return;
+
+	pOldEntry = &pAd->MacTab.Content[oldWcid];	
+	pNewEntry = &pAd->MacTab.Content[wcid];
+
+	/* Clear the old one */
+	pOldEntry->bUseHwFifoExt = FALSE;
+
+	/* Set the new one */
+	pNewEntry->hwFifoExtIdx = tblIdx;
+	pNewEntry->bUseHwFifoExt = TRUE;
+
+	/* Update global setting */
+	pAd->FifoExtTbl[tblIdx].wcid = wcid;
+	RTMP_IO_WRITE8(pAd, WCID_MAPPING_0 + tblIdx, wcid);
+}
+
+
+const UCHAR PreDefWcid[] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+VOID FifoExtTblRmReptEntry(IN RTMP_ADAPTER *pAd, IN UCHAR wcid)
+{ 
+	MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[wcid];
+	UCHAR tblIdx = pEntry->hwFifoExtIdx;
+
+	FifoExtTblUpdateEntry(pAd, tblIdx, PreDefWcid[tblIdx]);
+}
+
+VOID FifoExtTableInit(IN RTMP_ADAPTER *pAd)
+{
+	if (pAd->chipCap.FlgHwFifoExtCap)
+	{
+		UCHAR i, wcid;
+
+		for (i = 0; i < FIFO_EXT_HW_SIZE; i ++)
+		{
+			wcid = PreDefWcid[i];
+			pAd->FifoExtTbl[i].wcid = wcid;
+			pAd->FifoExtTbl[i].hwTxCntCROffset = WCID_TX_CNT_0 + (i * 4);
+
+			/* set pEntry */
+			pAd->MacTab.Content[wcid].hwFifoExtIdx = i;
+			pAd->MacTab.Content[wcid].bUseHwFifoExt = TRUE;
+		}
+	}
 }
 
 
@@ -2065,31 +2273,36 @@ VOID AsicFifoExtSet(IN RTMP_ADAPTER *pAd)
 {
 	if (pAd->chipCap.FlgHwFifoExtCap)
 	{
-		RTMP_IO_WRITE32(pAd, WCID_MAPPING_0, 0x04030201);
-		RTMP_IO_WRITE32(pAd, WCID_MAPPING_1, 0x08070605);
+		UCHAR i;
+		UINT32 WcidSet;
+
+		WcidSet = 0;
+		for (i = 0; i < 4; i ++)
+			WcidSet |= (pAd->FifoExtTbl[i].wcid << (i * 8));
+
+		RTMP_IO_WRITE32(pAd, WCID_MAPPING_0, WcidSet);
+
+		WcidSet = 0;
+		for (i = 0; i < 4; i ++)
+			WcidSet |= (pAd->FifoExtTbl[i + 4].wcid << (i * 8));
+ 
+		RTMP_IO_WRITE32(pAd, WCID_MAPPING_1, WcidSet);
 	}
 }
 
 
-VOID AsicFifoExtEntryClean(
-	IN RTMP_ADAPTER * pAd, 
-	IN MAC_TABLE_ENTRY *pEntry)
+VOID AsicFifoExtEntryClean(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 {
 	WCID_TX_CNT_STRUC wcidTxCnt;
-	UINT32 regAddr;
 			
 	if (pAd->chipCap.FlgHwFifoExtCap)
 	{
-		/* We clean the fifo info when MCS is 0 and Aid is from 1~8 */
-		if (pEntry->Aid >=1  && pEntry->Aid <= 8)
-		{		
-			regAddr = WCID_TX_CNT_0 + (pEntry->Aid - 1) * 4;
-			RTMP_IO_READ32(pAd, regAddr, &wcidTxCnt.word);
-		}
+		/* We clean the fifo info when entry Tx Counter is controlled by hw */
+		if (pEntry->bUseHwFifoExt)
+			RTMP_IO_READ32(pAd, pAd->FifoExtTbl[pEntry->hwFifoExtIdx].hwTxCntCROffset, &wcidTxCnt.word);
 	}
 }
 #endif /* FIFO_EXT_SUPPORT */
-
 
 /*
 	========================================================================
@@ -2540,7 +2753,8 @@ VOID RTMPMoveMemory(
 
 	for (Index = 0; Index < Length; Index++)
 	{
-		pMem1[Index] = pMem2[Index];
+		if (pMem1 && pMem2)
+		    pMem1[Index] = pMem2[Index];
 	}
 }
 
@@ -2701,7 +2915,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 #endif /* UAPSD_SUPPORT */
 	pAd->CommonCfg.bNeedSendTriggerFrame = FALSE;
 	pAd->CommonCfg.TriggerTimerCount = 0;
-	pAd->CommonCfg.bAPSDForcePowerSave = FALSE;
 	/*pAd->CommonCfg.bCountryFlag = FALSE;*/
 	pAd->CommonCfg.TxStream = 0;
 	pAd->CommonCfg.RxStream = 0;
@@ -2728,6 +2941,9 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->CommonCfg.BssCoexApCntThr = 0;
 	pAd->CommonCfg.Bss2040NeedFallBack = 0;
 #endif  /* DOT11N_DRAFT3 */
+
+	pAd->CommonCfg.bRcvBSSWidthTriggerEvents = FALSE;
+	pAd->CommonCfg.DisableOLBCDetect = 1;
 
 	NdisZeroMemory(&pAd->CommonCfg.AddHTInfo, sizeof(pAd->CommonCfg.AddHTInfo));
 	pAd->CommonCfg.BACapability.field.MMPSmode = MMPS_ENABLE;
@@ -2759,10 +2975,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->CommonCfg.REGBACapability.word = pAd->CommonCfg.BACapability.word;
 #endif /* DOT11_N_SUPPORT */
 
-	/*pAd->CommonCfg.HTPhyMode.field.BW = BW_20;*/
-	/*pAd->CommonCfg.HTPhyMode.field.MCS = MCS_AUTO;*/
-	/*pAd->CommonCfg.HTPhyMode.field.ShortGI = GI_800;*/
-	/*pAd->CommonCfg.HTPhyMode.field.STBC = STBC_NONE;*/
 	pAd->CommonCfg.TxRate = RATE_6;
 	
 	pAd->CommonCfg.MlmeTransmit.field.MCS = MCS_RATE_6;
@@ -2812,8 +3024,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 #endif /* WAPI_SUPPORT */
 
 #ifdef MCAST_RATE_SPECIFIC
-	pAd->CommonCfg.MCastPhyMode.word
-	= pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word;
+	pAd->CommonCfg.MCastPhyMode.word = pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word;
 #endif /* MCAST_RATE_SPECIFIC */
 
 	/* WFA policy - disallow TH rate in WEP or TKIP cipher */
@@ -2830,7 +3041,11 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 	/* Tx Sw queue length setting */
 	pAd->TxSwQMaxLen = MAX_PACKETS_IN_QUEUE;
-	
+
+#ifdef DATA_QUEUE_RESERVE
+	pAd->TxRsvLen = FIFO_RSV_FOR_HIGH_PRIORITY;
+#endif /* DATA_QUEUE_RESERVE */
+
 	pAd->CommonCfg.bRalinkBurstMode = FALSE;
 
 
@@ -2863,6 +3078,16 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 		pAd->ApCfg.BssidNum = MAX_MBSSID_NUM(pAd);
 		for(j = BSS0; j < pAd->ApCfg.BssidNum; j++)
 		{
+			pAd->ApCfg.MBSSID[j].AssocReqFailRssiThreshold = 0;
+			pAd->ApCfg.MBSSID[j].AssocReqNoRspRssiThreshold = 0;
+			pAd->ApCfg.MBSSID[j].AuthFailRssiThreshold = 0;
+			pAd->ApCfg.MBSSID[j].AuthNoRspRssiThreshold = 0;
+			pAd->ApCfg.MBSSID[j].RssiLowForStaKickOut = 0;
+			pAd->ApCfg.MBSSID[j].RssiLowForStaKickOutPSM = 0;
+			pAd->ApCfg.MBSSID[j].RssiLowForStaKickOutFT = 0;
+			pAd->ApCfg.MBSSID[j].RssiLowForStaKickOutDelay = 10;
+			pAd->ApCfg.MBSSID[j].ProbeRspRssiThreshold = 0;
+
 			pAd->ApCfg.MBSSID[j].AuthMode = Ndis802_11AuthModeOpen;
 			pAd->ApCfg.MBSSID[j].WepStatus = Ndis802_11EncryptionDisabled;
 			pAd->ApCfg.MBSSID[j].GroupKeyWepStatus = Ndis802_11EncryptionDisabled;
@@ -2870,12 +3095,17 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			pAd->ApCfg.MBSSID[j].WpaMixPairCipher = MIX_CIPHER_NOTUSE;
 			pAd->ApCfg.MBSSID[j].RekeyCountDown = 0;	/* it's used for WPA rekey */
 
+			pAd->ApCfg.MBSSID[j].ProbeRspTimes = 3;
+
+			/* init the default 60 seconds*/
+			pAd->ApCfg.MBSSID[j].StationKeepAliveTime = 60;
+
 #ifdef DOT1X_SUPPORT
 			pAd->ApCfg.MBSSID[j].IEEE8021X = FALSE;
 			pAd->ApCfg.MBSSID[j].PreAuth = FALSE;
 
 			/* PMK cache setting*/
-			pAd->ApCfg.MBSSID[j].PMKCachePeriod = (10 * 60 * OS_HZ); /* unit : tick(default: 10 minute)*/
+			pAd->ApCfg.MBSSID[j].PMKCachePeriod = (480 * 60 * OS_HZ); /* unit : tick(default: 8hour ~ one work day) */
 			NdisZeroMemory(&pAd->ApCfg.MBSSID[j].PMKIDCache, sizeof(NDIS_AP_802_11_PMKID));
 
 			/* dot1x related per BSS */
@@ -2999,6 +3229,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 		pAd->ApCfg.StaIdleTimeout = MAC_TABLE_AGEOUT_TIME;
 
+		pAd->ApCfg.BANClass3Data = FALSE;
 #ifdef IDS_SUPPORT
 		/* Default disable IDS threshold and reset all IDS counters*/
 		pAd->ApCfg.IdsEnable = FALSE;
@@ -3067,15 +3298,19 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			NdisZeroMemory(apcli_entry->CfgApCliBssid, MAC_ADDR_LEN);
 			NdisZeroMemory(apcli_entry->ApCliMlmeAux.Bssid, MAC_ADDR_LEN);
 		}
+#ifdef APCLI_AUTO_CONNECT_SUPPORT
+		pAd->ApCfg.ApCliAutoConnectRunning= FALSE;
+		pAd->ApCfg.ApCliAutoConnectChannelSwitching = FALSE;
+#endif /* APCLI_AUTO_CONNECT_SUPPORT */
 #endif /* APCLI_SUPPORT */
 		pAd->ApCfg.EntryClientCount = 0;
-		pAd->ApCfg.ChangeTxOpClient = 0;
 	}
 
 #ifdef DYNAMIC_VGA_SUPPORT
+	pAd->CommonCfg.MO_Cfg.long_range_compensate_level = 0;
 	pAd->CommonCfg.MO_Cfg.bDyncVgaEnable = TRUE;
 	pAd->CommonCfg.MO_Cfg.nFalseCCATh = 600;
-	pAd->CommonCfg.MO_Cfg.nLowFalseCCATh = 100;
+	pAd->CommonCfg.MO_Cfg.nLowFalseCCATh = 10;
 	pAd->CommonCfg.MO_Cfg.bPreviousTuneVgaUP = FALSE;
 	pAd->CommonCfg.MO_Cfg.TuneGainReverseTimes = 0;
 	RTMPInitTimer(pAd, &pAd->CommonCfg.MO_Cfg.DyncVgaLockTimer,
@@ -3086,6 +3321,8 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 	
 	/* part IV. others*/
+
+	pAd->CommonCfg.PwrConstraint = 0;
 	
 	/* dynamic BBP R66:sensibity tuning to overcome background noise*/
 	pAd->BbpTuning.bEnable                = TRUE;  
@@ -3123,6 +3360,9 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 #ifdef CONFIG_AP_SUPPORT
 	pAd->ApCfg.EntryLifeCheck = MAC_ENTRY_LIFE_CHECK_CNT;
 
+#ifdef DOT11R_FT_SUPPORT
+	FT_CfgInitial(pAd);
+#endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
 
@@ -3142,7 +3382,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 #endif /* TXRX_SW_ANTDIV_SUPPORT */
 
 
-#if defined(AP_SCAN_SUPPORT) || defined(CONFIG_STA_SUPPORT)
+#if defined(AP_SCAN_SUPPORT)
 	for (i = 0; i < MAX_LEN_OF_BSS_TABLE; i++) 
 	{
 		PBSS_ENTRY	pBssEntry = &pAd->ScanTab.BssEntry[i];
@@ -3152,7 +3392,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 		else
 			pBssEntry->pVarIeFromProbRsp = NULL;
 	}
-#endif /* defined(AP_SCAN_SUPPORT) || defined(CONFIG_STA_SUPPORT) */
+#endif /* defined(AP_SCAN_SUPPORT) */
 
 
 #ifdef WSC_INCLUDED
@@ -3169,7 +3409,11 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	/* 802.11H and DFS related params*/
 	pAd->Dot11_H.CSCount = 0;
 	pAd->Dot11_H.CSPeriod = 10;
+#ifdef DFS_SUPPORT
+	pAd->Dot11_H.RDMode = RD_SILENCE_MODE;
+#else
 	pAd->Dot11_H.RDMode = RD_NORMAL_MODE;
+#endif /* DFS_SUPPORT */
 	pAd->Dot11_H.bDFSIndoor = 1;
 
 
@@ -3218,16 +3462,19 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->chipCap.LastTemperatureforVCO = 0x7FFF;
 	pAd->chipCap.LastTemperatureforCal = 0x7FFF;
 	pAd->chipCap.NowTemperature = 0x7FFF;
+
+	pAd->chipCap.RXIQBackup = 0;
 #endif /* MT76x0 */
 
+#ifdef RTMP_TEMPERATURE_COMPENSATION_VGA
 	pAd->chipCap.LastTempSensorState = 0;
-    pAd->chipCap.IsTempSensorStateReset = FALSE;
-
+	pAd->chipCap.IsTempSensorStateReset = FALSE;
+#endif /* RTMP_TEMPERATURE_COMPENSATION_VGA */
 #ifdef DOT11_VHT_AC
 	pAd->CommonCfg.bNonVhtDisallow = FALSE;
-#ifdef DISANLE_VHT80_256_QAM
+#ifdef CONFIG_DISABLE_VHT80_256_QAM
 	pAd->CommonCfg.disable_vht_256QAM = DISABLE_VHT80_256_QAM;
-#endif /* DISANLE_VHT80_256_QAM */
+#endif /* DISABLE_VHT80_256_QAM */
 #endif /* DOT11_VHT_AC */
 
 #ifdef ED_MONITOR
@@ -3248,12 +3495,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->ed_false_cca_threshold = 180;	
 	pAd->ed_block_tx_threshold = 2;
 #endif /* ED_MONITOR */
-
-#ifdef CONFIG_AP_SUPPORT
-	pAd->ApCfg.fAllStatIsHighTraffic = FALSE;
-	pAd->ApCfg.fDisableTrafficCnt = FALSE;
-	pAd->ApCfg.StalowTrafficThrd = 15;
-#endif /* CONFIG_AP_SUPPORT */
 
 	DBGPRINT(RT_DEBUG_TRACE, ("<-- UserCfgInit\n"));
 }
@@ -3284,7 +3525,7 @@ UCHAR BtoH(STRING ch)
 
 /* IRQL = PASSIVE_LEVEL*/
 
-void AtoH(PSTRING src, PUCHAR dest, int destlen)
+VOID AtoH(PSTRING src, PUCHAR dest, INT srclen)
 {
 	PSTRING srcptr;
 	PUCHAR destTemp;
@@ -3292,7 +3533,7 @@ void AtoH(PSTRING src, PUCHAR dest, int destlen)
 	srcptr = src;	
 	destTemp = (PUCHAR) dest; 
 
-	while(destlen--)
+	while(srclen--)
 	{
 		*destTemp = BtoH(*srcptr++) << 4;    /* Put 1st ascii byte in upper nibble.*/
 		*destTemp += BtoH(*srcptr++);      /* Add 2nd ascii byte to above.*/
@@ -3541,7 +3782,7 @@ VOID	RTMPModTimer(
 			RTMP_OS_Mod_Timer(&pTimer->TimerObj, Value);
 			RTMP_SEM_UNLOCK(&TimerSemLock);
 		}
-		DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
+		//DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
 	}
 	else
 	{
@@ -3675,6 +3916,7 @@ VOID RTMPEnableRxTx(
 	{
 		rx_filter_flag = APNORMAL;
 
+#if 0  /* BBP allways must filter not me packets, this more safe and speed */
 #ifdef CONFIG_AP_SUPPORT
 #ifdef IDS_SUPPORT
 		IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
@@ -3684,22 +3926,12 @@ VOID RTMPEnableRxTx(
 		}
 #endif /* IDS_SUPPORT */			
 #endif /* CONFIG_AP_SUPPORT */
-
+#endif
 		RTMP_IO_WRITE32(pAd, RX_FILTR_CFG, rx_filter_flag);     /* enable RX of DMA block*/
 	}
 	
 	{
 		RTMP_IO_WRITE32(pAd, MAC_SYS_CTRL, 0xc);
-
-//+++Add by shiang for debug for pbf_loopback
-//			RTMP_IO_WRITE32(pAd, MAC_SYS_CTRL, 0x2c);
-//---Add by shiang for debug
-//+++Add by shiang for debug invalid RxWI->WCID 
-#ifdef RT8592
-#endif /* RT8592 */
-//---Add by shiang for  debug invalid RxWI->WCID 
-
-
 	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("<== RTMPEnableRxTx\n"));	
@@ -3913,7 +4145,6 @@ VOID CMDHandler(
 	NDIS_STATUS		NdisStatus = NDIS_STATUS_SUCCESS;                                                                                                               
 /*	ULONG			Now = 0;*/
 /*	NTSTATUS		ntStatus;*/
-/*	unsigned long	IrqFlags;*/
 	
 	while (pAd && pAd->CmdQ.size > 0)	
 	{                                                                                                                                                           

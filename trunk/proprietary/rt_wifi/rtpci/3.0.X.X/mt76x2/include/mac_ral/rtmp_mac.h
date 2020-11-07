@@ -1002,7 +1002,7 @@ typedef	union _EDCA_AC_CFG_STRUC {
 #define TX_PWR_HT_VHT_1SS_MCS_0_1_MASK (0x3f << 16)
 #define TX_PWR_HT_VHT_1SS_MCS_0_1(p) (((p) & 0x3f) << 16)
 #define TX_PWR_HT_VHT_1SS_MCS_2_3_MASK (0x3f << 24)
-#define TX_PWR_HT_VHT_1SS_MCS_2_3(p) (((p) & 0x3f) << 24)
+#define TX_PWR_HT_VHT_1SS_MCS_2_3(p) (((p) & 0x3f) << 16)
 
 #define TX_PWR_CFG_1_EXT	0x1394
 

@@ -163,7 +163,7 @@ NDIS_STATUS rlt_rf_read(
 	IN UCHAR *pValue)
 {
 	RF_CSR_CFG_STRUC rfcsr = { { 0 } };
-	UINT i=0, k=0;
+	UINT i=0;
 	BOOLEAN rf_status;
 	NDIS_STATUS	 ret = STATUS_UNSUCCESSFUL;
 
@@ -239,7 +239,7 @@ NDIS_STATUS rlt_rf_read(
 
 	if (rf_status == BUSY)
 	{																	
-		DBGPRINT_ERR(("RF read R%d=0x%X fail, i[%d], k[%d]\n", regID, rfcsr.word,i,k));
+		DBGPRINT_ERR(("RF read R%d=0x%X fail, i[%d]\n", regID, rfcsr.word,i));
 		goto done;
 	}
 	ret = STATUS_SUCCESS;

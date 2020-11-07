@@ -782,9 +782,11 @@ INT PMF_RobustFrameClassify(
 	IN PHEADER_802_11 pHdr,
 	IN PUCHAR pFrame,
 	IN UINT	frame_len,
-	IN PMAC_TABLE_ENTRY pEntry,
+	IN PUCHAR pData,
 	IN BOOLEAN IsRx)
 {
+	PMAC_TABLE_ENTRY pEntry = (PMAC_TABLE_ENTRY) pData;
+
 	if ((pHdr->FC.Type != FC_TYPE_MGMT) || (frame_len <= 0))
 		return NORMAL_FRAME;
 
@@ -1183,7 +1185,7 @@ BOOLEAN	PMF_PerformTxFrameAction(
 	UINT SrcBufLen;
         UINT8 TXWISize = pAd->chipCap.TXWISize;
 	INT FrameType;
-	INT ret = 0;
+        INT ret = 0;
 	PMAC_TABLE_ENTRY pEntry = NULL;
 
 	RTMP_QueryPacketInfo(pPacket, &PacketInfo, &pSrcBufVA, &SrcBufLen);
@@ -1198,7 +1200,7 @@ BOOLEAN	PMF_PerformTxFrameAction(
 				(PHEADER_802_11)pHeader_802_11,
 				(PUCHAR)( ((PUCHAR) pHeader_802_11) + LENGTH_802_11),
 				(SrcBufLen - LENGTH_802_11 - TXINFO_SIZE - TXWISize),
-				pEntry,
+				(PUCHAR) pEntry,
 				FALSE);
 				
 	switch (FrameType)
@@ -1289,7 +1291,7 @@ BOOLEAN	PMF_PerformRxFrameAction(
 	FrameType = PMF_RobustFrameClassify(pHeader,
 					(PUCHAR)(pMgmtFrame + LENGTH_802_11),
                                         (mgmt_len - LENGTH_802_11),
-                                        pEntry,
+                                        (PUCHAR) pEntry,
                                         TRUE);
 
 #ifdef CONFIG_AP_SUPPORT

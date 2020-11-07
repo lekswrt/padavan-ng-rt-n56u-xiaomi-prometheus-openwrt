@@ -29,35 +29,6 @@
 MultiplicationShiftFactor RateMultiplicationShiftFactor[224];
 #endif
 
-
-INT SetManualTxOPThreshold(RTMP_ADAPTER *pAd, PSTRING arg)
-{
-    pAd->CommonCfg.ManualTxopThreshold = (UCHAR) simple_strtol(arg, 0, 10);
-	DBGPRINT(RT_DEBUG_OFF, ("CURRENT: Set ManualTxOP TP Threshold = %lu (Mbps)\n", 
-		pAd->CommonCfg.ManualTxopThreshold));
-
-    return TRUE;
-}
-
-
-INT SetManualTxOPUpBound(RTMP_ADAPTER *pAd, PSTRING arg)
-{
-    pAd->CommonCfg.ManualTxopUpBound = (UCHAR) simple_strtol(arg, 0, 10);
-	DBGPRINT(RT_DEBUG_OFF, ("CURRENT: Set ManualTxOP Traffic Upper Bound = %d (Ratio)\n", 
-		pAd->CommonCfg.ManualTxopUpBound));
-
-    return TRUE;
-}
-
-INT SetManualTxOPLowBound(RTMP_ADAPTER *pAd, PSTRING arg)
-{
-    pAd->CommonCfg.ManualTxopLowBound = (UCHAR) simple_strtol(arg, 0, 10);
-    DBGPRINT(RT_DEBUG_OFF, ("CURRENT: Set ManualTxOP Traffic Low Bound = %d (Ratio)\n",
-		pAd->CommonCfg.ManualTxopLowBound));
-
-    return TRUE;
-}
-
 /*
     ==========================================================================
     Description:
@@ -457,7 +428,7 @@ INT	Set_Channel_Proc(
 #ifdef DOT11_N_SUPPORT
 			N_ChannelCheck(pAd);
 #endif /* DOT11_N_SUPPORT */
-
+#ifdef DFS_SUPPORT
 			if ((pAd->CommonCfg.Channel > 14 )
 				&& (pAd->CommonCfg.bIEEE80211H == TRUE))
 			{
@@ -475,6 +446,7 @@ INT	Set_Channel_Proc(
 				}
 			}
 			else
+#endif /* DFS_SUPPORT */
 			{
 				APStop(pAd);
 				APStartUp(pAd);
@@ -1129,7 +1101,8 @@ INT Set_ExtCountryCode_Proc(
 	}
 	else
 	{
-		NdisZeroMemory(pAd->CommonCfg.CountryCode, 3);
+		NdisZeroMemory(pAd->CommonCfg.CountryCode,
+				sizeof(pAd->CommonCfg.CountryCode));
 		pAd->CommonCfg.bCountryFlag = FALSE;
 	}	
 
@@ -1349,9 +1322,9 @@ INT Set_ChannelListShow_Proc(
 	NdisMoveMemory(CountryCode, pAd->CommonCfg.CountryCode, 2);
 	if (pAd->CommonCfg.DfsType == MAX_RD_REGION)
 		pAd->CommonCfg.DfsType = pChRegion->DfsType;
-	DBGPRINT(RT_DEBUG_ERROR, ("=========================================\n"));
-	DBGPRINT(RT_DEBUG_ERROR, ("CountryCode:%s\n", CountryCode));
-	DBGPRINT(RT_DEBUG_ERROR, ("DfsType:%s\n",
+	DBGPRINT(RT_DEBUG_OFF, ("=========================================\n"));
+	DBGPRINT(RT_DEBUG_OFF, ("CountryCode:%s\n", CountryCode));
+	DBGPRINT(RT_DEBUG_OFF, ("DfsType:%s\n",
 					(pAd->CommonCfg.DfsType == JAP) ? "JAP" :
 					((pAd->CommonCfg.DfsType == FCC) ? "FCC" : "CE" )));
 					
@@ -1360,7 +1333,7 @@ INT Set_ChannelListShow_Proc(
 		PCH_DESP pChDesp = (PCH_DESP) pAd->CommonCfg.pChDesp;
 		for (EntryIdx = 0; pChDesp[EntryIdx].FirstChannel != 0; EntryIdx++)
 		{
-			DBGPRINT(RT_DEBUG_ERROR, ("%u. {%3u, %2u, %2u, %s, %5s}.\n",
+			DBGPRINT(RT_DEBUG_OFF, ("%u. {%3u, %2u, %2u, %s, %5s}.\n",
 						EntryIdx,
 						pChDesp[EntryIdx].FirstChannel,
 						pChDesp[EntryIdx].NumOfCh,
@@ -1374,7 +1347,7 @@ INT Set_ChannelListShow_Proc(
 		DBGPRINT(RT_DEBUG_TRACE, ("Default channel list table:\n"));
 		for (EntryIdx = 0; pChRegion->pChDesp[EntryIdx].FirstChannel != 0; EntryIdx++)
 		{
-			DBGPRINT(RT_DEBUG_ERROR, ("%u. {%3u, %2u, %2u, %s, %5s}.\n",
+			DBGPRINT(RT_DEBUG_OFF, ("%u. {%3u, %2u, %2u, %s, %5s}.\n",
 						EntryIdx,
 						pChRegion->pChDesp[EntryIdx].FirstChannel,
 						pChRegion->pChDesp[EntryIdx].NumOfCh,
@@ -1383,7 +1356,7 @@ INT Set_ChannelListShow_Proc(
 						(pChRegion->pChDesp[EntryIdx].DfsReq == TRUE) ? "TRUE" : "FALSE"));
 		}	
 	}
-	DBGPRINT(RT_DEBUG_ERROR, ("=========================================\n"));
+	DBGPRINT(RT_DEBUG_OFF, ("=========================================\n"));
 	return TRUE;
 }
 
@@ -2207,7 +2180,7 @@ VOID RTMPSetPhyMode(RTMP_ADAPTER *pAd, ULONG phymode)
 		case (WMODE_B | WMODE_G | WMODE_GN):
 #endif /* DOT11_N_SUPPORT */
 #ifdef DOT11_VHT_AC
-		case  (WMODE_B | WMODE_G | WMODE_GN |WMODE_A | WMODE_AN | WMODE_AC):
+		case (WMODE_A | WMODE_B | WMODE_G | WMODE_GN | WMODE_AN | WMODE_AC):
 #endif /* DOT11_VHT_AC */
 			pAd->CommonCfg.SupRate[0]  = 0x82;	  /* 1 mbps, in units of 0.5 Mbps, basic rate*/
 			pAd->CommonCfg.SupRate[1]  = 0x84;	  /* 2 mbps, in units of 0.5 Mbps, basic rate*/
@@ -2672,8 +2645,8 @@ VOID	RTMPCommSiteSurveyData(
 		for (idx = 0; (idx < MAX_LEN_OF_SSID) && (idx < pBss->SsidLen); idx++)
 			sprintf(Ssid + 2 + (idx*2), "%02X", (UCHAR)pBss->Ssid[idx]);
 	}
-		sprintf(msg+strlen(msg),"%-33s", Ssid);
-
+		sprintf(msg+strlen(msg),"%-33s", Ssid);      
+		
 #ifdef AIRPLAY_SUPPORT
 	/* IsUniCode SSID */
     if (isUniCodeSsid == TRUE)
@@ -3111,7 +3084,7 @@ VOID RTMPIoctlGetSiteSurvey(
 	PSTRING		msg;
 	INT 		i=0;	 
 	INT			WaitCnt;
-	INT         max_len = LINE_LEN;		
+    INT         max_len = LINE_LEN;		
 	BSS_ENTRY *pBss;
 	UINT32 TotalLen, BufLen = IW_SCAN_MAX_DATA;
 #ifdef AIRPLAY_SUPPORT
@@ -3158,7 +3131,7 @@ VOID RTMPIoctlGetSiteSurvey(
 
 #else
 	if (wrq->u.data.length == 0)
-		BufLen = IW_SCAN_MAX_DATA;
+		BufLen = IW_SCAN_MAX_DATA;	
 	else
 		BufLen = wrq->u.data.length;
 #endif /* AIRPLAY_SUPPORT */
@@ -3173,7 +3146,7 @@ VOID RTMPIoctlGetSiteSurvey(
 
 	memset(msg, 0 , TotalLen);
 	sprintf(msg,"%s","\n");
-	
+
 #ifdef AIRPLAY_SUPPORT
 	sprintf(msg+strlen(msg),"%-4s%-33s%-4s%-20s%-23s%-9s%-7s%-7s%-3s\n",
 	    "Ch", "SSID", "UN", "BSSID", "Security", "Signal(%)", "W-Mode", " ExtCH"," NT");
@@ -3325,6 +3298,12 @@ copy_mac_table_entry(RT_802_11_MAC_ENTRY *pDst, MAC_TABLE_ENTRY *pEntry)
 	pDst->AvgRssi1 = pEntry->RssiSample.AvgRssi1;
 	pDst->AvgRssi2 = pEntry->RssiSample.AvgRssi2;
 
+#ifndef CONFIG_STA_SUPPORT
+	/* Fill TX/Rx Bytes per clients */
+	pDst->TxBytes = pEntry->TxBytes;
+	pDst->RxBytes = pEntry->RxBytes;
+#endif
+
 	/* the connected time per entry*/
 	pDst->ConnectedTime = pEntry->StaConnectTime;
 
@@ -3337,13 +3316,15 @@ VOID RTMPIoctlGetMacTableStaInfo(
 	IN PRTMP_ADAPTER pAd, 
 	IN RTMP_IOCTL_INPUT_STRUCT *wrq)
 {
-	INT i, MacTabWCID;
+	INT i;
 	UINT16 wrq_len = wrq->u.data.length;
-	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
 	RT_802_11_MAC_TABLE *pMacTab = NULL;
 	PRT_802_11_MAC_ENTRY pDst;
 	MAC_TABLE_ENTRY *pEntry;
-
+#if defined(APCLI_SUPPORT) || defined(WDS_SUPPORT)
+	INT MacTabWCID;
+	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
+#endif
 	wrq->u.data.length = 0;
 
 #ifdef APCLI_SUPPORT
@@ -3434,7 +3415,8 @@ VOID RTMPIoctlGetMacTableStaInfo(
 		DBGPRINT(RT_DEBUG_TRACE, ("%s: copy_to_user() fail\n", __FUNCTION__));
 	}
 
-	os_free_mem(NULL, pMacTab);
+	if (pMacTab != NULL)
+	    os_free_mem(NULL, pMacTab);
 }
 
 
@@ -3526,7 +3508,8 @@ VOID RTMPIoctlGetMacTable(
 
 LabelOK:
 #endif
-	os_free_mem(NULL, pMacTab);
+	if (pMacTab != NULL)
+	    os_free_mem(NULL, pMacTab);
 }
 
 #if defined(INF_AR9) || defined(BB_SOC)
@@ -4031,11 +4014,12 @@ INT	Set_HtMcs_Proc(RTMP_ADAPTER *pAd, PSTRING arg)
 			if (IS_ENTRY_CLIENT(pEntry) && (pEntry->apidx == pObj->ioctl_if)) {
 				if ((HtMcs == MCS_AUTO) &&  ss == 0) {
 					UCHAR TableSize = 0;
-					
+
+					pEntry->bAutoTxRateSwitch = TRUE;
+
 					MlmeSelectTxRateTable(pAd, pEntry, &pEntry->pTable, &TableSize, &pEntry->CurrTxRateIndex);
 					MlmeNewTxRate(pAd, pEntry);
 
-					pEntry->bAutoTxRateSwitch = TRUE;
 
 #ifdef NEW_RATE_ADAPT_SUPPORT
 					if (! ADAPT_RATE_TABLE(pEntry->pTable))
@@ -4222,7 +4206,7 @@ INT	Set_HtMpduDensity_Proc(
 	
 	Value = simple_strtol(arg, 0, 10);
 	
-	if (Value <=7)
+	if (Value <=7 && Value >= 0)
 		pAd->CommonCfg.BACapability.field.MpduDensity = Value;
 	else
 		pAd->CommonCfg.BACapability.field.MpduDensity = 4;
@@ -4255,7 +4239,7 @@ INT	Set_HtBaWinSize_Proc(
 	}
 	else
 	{
-        pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = 64;
+		pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = 64;
 		pAd->CommonCfg.BACapability.field.RxBAWinLimit = 64;
 	}
 	
@@ -4375,60 +4359,6 @@ INT	Set_HtProtect_Proc(
 	DBGPRINT(RT_DEBUG_TRACE, ("Set_HtProtect_Proc::(HtProtect=%d)\n",pAd->CommonCfg.bHTProtect));
 
 	return TRUE;
-}
-
-INT	Set_SendSMPSAction_Proc(
-	IN	PRTMP_ADAPTER	pAd, 
-	IN	PSTRING			arg)
-{
-    UCHAR mac[6], mode;
-	PSTRING token;
-	STRING sepValue[] = ":", DASH = '-';
-	INT i;
-    MAC_TABLE_ENTRY *pEntry;
-
-    /*DBGPRINT(RT_DEBUG_TRACE,("\n%s\n", arg));*/
-/*
-	The BARecTearDown inupt string format should be xx:xx:xx:xx:xx:xx-d, 
-		=>The six 2 digit hex-decimal number previous are the Mac address, 
-		=>The seventh decimal number is the mode value.
-*/
-    if(strlen(arg) < 19)  /*Mac address acceptable format 01:02:03:04:05:06 length 17 plus the "-" and mode value in decimal format.*/
-		return FALSE;
-
-   	token = strchr(arg, DASH);
-	if ((token != NULL) && (strlen(token)>1))
-	{
-		mode = simple_strtol((token+1), 0, 10);
-		if (mode > MMPS_DISABLE)
-			return FALSE;
-		
-		*token = '\0';
-		for (i = 0, token = rstrtok(arg, &sepValue[0]); token; token = rstrtok(NULL, &sepValue[0]), i++)
-		{
-			if((strlen(token) != 2) || (!isxdigit(*token)) || (!isxdigit(*(token+1))))
-				return FALSE;
-			AtoH(token, (&mac[i]), 1);
-		}
-		if(i != 6)
-			return FALSE;
-
-		DBGPRINT(RT_DEBUG_OFF, ("\n%02x:%02x:%02x:%02x:%02x:%02x-%02x", 
-					PRINT_MAC(mac), mode));
-
-		pEntry = MacTableLookup(pAd, mac);
-
-		if (pEntry) {
-		    DBGPRINT(RT_DEBUG_OFF, ("\nSendSMPSAction SMPS mode = %d\n", mode));
-		    SendSMPSAction(pAd, pEntry->wcid, mode);
-		}
-
-		return TRUE;
-	}
-
-	return FALSE;
-
-
 }
 
 INT	Set_HtMIMOPSmode_Proc(
@@ -6227,7 +6157,6 @@ INT Show_TxInfo_Proc(RTMP_ADAPTER *pAd, PSTRING arg)
 			printk("TX Retry(%7d), Tx Fail(%7d)\n", pEntry->StatTxRetryOkCount, pEntry->StatTxFailCount);
 		}
 	}
-
 	return 0;
 }
 #endif /* CONFIG_AP_SUPPORT */
@@ -6273,8 +6202,8 @@ INT Show_MacTable_Proc(RTMP_ADAPTER *pAd, PSTRING arg)
 		{
 			DataRate=0;
 			RtmpDrvRateGet(pAd, pEntry->HTPhyMode.field.MODE, pEntry->HTPhyMode.field.ShortGI,
-		                   pEntry->HTPhyMode.field.BW, pEntry->HTPhyMode.field.MCS,
-		                   newRateGetAntenna(pEntry->MaxHTPhyMode.field.MCS, pEntry->HTPhyMode.field.MODE),&DataRate);
+		                          pEntry->HTPhyMode.field.BW, pEntry->HTPhyMode.field.MCS,
+					  newRateGetAntenna(pEntry->MaxHTPhyMode.field.MCS, pEntry->HTPhyMode.field.MODE),&DataRate);
 			DataRate /= 500000;
 			DataRate /= 2;
 			
@@ -6417,9 +6346,9 @@ INT show_stainfo_proc(RTMP_ADAPTER *pAd, PSTRING arg)
 		   "RSSI2", "PhMd", "BW", "MCS", "SGI", "STBC", "Idle", "Rate");
 	
 	DataRate=0;
-    RtmpDrvRateGet(pAd, pEntry->HTPhyMode.field.MODE, pEntry->HTPhyMode.field.ShortGI,
+        RtmpDrvRateGet(pAd, pEntry->HTPhyMode.field.MODE, pEntry->HTPhyMode.field.ShortGI,
                       pEntry->HTPhyMode.field.BW, pEntry->HTPhyMode.field.MCS,
-                      newRateGetAntenna(pEntry->MaxHTPhyMode.field.MCS, pEntry->HTPhyMode.field.MODE), &DataRate);
+		      newRateGetAntenna(pEntry->MaxHTPhyMode.field.MCS, pEntry->HTPhyMode.field.MODE), &DataRate);
 	DataRate /= 500000;
 	DataRate /= 2;
 	
@@ -6473,7 +6402,7 @@ INT show_devinfo_proc(RTMP_ADAPTER *pAd, PSTRING arg)
 		DBGPRINT(RT_DEBUG_OFF, ("WirelessMode: %s(%d)\n", pstr, pAd->CommonCfg.PhyMode));
 		os_free_mem(pAd, pstr);
 	}
-	
+
 #ifdef APCLI_AUTO_BW_SUPPORT
 	pstr = wmode_2_str(pAd->CommonCfg.cfg_wmode);
         if (pstr) {
@@ -6560,6 +6489,8 @@ PSTRING wdev_type2str(int type)
 		default:
 			return wdev_type_str[5];
 	}
+
+	return 0;
 }
 
 
@@ -6685,7 +6616,7 @@ INT show_trinfo_proc(RTMP_ADAPTER *pAd, PSTRING arg)
 		UINT32 pbf_val = 0, pcnt[6] = {0};
 #endif /* RLT_MAC */
 		INT idx;
-
+		
 		RTMP_IRQ_LOCK(&pAd->irq_lock, irq_flags);
 		for (idx = 0; idx < NUM_OF_TX_RING; idx++)
 		{
@@ -6869,7 +6800,7 @@ INT	Show_ModuleTxpower_Proc(
  
  	ifIndex = pObj->ioctl_if;
  	
- 	DBGPRINT(RT_DEBUG_OFF, ("=============================================================\n"));
+ 	printk("=============================================================\n");
  	if((pAd->ApCfg.ApCliTab[ifIndex].CtrlCurrState == APCLI_CTRL_CONNECTED)
  		&& (pAd->ApCfg.ApCliTab[ifIndex].SsidLen != 0))
  	{
@@ -6881,20 +6812,20 @@ INT	Show_ModuleTxpower_Proc(
 				&& (pEntry->Sst == SST_ASSOC)
 				&& (pEntry->PortSecured == WPA_802_1X_PORT_SECURED))
  				{
-					DBGPRINT(RT_DEBUG_OFF, ("ApCli%d Connected AP : %02X:%02X:%02X:%02X:%02X:%02X   SSID:%s\n",
-							ifIndex, PRINT_MAC(pEntry->Addr), pAd->ApCfg.ApCliTab[ifIndex].Ssid));
+					printk("ApCli%d Connected AP : %02X:%02X:%02X:%02X:%02X:%02X   SSID:%s\n",
+							ifIndex, PRINT_MAC(pEntry->Addr), pAd->ApCfg.ApCliTab[ifIndex].Ssid);
 					bConnect=TRUE;
  				}
  		}
 
 		if (!bConnect)
-			DBGPRINT(RT_DEBUG_OFF, ("ApCli%d Connected AP : Disconnect\n",ifIndex));
+			printk("ApCli%d Connected AP : Disconnect\n",ifIndex);
  	}
  	else
  	{
- 		DBGPRINT(RT_DEBUG_OFF, ("ApCli%d Connected AP : Disconnect\n",ifIndex));
+ 		printk("ApCli%d Connected AP : Disconnect\n",ifIndex);
  	}
- 	DBGPRINT(RT_DEBUG_OFF, ("=============================================================\n"));
+ 	printk("=============================================================\n");
      	DBGPRINT(RT_DEBUG_TRACE, ("<==RTMPIoctlConnStatus\n"));
  	return TRUE;
 }
@@ -7021,18 +6952,6 @@ VOID  InitRateMultiplicationAndShiftFactor(
 }
 #endif
 
-void  getRate(HTTRANSMIT_SETTING HTSetting, UINT32* fLastTxRxRate)
-
-{
-	VOID *pAd = NULL;
-	RtmpDrvRateGet(pAd, HTSetting.field.MODE,HTSetting.field.ShortGI,
-		            HTSetting.field.BW,HTSetting.field.MCS,
-		            newRateGetAntenna(HTSetting.field.MCS, HTSetting.field.MODE), fLastTxRxRate);
-	*(fLastTxRxRate) /= 500000;
-	*(fLastTxRxRate) /= 2;
-	return;
-}
-
 
 #ifdef TXBF_SUPPORT
 
@@ -7047,12 +6966,12 @@ INT	Set_InvTxBfTag_Proc(
     IN  PSTRING         arg)
 {
 	int profileNum;
+	UINT  rValue;
+#ifndef MT76x2
 	UCHAR row[EXP_MAX_BYTES];
 	UCHAR r163Value = 0;
-	UINT  rValue;
 
 	/* Disable Profile Updates during access */
-#ifndef MT76x2
 	RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R163, &r163Value);
 	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R163, r163Value & ~0x88);
 
@@ -7267,24 +7186,20 @@ INT	Set_ITxBfLnaCal_Proc(
 	return pAd->chipOps.fITxBfLNACalibration(pAd, calFunction, 0, channel<=14);
 }
 
-
-
-
 #ifdef MT76x2
 INT	mt76x2_Set_ITxBfCal_Proc(
 	IN	PRTMP_ADAPTER	pAd,
     IN  PSTRING         arg)
 {
 	int calFunction = simple_strtol(arg, 0, 10);
-	int calParams[2], idx;
+	int calParams[2];
 	int ret;
-	UINT value32, r27Value = 0, r173Value = 0;
-	ITXBF_PHASE_PARAMS phaseParams;
-	UCHAR divPhase[2] = {0}, phaseValues[2] = {0};
-	UCHAR channel = pAd->CommonCfg.Channel;
-    UCHAR LoPhase;
-
 #ifdef RALINK_ATE
+	ITXBF_PHASE_PARAMS phaseParams;
+	UCHAR phaseValues[2] = {0};
+	int idx;
+	UCHAR channel = pAd->CommonCfg.Channel;
+
 	if (ATE_ON(pAd))
 		channel = pAd->ate.Channel;
 #endif /* RALINK_ATE */
@@ -7308,13 +7223,13 @@ INT	mt76x2_Set_ITxBfCal_Proc(
 	switch (calFunction)
 	{
 		case 0:  //Verification Flow 
+#ifdef RALINK_ATE
 
 	 		phaseValues[0] = calParams[0];
 			
 			DBGPRINT(RT_DEBUG_TRACE, ("ITxBfCal Result_case0 = [0x%02x]\n", phaseValues[0]));
-#ifdef RALINK_ATE
 			pAd->ate.calParams[0] = (UCHAR)phaseValues[0];
-            
+
 			/* Update EEPROM */
 			ITxBFGetEEPROM(pAd, &phaseParams, 0, 0, 0);
 
@@ -7342,7 +7257,6 @@ INT	mt76x2_Set_ITxBfCal_Proc(
 			/* Double check */
 			DBGPRINT((calFunction==0? RT_DEBUG_OFF: RT_DEBUG_WARN),
 					("ITxBfCal Result in ATE = [0x%02x]\n", pAd->ate.calParams[0]));
-#endif /* RALINK_ATE */
 
 			//mt_rf_write(pAd, RF_Path0,	   RFDIGI_TRX4, 0x28585); // Auto LNA gain
 			//mt_rf_write(pAd, RF_Path1,	   RFDIGI_TRX4, 0x28585); // Auto LNA gain
@@ -7358,7 +7272,7 @@ INT	mt76x2_Set_ITxBfCal_Proc(
 
 			/* Remove Divider phase */
             // restore back up divPhase calibrated result 
-            phaseValues[0] = calParams[0] - (pAd->divPhaseBackup[0]);                     
+            phaseValues[0] = calParams[0] - (pAd->divPhaseBackup[0]);
 
 			DBGPRINT(RT_DEBUG_OFF, (
 				    "%s : \n"
@@ -7368,12 +7282,10 @@ INT	mt76x2_Set_ITxBfCal_Proc(
 
 			/* Update EEPROM */
 			ITxBFGetEEPROM(pAd, &phaseParams, 0, 0, 0);
-
             idx = ate_txbf_get_chan_idx(pAd, channel, 1);
 
             if(idx >=0)               
                 phaseParams.E1aPhase[idx] = phaseValues[0];
-
 			ITxBFSetEEPROM(pAd, &phaseParams, 0, 0, 0);
 
             DBGPRINT(RT_DEBUG_TRACE, (
@@ -7384,6 +7296,7 @@ INT	mt76x2_Set_ITxBfCal_Proc(
 
 			DBGPRINT(RT_DEBUG_WARN, ("Set_ITxBfCal_Proc: Calibration Parameters updated\n"));
 
+#endif
 			break;
 		default:
 			break;
@@ -7408,8 +7321,9 @@ INT	Set_ETxBfEnCond_Proc(
 {
 	UCHAR i, enableETxBf;
 	MAC_TABLE_ENTRY		*pEntry;
+#ifndef MT76x2
 	UINT8	byteValue;
-
+#endif
 	enableETxBf = simple_strtol(arg, 0, 10);
 
 	if (enableETxBf > 1)
@@ -7501,9 +7415,8 @@ INT	Set_StaETxBfEnCond_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
-	UCHAR i, enableETxBf;
+	UCHAR enableETxBf;
 	MAC_TABLE_ENTRY		*pEntry;
-	UINT8	byteValue;
 
 	enableETxBf = simple_strtol(arg, 0, 10);
 
@@ -7566,9 +7479,6 @@ INT	Set_StaETxBfEnCond_Proc(
 
 	return TRUE;	
 }
-
-
-
 
 INT	Set_NoSndgCntThrd_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
@@ -7715,10 +7625,7 @@ INT	Set_ITxBfEn_Proc(
 	UINT32  i;
 	UCHAR   enableITxBF;
 	BOOLEAN bCalibrated;
-	UINT8   byteValue;
 	UINT    value32;
-	ULONG   irq_flags;
-
 
 	enableITxBF = simple_strtol(arg, 0, 10);
 
@@ -7986,12 +7893,8 @@ INT Set_TxBfProfileTagRead(
     IN PRTMP_ADAPTER pAd,
 	IN PSTRING arg)
 {
-	ULONG   value64;
-	UCHAR   profileIdx, subcarrierIdx;
-	UCHAR   Input[2];
-	CHAR	*value, value8;
+	UCHAR   profileIdx;
 	UINT    value32, readValue32[5];
-	INT 	i;
 	UCHAR   validFlg;
 
 	profileIdx = simple_strtol(arg, 0, 10);
@@ -8096,11 +7999,8 @@ INT Set_TxBfProfileTagWrite(
     IN PRTMP_ADAPTER pAd,
 	IN PSTRING arg)
 {
-	UCHAR   profileIdx, subcarrierIdx;
-	UCHAR   Input[2];
-	CHAR	*value;
+	UCHAR   profileIdx;
 	UINT    value32, readValue32[5];
-	INT 	i;
 
 	profileIdx = simple_strtol(arg, 0, 10);
 
@@ -8941,6 +8841,7 @@ INT Set_PacketSourceDeleteEntry(
 #endif /* CONFIG_WIFI_PKT_FWD */
 
 #ifdef DOT11_N_SUPPORT
+#ifdef DBG
 void assoc_ht_info_debugshow(
 	IN PRTMP_ADAPTER pAd,
 	IN MAC_TABLE_ENTRY *pEntry,
@@ -9014,7 +8915,7 @@ void assoc_ht_info_debugshow(
 #endif /* DOT11N_DRAFT3 */
 	}
 }
-
+#endif
 
 INT	Set_BurstMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
@@ -9036,6 +8937,7 @@ INT	Set_BurstMode_Proc(
 
 
 #ifdef DOT11_VHT_AC
+#ifdef DBG
 VOID assoc_vht_info_debugshow(
 	IN RTMP_ADAPTER *pAd,
 	IN MAC_TABLE_ENTRY *pEntry,
@@ -9096,6 +8998,7 @@ VOID assoc_vht_info_debugshow(
 	DBGPRINT(RT_DEBUG_TRACE, ("\n"));
 
 }
+#endif
 #endif /* DOT11_VHT_AC */
 
 
@@ -9106,7 +9009,7 @@ INT Set_RateAdaptInterval(
 	UINT32 ra_time, ra_qtime;
 	PSTRING token;
 	char sep = ':';
-	ULONG irqFlags;
+	ULONG irqFlags = 0;
 
 /*
 	The ra_interval inupt string format should be d:d, in units of ms. 
@@ -10160,7 +10063,7 @@ static INT set_mt_rf_bit(RTMP_ADAPTER *ad, PSTRING arg)
 
 INT set_rf(RTMP_ADAPTER *pAd, PSTRING arg)
 {
-	INT ret;
+	INT ret = 0;
 
 #ifdef RLT_RF
 	if (pAd->chipCap.rf_type == RF_RLT)
@@ -10183,7 +10086,7 @@ INT set_rf(RTMP_ADAPTER *pAd, PSTRING arg)
 
 INT set_rf_bit(RTMP_ADAPTER *pAd, PSTRING arg)
 {
-	INT ret;
+	INT ret = 0;
 
 #ifdef MT_RF
 	if (pAd->chipCap.rf_type == RF_MT)

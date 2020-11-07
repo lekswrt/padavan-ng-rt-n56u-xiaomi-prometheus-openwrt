@@ -51,7 +51,7 @@ TDLS_REG_CLASS tdls_reg_class[] =
 	{  1,  0, {36, 40, 44, 48, 0}},
 	{  2,  0, {52, 56, 60, 64, 0}},
 	{  3,  0, {149, 153, 157, 161, 0}},
-	{  4,  0, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 0}},
+	{  4,  0, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 0}},
 	{  5,  0, {165, 0}},
 	{ 12, 0, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0}},
 	{ 22, 1, {36, 44, 0}},
@@ -4516,7 +4516,7 @@ TDLS_SendOutActionFrame(
 	UCHAR NumberOfFrag;
 	UCHAR RTSRequired;
 	UCHAR QueIdx, UserPriority;
-	unsigned int IrqFlags;
+	ULONG IrqFlags = 0;
 	UCHAR Rate;
 	TX_BLK TxBlk;
 	TX_BLK *pTxBlk;

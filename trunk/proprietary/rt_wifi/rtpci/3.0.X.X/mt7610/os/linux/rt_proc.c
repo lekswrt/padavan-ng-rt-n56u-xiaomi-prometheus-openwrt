@@ -41,7 +41,7 @@ int wl_proc_exit(void);
 #endif /* CONFIG_MT7610_AP */
 
 #ifndef PROCREG_DIR
-#define PROCREG_DIR             "mt761x"
+#define PROCREG_DIR             "mt7610"
 #endif /* PROCREG_DIR */
 
 #ifdef CONFIG_PROC_FS
@@ -69,7 +69,7 @@ ssize_t video_Update_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -96,7 +96,7 @@ ssize_t video_Enable_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -123,7 +123,7 @@ ssize_t video_ClassifierEnable_set(struct file *file, const char __user * buffer
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -150,7 +150,7 @@ ssize_t video_HighTxMode_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -177,7 +177,7 @@ ssize_t video_TxPwr_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -204,7 +204,7 @@ ssize_t video_VideoMCSEnable_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -231,7 +231,7 @@ ssize_t video_VideoMCS_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -258,7 +258,7 @@ ssize_t video_TxBASize_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -285,7 +285,7 @@ ssize_t video_TxLifeTimeMode_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -312,7 +312,7 @@ ssize_t video_TxLifeTime_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;
@@ -339,7 +339,7 @@ ssize_t video_TxRetryLimit_set(struct file *file, const char __user * buffer,
 	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
-		unsigned long val;
+		unsigned long val = 0;
 
 		if (copy_from_user(buf, buffer, count))
 			return -EFAULT;

@@ -443,9 +443,6 @@ int __init rt_pci_init_module(void)
 {
 	DBGPRINT(RT_DEBUG_ERROR, ("register %s\n", RTMP_DRV_NAME));
 
-	/*add for initial hook callback function linking list*/
-	RTMP_OS_TXRXHOOK_INIT();
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
 	return pci_register_driver(&rt_pci_driver);
 #else

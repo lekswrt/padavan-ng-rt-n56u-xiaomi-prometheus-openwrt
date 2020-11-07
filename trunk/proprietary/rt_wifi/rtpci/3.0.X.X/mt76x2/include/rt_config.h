@@ -165,14 +165,6 @@
 #endif /* RT3XXX_ANTENNA_DIVERSITY_SUPPORT */
 #endif /* RTMP_RBUS_SUPPORT */
 
-#ifdef WAPI_SUPPORT
-#include "wapi.h"
-#endif /* WAPI_SUPPORT */
-
-#ifdef DOT11K_RRM_SUPPORT
-#include "rrm.h"
-#endif /* DOT11K_RRM_SUPPORT */
-
 #ifdef DOT11Z_TDLS_SUPPORT
 #include "tdls.h"
 #include "tdls_uapsd.h"

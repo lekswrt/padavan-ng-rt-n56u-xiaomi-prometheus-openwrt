@@ -26,7 +26,7 @@ INT Show_BndStrg_Info(
 {
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->ShowTableInfo(table);
 
 	return TRUE;	
@@ -39,7 +39,7 @@ INT Show_BndStrg_List(
 {
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 	
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->ShowTableEntries(P_BND_STRG_TABLE);
 
 	return TRUE;	
@@ -51,32 +51,46 @@ INT Set_BndStrg_Enable(
 	PSTRING			arg)
 {
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
-	BOOLEAN enable = (BOOLEAN) simple_strtol(arg, 0, 10);
+	UCHAR enable = (UCHAR) simple_strtol(arg, 0, 10);
 
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->SetEnable(table, enable);
-	else if (enable) {
-		pAd->ApCfg.BandSteering = TRUE;
-		BndStrg_Init(pAd);
-	}
 
 	return TRUE;
 }
 
 
-INT Set_BndStrg_RssiCheck(
+INT Set_BndStrg_RssiDiff(
 	PRTMP_ADAPTER	pAd,
 	PSTRING			arg)
 {
-	CHAR RssiCheck = (CHAR) simple_strtol(arg, 0, 10);
+	CHAR RssiDiff = (CHAR) simple_strtol(arg, 0, 10);
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 
-	if (table->Ops)
-		table->Ops->SetRssiCheck(table, RssiCheck);
+	if (table && table->Ops)
+		table->Ops->SetRssiDiff(table, RssiDiff);
 
-	table->RssiCheck = RssiCheck;
+	table->RssiDiff = RssiDiff;
 	DBGPRINT(RT_DEBUG_OFF, 
-			("%s(): RssiCheck = %u\n", __FUNCTION__, table->RssiCheck));
+			("%s(): RssiCheck = %u\n", __FUNCTION__, table->RssiDiff));
+
+	return TRUE;
+}
+
+
+INT Set_BndStrg_RssiLow(
+	PRTMP_ADAPTER	pAd,
+	PSTRING			arg)
+{
+	CHAR RssiLow = (CHAR) simple_strtol(arg, 0, 10);
+	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
+
+	if (table && table->Ops)
+		table->Ops->SetRssiLow(table, RssiLow);
+
+	table->RssiLow = RssiLow;
+	DBGPRINT(RT_DEBUG_OFF, 
+			("%s(): RssiLow = %d\n", __FUNCTION__, table->RssiLow));
 
 	return TRUE;
 }
@@ -89,7 +103,7 @@ INT Set_BndStrg_Age(
 	UINT32 AgeTime = (UINT32) simple_strtol(arg, 0, 10);
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->SetAgeTime(table, AgeTime);
 
 	return TRUE;
@@ -103,7 +117,7 @@ INT Set_BndStrg_HoldTime(
 	UINT32 HoldTime = (UINT32) simple_strtol(arg, 0, 10);
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->SetHoldTime(table, HoldTime);
 
 	return TRUE;
@@ -117,12 +131,39 @@ INT Set_BndStrg_CheckTime5G(
 	UINT32 CheckTime = (UINT32) simple_strtol(arg, 0, 10);
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->SetCheckTime(table, CheckTime);
 
 	return TRUE;
 }
 
+
+INT Set_BndStrg_FrmChkFlag(
+	PRTMP_ADAPTER	pAd,
+	PSTRING			arg)
+{
+	UINT32 FrmChkFlag = (UINT32) simple_strtol(arg, 0, 16);
+	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
+
+	if (table && table->Ops)
+		table->Ops->SetFrmChkFlag(table, FrmChkFlag);
+
+	return TRUE;
+}
+
+
+INT Set_BndStrg_CndChkFlag(
+	PRTMP_ADAPTER	pAd,
+	PSTRING			arg)
+{
+	UINT32 CndChkFlag = (UINT32) simple_strtol(arg, 0, 16);
+	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
+
+	if (table && table->Ops)
+		table->Ops->SetCndChkFlag(table, CndChkFlag);
+
+	return TRUE;
+}
 
 #ifdef BND_STRG_DBG
 INT Set_BndStrg_MonitorAddr(
@@ -146,7 +187,7 @@ INT Set_BndStrg_MonitorAddr(
 		AtoH(value, (UCHAR *)&MonitorAddr[i++], 1);
 	}
 
-	if (table->Ops)
+	if (table && table->Ops)
 		table->Ops->SetMntAddr(table, MonitorAddr);
 
 	return TRUE;
@@ -191,11 +232,15 @@ INT BndStrg_TableInit(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table)
 	BndStrg_SetInfFlags(pAd, table, TRUE);
 
 	table->Ops = &D_BndStrgOps;
-	table->RssiCheck = BND_STRG_RSSI_CHECK;
+	table->DaemonPid = 0xffffffff;
+	table->RssiDiff = BND_STRG_RSSI_DIFF;
+	table->RssiLow = BND_STRG_RSSI_LOW;
 	table->AgeTime = BND_STRG_AGE_TIME;
 	table->HoldTime = BND_STRG_HOLD_TIME;
 	table->CheckTime_5G = BND_STRG_CHECK_TIME_5G;
 	table->AutoOnOffThrd = BND_STRG_AUTO_ONOFF_THRD;
+	table->AlgCtrl.ConditionCheck = fBND_STRG_CND_5G_RSSI;
+	table->AlgCtrl.FrameCheck =  fBND_STRG_FRM_CHK_PRB_REQ | fBND_STRG_FRM_CHK_ASS_REQ | fBND_STRG_FRM_CHK_ATH_REQ;
 	table->priv = (VOID *) pAd;
 	table->bInitialized = TRUE;
 
@@ -246,7 +291,7 @@ INT BndStrg_InsertEntry(
 	PBND_STRG_CLI_ENTRY *entry_out)
 {
 	INT i;
-	UCHAR HashIdx;
+	ULONG HashIdx;
 	PBND_STRG_CLI_ENTRY entry = NULL, this_entry = NULL;
 	INT ret_val = BND_STRG_SUCCESS;
 
@@ -261,7 +306,7 @@ INT BndStrg_InsertEntry(
 		entry = &table->Entry[i];
 
 		/* pick up the first available vacancy*/
-		if (entry->bValid == FALSE)	{
+		if (!entry->bValid) {
 			NdisZeroMemory(entry, sizeof(BND_STRG_CLI_ENTRY));
 			/* Fill Entry */
 			RTMP_GetCurrentSystemTick(&entry->jiffies);
@@ -269,11 +314,12 @@ INT BndStrg_InsertEntry(
 			entry->bValid = TRUE;
 			break;
 		}
+		entry = NULL;
 	}
 
 	if (entry) {
 		/* add this MAC entry into HASH table */
-		HashIdx = MAC_ADDR_HASH_INDEX(pAddr);
+		HashIdx = BND_MAC_ADDR_HASH_INDEX(pAddr);
 		if (table->Hash[HashIdx] == NULL) {
 			table->Hash[HashIdx] = entry;
 		} else {
@@ -294,13 +340,13 @@ INT BndStrg_InsertEntry(
 
 INT BndStrg_DeleteEntry(PBND_STRG_CLI_TABLE table, PUCHAR pAddr, UINT32 Index)
 {
-	USHORT HashIdx;
+	ULONG HashIdx;
 	PBND_STRG_CLI_ENTRY entry, pre_entry, this_entry;
 	INT ret_val = BND_STRG_SUCCESS;
 
 
 	NdisAcquireSpinLock(&table->Lock);
-	HashIdx = MAC_ADDR_HASH_INDEX(pAddr);
+	HashIdx = BND_MAC_ADDR_HASH_INDEX(pAddr);
 	if (Index >= BND_STRG_MAX_TABLE_SIZE)
 	{
 		entry = table->Hash[HashIdx];
@@ -315,7 +361,7 @@ INT BndStrg_DeleteEntry(PBND_STRG_CLI_TABLE table, PUCHAR pAddr, UINT32 Index)
 
 		if (entry == NULL)
 		{
-			BND_STRG_DBGPRINT(RT_DEBUG_WARN,
+			BND_STRG_DBGPRINT(RT_DEBUG_LOUD,
 				("%s(): Index=%u, %02x:%02x:%02x:%02x:%02x:%02x, "
 				"Entry not found.\n",
 				__FUNCTION__, Index, PRINT_MAC(pAddr)));
@@ -356,6 +402,8 @@ INT BndStrg_DeleteEntry(PBND_STRG_CLI_TABLE table, PUCHAR pAddr, UINT32 Index)
 
 			NdisZeroMemory(entry->Addr, MAC_ADDR_LEN);
 			entry->pNext = NULL;
+			entry->elapsed_time = 0;
+			entry->jiffies = 0;
 			entry->bValid = FALSE;
 			table->Size--;
 		}
@@ -371,7 +419,7 @@ PBND_STRG_CLI_ENTRY BndStrg_TableLookup(PBND_STRG_CLI_TABLE table, PUCHAR pAddr)
 	ULONG HashIdx;
 	BND_STRG_CLI_ENTRY *entry = NULL;
 	
-	HashIdx = MAC_ADDR_HASH_INDEX(pAddr);
+	HashIdx = BND_MAC_ADDR_HASH_INDEX(pAddr);
 	entry = table->Hash[HashIdx];
 
 	while (entry && entry->bValid)
@@ -385,31 +433,32 @@ PBND_STRG_CLI_ENTRY BndStrg_TableLookup(PBND_STRG_CLI_TABLE table, PUCHAR pAddr)
 	return entry;
 }
 
-INT BndStrg_CheckConnectionReq(
+BOOLEAN BndStrg_CheckConnectionReq(
 		PRTMP_ADAPTER	pAd,
 		PUCHAR pSrcAddr,
 		UINT8 FrameType,
 		PCHAR Rssi,
-		BOOLEAN *bAuthCheck)
+		BOOLEAN bAllowStaConnectInHt)
 {
+	BOOLEAN ret = TRUE;
+
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 
-	if (table->Ops && (table->bEnabled == TRUE))
+	if (table && table->Ops && table->bEnabled == TRUE)
 	{
-		table->Ops->CheckConnectionReq(
+		ret = table->Ops->CheckConnectionReq(
 										pAd,
 										pSrcAddr,
 										FrameType,
 										Rssi,
-										bAuthCheck);
+										bAllowStaConnectInHt);
+		if (table->Size >= BND_STRG_MAX_TABLE_SIZE) {
+		    printk("Band steering clients table full, allow to connect for new req without steering.\n");
+		    ret = TRUE;
+		}
 	}
-	else
-	{
-		if (bAuthCheck)
-			*bAuthCheck = TRUE;
-	}
-	
-	return TRUE;	
+
+	return ret;
 }
 
 
@@ -445,6 +494,7 @@ INT BndStrg_Enable(PBND_STRG_CLI_TABLE table, BOOLEAN enable)
 		pAd = (PRTMP_ADAPTER) table->priv;
 		msg.Action = BNDSTRG_ONOFF;
 		msg.OnOff = table->bEnabled;
+		msg.Band = table->Band;
 		RtmpOSWrielessEventSend(
 			pAd->net_dev,
 			RT_WLAN_EVENT_CUSTOM,
@@ -470,6 +520,10 @@ INT BndStrg_SetInfFlags(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, BOOLEAN bI
 		(table->b5GInfReady ^ bInfReady))
 	{
 		table->b5GInfReady = bInfReady;
+		if (bInfReady)
+			table->Band |= BAND_5G;
+		else
+			table->Band &= ~BAND_5G;
 
 		msg.Action = INF_STATUS_RSP_5G;
 		msg.b5GInfReady = table->b5GInfReady;
@@ -483,12 +537,16 @@ INT BndStrg_SetInfFlags(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, BOOLEAN bI
 		BND_STRG_DBGPRINT(RT_DEBUG_OFF,
 					(BLUE("%s(): BSS (%02x:%02x:%02x:%02x:%02x:%02x)")
 					 BLUE(" set 5G Inf %s.\n")
-					 , __FUNCTION__, PRINT_MAC(pAd->ApCfg.MBSSID[0].Bssid),
+					 , __FUNCTION__, PRINT_MAC(pAd->CommonCfg.Bssid),
 					 bInfReady ? "ready" : "not ready"));
 	}
 	else if (table->b2GInfReady ^ bInfReady)
 	{
 		table->b2GInfReady = bInfReady;
+		if (bInfReady)
+			table->Band |= BAND_24G;
+		else
+			table->Band &= ~BAND_24G;
 		msg.Action = INF_STATUS_RSP_2G;
 		msg.b2GInfReady = table->b2GInfReady;
 		RtmpOSWrielessEventSend(
@@ -501,11 +559,52 @@ INT BndStrg_SetInfFlags(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, BOOLEAN bI
 		BND_STRG_DBGPRINT(RT_DEBUG_OFF,
 					(BLUE("%s(): BSS (%02x:%02x:%02x:%02x:%02x:%02x)")
 					 BLUE(" set 2G Inf %s.\n")
-					 , __FUNCTION__, PRINT_MAC(pAd->ApCfg.MBSSID[0].Bssid),
+					 , __FUNCTION__, PRINT_MAC(pAd->CommonCfg.Bssid),
 					 bInfReady ? "ready" : "not ready"));
 	}
 	
 	return ret_val;
+}
+
+
+BOOLEAN BndStrg_IsClientStay(
+			PRTMP_ADAPTER pAd,
+			PMAC_TABLE_ENTRY pEntry)
+{
+	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
+	CHAR Rssi = RTMPAvgRssi(pAd, &pEntry->RssiSample);
+	
+	/* kick client only if rssi < RssiLow - delta safe value (default -88-8=-96dB), prevent unneded kick 5GHz clients */
+	if (table->AlgCtrl.ConditionCheck & fBND_STRG_CND_5G_RSSI &&
+		table->Band == BAND_5G &&
+		(Rssi < (table->RssiLow - 4)))
+	{
+		BNDSTRG_MSG msg;
+
+		msg.Action = CLI_DEL;
+		COPY_MAC_ADDR(msg.Addr, pEntry->Addr);
+		 /* we don't know the index, daemon should look it up */
+		msg.TalbeIndex = BND_STRG_MAX_TABLE_SIZE;
+
+		BND_STRG_DBGPRINT(RT_DEBUG_TRACE,
+				(YLW("%s(): Kick client (%02x:%02x:%02x:%02x:%02x:%02x)")
+				 YLW(" due to low Rssi(%d).\n")
+				 , __FUNCTION__, PRINT_MAC(pEntry->Addr), Rssi));
+
+		RtmpOSWrielessEventSend(
+			pAd->net_dev,
+			RT_WLAN_EVENT_CUSTOM,
+			OID_BNDSTRG_MSG,
+			NULL,
+			(UCHAR *) &msg,
+			sizeof(BNDSTRG_MSG));
+
+		table->Ops->TableEntryDel(table, pEntry->Addr, BND_STRG_MAX_TABLE_SIZE);
+
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 
@@ -529,7 +628,7 @@ INT BndStrg_MsgHandle(PRTMP_ADAPTER pAd, RTMP_IOCTL_INPUT_STRUCT *wrq)
 	return BND_STRG_SUCCESS;
 }
 
-static INT D_BndStrgSendMsg(
+INT D_BndStrgSendMsg(
 			PRTMP_ADAPTER pAd,
 			BNDSTRG_MSG *msg)
 {
@@ -558,67 +657,101 @@ static VOID D_ShowTableEntries(PBND_STRG_CLI_TABLE table)
 	BNDSTRG_MSG msg;
 	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER) table->priv;
 
-	if (table->Band == BAND_24G)
-	{
 		INT i;
-
-		BND_STRG_DBGPRINT(RT_DEBUG_OFF,
-								("\t2G Accessible Clients:\n"));
+		printk("\t%s Accessible Clients:\n", (table->Band == BAND_24G) ? "2.4G" : "5G");
 
 		for (i = 0; i < BND_STRG_MAX_TABLE_SIZE; i++)
 		{
 			if (table->Entry[i].bValid)
 			{
-				BND_STRG_DBGPRINT(RT_DEBUG_OFF,
-								("\t%d: %02x:%02x:%02x:%02x:%02x:%02x\n",
-								 i, PRINT_MAC(table->Entry[i].Addr)));
+				printk("\t%d: %02x:%02x:%02x:%02x:%02x:%02x\n", i, PRINT_MAC(table->Entry[i].Addr));
 			}
 		}
-	}
 
 	msg.Action = ENTRY_LIST;
 	D_BndStrgSendMsg(pAd, &msg);
 }
 
+UCHAR ANDROID1_RANDOM_OUI[]  = {0xda, 0xa1, 0x19};
+UCHAR ANDROID2_RANDOM_OUI[]  = {0x92, 0x68, 0xc3};
+UCHAR SNR_AP_OUI[]  = {0xf8, 0xf0, 0x82};
 
-static INT D_CheckConnectionReq(
+static BOOLEAN D_CheckConnectionReq(
 			PRTMP_ADAPTER pAd,
 			PUCHAR pSrcAddr,
 			UINT8 FrameType,
 			PCHAR Rssi,
-			BOOLEAN *bAuthCheck)
+			BOOLEAN bAllowStaConnectInHt)
 {
 	PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 	BNDSTRG_MSG msg;
+	UINT32 frame_type_to_frame_check_flags[] = { \
+								fBND_STRG_FRM_CHK_PRB_REQ,
+								0,
+								fBND_STRG_FRM_CHK_ASS_REQ,
+								fBND_STRG_FRM_CHK_ATH_REQ};
+	UINT32 frame_check_flags = 0;
+	CHAR i, rssi_max;
+
+	/* check mac is random probe req need skip bnd_str logic for this req */
+	if (NdisEqualMemory(pSrcAddr, ANDROID1_RANDOM_OUI, 3) || NdisEqualMemory(pSrcAddr, ANDROID2_RANDOM_OUI, 3)) {
+	    BND_STRG_DBGPRINT(RT_DEBUG_TRACE, ("This (%02x:%02x:%02x:%02x:%02x:%02x) ANDROID probe req from random generated mac, skip this\n", PRINT_MAC(pSrcAddr)));
+	    return TRUE;
+	}
+
+	/* check mac is probe req from RMM scan of others SNR APs need skip bnd_str logic for this req */
+	if (NdisEqualMemory(pSrcAddr, SNR_AP_OUI, 3)) {
+	    BND_STRG_DBGPRINT(RT_DEBUG_TRACE, ("This (%02x:%02x:%02x:%02x:%02x:%02x) probe req from RMM scans other SNR AP`s mac, skip this\n", PRINT_MAC(pSrcAddr)));
+	    return TRUE;
+	}
 
 	/* Send to daemon */
-	NdisCopyMemory(msg.Rssi, Rssi, 3);
+	rssi_max = pAd->CommonCfg.RxStream;
+	memset(msg.Rssi,0x80,sizeof(msg.Rssi));
+	for ( i = 0; i < rssi_max; i++)
+	{
+		msg.Rssi[i] = Rssi[i];
+	}
 	msg.Action= CONNECTION_REQ;
+	if (WMODE_CAP_5G(pAd->CommonCfg.PhyMode))
+		table->Band = BAND_5G;
+	else
+		table->Band = BAND_24G;
 	msg.Band = table->Band;
 	msg.FrameType = FrameType;
-	msg.bAuthCheck = bAuthCheck ? 1:0;
+	msg.bAllowStaConnectInHt = bAllowStaConnectInHt;
 	COPY_MAC_ADDR(msg.Addr, pSrcAddr);
 	D_BndStrgSendMsg(pAd, &msg);
 
-	if (bAuthCheck)
+	if (FrameType < (sizeof(frame_type_to_frame_check_flags)/sizeof(UINT32)))
+		frame_check_flags = frame_type_to_frame_check_flags[FrameType];
+	else
+		{/* invalid frame type */}
+
+	if (table->bEnabled == TRUE &&
+		frame_check_flags & table->AlgCtrl.FrameCheck)
 	{
-		PBND_STRG_CLI_TABLE table = P_BND_STRG_TABLE;
 		PBND_STRG_CLI_ENTRY entry = NULL;
+		MAC_TABLE_ENTRY *pEntry = MacTableLookup(pAd, pSrcAddr);
 
 		if (table->Ops)
 			entry = table->Ops->TableLookup(table, pSrcAddr);
 
-		if (entry || table->Band == BAND_5G)
-			*bAuthCheck = TRUE;
-#ifdef BND_STRG_QA
+		/* allways allow if entry found, if is 5g and client stable connect and work 10 and more seconds, avoid not successed migration try=>back reject on roam */
+		if (entry || table->Band == BAND_5G || (pEntry && pEntry->StaConnectTime > 10 && pEntry->NoDataIdleCount < 10))
+			return TRUE;
 		else
 		{
-			*bAuthCheck = FALSE;
+#ifdef BND_STRG_QA
 			BND_STRG_PRINTQAMSG(table, pSrcAddr,
-			(RED("check 2.4G connection failed. client (%02x:%02x:%02x:%02x:%02x:%02x)"
-			" is not allowed to connect 2.4G.\n"), PRINT_MAC(pSrcAddr)));
-		}			
+			(RED("%s: check %s request failed. client's (%02x:%02x:%02x:%02x:%02x:%02x)"
+			" request is ignored. \n"), (table->Band == BAND_24G ? "2.4G" : "5G"),
+			FrameType == 0 ? ("probe") : (FrameType == 2 ? ("assoc") : (FrameType == 3 ? "auth" : "unknow")),
+			PRINT_MAC(pSrcAddr)));
 #endif
+			return FALSE;
+		}			
+
 	}
 	
 	return TRUE;
@@ -639,10 +772,12 @@ static VOID D_InfStatusRsp(PBND_STRG_CLI_TABLE table, BNDSTRG_MSG *msg)
 		// TODO: Use Avg False CCA
 		if (pAd->RalinkCounters.OneSecFalseCCACnt > table->AutoOnOffThrd &&
 			table->bEnabled == FALSE) {
+			printk("bandsteering: enable (FalseCCA high)");
 			table->Ops->SetEnable(table, 1);
 			return;
 		} else if (pAd->RalinkCounters.OneSecFalseCCACnt < table->AutoOnOffThrd &&
 			table->bEnabled == TRUE){
+			printk("bandsteering: auto disable (FalseCCA low)");
 			table->Ops->SetEnable(table, 0);
 			return;
 		}
@@ -671,7 +806,7 @@ static VOID D_InfStatusRsp(PBND_STRG_CLI_TABLE table, BNDSTRG_MSG *msg)
 /* For IOCTL */
 static INT D_SetEnable(
 			PBND_STRG_CLI_TABLE table,
-			BOOLEAN enable)
+			UCHAR enable)
 {
 	INT ret_val = BND_STRG_SUCCESS;
 	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER) table->priv;
@@ -679,7 +814,7 @@ static INT D_SetEnable(
 	DBGPRINT(RT_DEBUG_OFF, 
 			("%s(): enable = %u\n", __FUNCTION__,  enable));
 
-	if (!(pAd->ApCfg.BandSteering ^ enable))
+	if (!(table->bEnabled ^ enable))
 	{
 		/* Already enabled/disabled */
 		BND_STRG_DBGPRINT(RT_DEBUG_OFF, /* TRACE */
@@ -688,7 +823,7 @@ static INT D_SetEnable(
 		return BND_STRG_SUCCESS;
 	}
 
-	pAd->ApCfg.BandSteering = (enable) ? TRUE : FALSE;
+	pAd->ApCfg.BandSteering = enable;
 
 	if (enable)
 		ret_val = BndStrg_Init(pAd);
@@ -705,19 +840,38 @@ static INT D_SetEnable(
 }
 
 
-static INT D_SetRssiCheck(
+static INT D_SetRssiDiff(
 			PBND_STRG_CLI_TABLE table,
-			CHAR RssiCheck)
+			CHAR RssiDiff)
 {
 	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER) table->priv;
 	BNDSTRG_MSG msg;
 
-	table->RssiCheck = RssiCheck;
+	table->RssiDiff = RssiDiff;
 	DBGPRINT(RT_DEBUG_OFF, 
-			("%s(): RssiCheck = %u\n", __FUNCTION__, table->RssiCheck));
+			("%s(): RssiCheck = %u\n", __FUNCTION__, table->RssiDiff));
 
-	msg.Action = SET_RSSI_CHECK;
-	msg.RssiCheck = RssiCheck;
+	msg.Action = SET_RSSI_DIFF;
+	msg.RssiDiff = RssiDiff;
+	D_BndStrgSendMsg(pAd, &msg);
+
+	return TRUE;
+}
+
+
+static INT D_SetRssiLow(
+			PBND_STRG_CLI_TABLE table,
+			CHAR RssiLow)
+{
+	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER) table->priv;
+	BNDSTRG_MSG msg;
+
+	table->RssiLow = RssiLow;
+	DBGPRINT(RT_DEBUG_OFF, 
+			("%s(): RssiLow = %d\n", __FUNCTION__, table->RssiLow));
+
+	msg.Action = SET_RSSI_LOW;
+	msg.RssiLow = RssiLow;
 	D_BndStrgSendMsg(pAd, &msg);
 
 	return TRUE;
@@ -781,6 +935,38 @@ static INT D_SetCheckTime(
 }
 
 
+static INT D_SetFrmChkFlag(
+			PBND_STRG_CLI_TABLE table,
+			UINT32	FrmChkFlag)
+{
+	table->AlgCtrl.FrameCheck = FrmChkFlag;
+
+	DBGPRINT(RT_DEBUG_OFF,
+			("%s(): FrameCheck = 0x%x\n", __FUNCTION__, table->AlgCtrl.FrameCheck));
+
+	return TRUE;
+}
+
+
+static INT D_SetCndChkFlag(
+			PBND_STRG_CLI_TABLE table,
+			UINT32	CndChkFlag)
+{
+	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER) table->priv;
+	BNDSTRG_MSG msg;
+
+	table->AlgCtrl.ConditionCheck = CndChkFlag;
+
+	DBGPRINT(RT_DEBUG_OFF,
+			("%s(): CndChkFlag = 0x%x\n", __FUNCTION__, table->AlgCtrl.ConditionCheck));
+
+	msg.Action = SET_CHEK_CONDITIONS;
+	msg.ConditionCheck = table->AlgCtrl.ConditionCheck;
+	D_BndStrgSendMsg(pAd, &msg);
+
+	return TRUE;
+}
+
 #ifdef BND_STRG_DBG
 static INT D_SetMntAddr(
 			PBND_STRG_CLI_TABLE table,
@@ -814,15 +1000,44 @@ static VOID D_MsgHandle(
 	if (!table)
 		return;
 
+	if ((table->DaemonPid != 0xffffffff) && (table->DaemonPid != current->pid))
+		return;
 	switch (msg->Action)
 	{
 		case CLI_ADD:
 			if (!table->Ops->TableLookup(table, msg->Addr))
 				table->Ops->TableEntryAdd(table, msg->Addr, &entry);
 			break;
-						
+
+		case CLI_UPDATE:
+			entry = table->Ops->TableLookup(table, msg->Addr);
+			if (entry != NULL) {
+				entry->Control_Flags = msg->Control_Flags;
+				entry->elapsed_time = msg->elapsed_time;
+			}
+			break;
+
 		case CLI_DEL:
-			table->Ops->TableEntryDel(table, msg->Addr, 0xFF);
+			table->Ops->TableEntryDel(table, msg->Addr, BND_STRG_MAX_TABLE_SIZE);
+			break;
+
+		case CLI_AGING_REQ:
+			msg->Action = CLI_AGING_RSP;
+			msg->Band = table->Band;
+
+			if (MacTableLookup(pAd, msg->Addr) == NULL)
+			{
+				/* we can aging the entry if it is not in the mac table */
+				msg->ReturnCode = BND_STRG_SUCCESS;
+				table->Ops->TableEntryDel(table, msg->Addr, BND_STRG_MAX_TABLE_SIZE);
+			}
+			else
+			{
+				msg->ReturnCode = BND_STRG_STA_IS_CONNECTED;
+			}
+
+			D_BndStrgSendMsg(pAd, msg);
+
 			break;
 
 		case INF_STATUS_QUERY:
@@ -831,13 +1046,25 @@ static VOID D_MsgHandle(
 
 		case BNDSTRG_ONOFF:
 			BndStrg_Enable(table, msg->OnOff);
+			if (msg->OnOff) 
+				table->DaemonPid = current->pid;
+			else {
+				UINT32 i;
+				PBND_STRG_CLI_ENTRY entry = NULL;
+				for (i=0;i<BND_STRG_MAX_TABLE_SIZE;i++) {
+					entry = &table->Entry[i];
+					if (entry->bValid) {
+						BndStrg_DeleteEntry(table, entry->Addr, i);
+					}
+				}
+				table->DaemonPid = 0xffffffff;
+			}
 			break;
 
 		default:
 			DBGPRINT(RT_DEBUG_WARN, ("%s: unknown action code. (%d)\n",__FUNCTION__, msg->Action));
 			break;
 	}
-
 }
 
 BNDSTRG_OPS D_BndStrgOps = {
@@ -848,10 +1075,13 @@ BNDSTRG_OPS D_BndStrgOps = {
 	.TableLookup = BndStrg_TableLookup,
 	.CheckConnectionReq = D_CheckConnectionReq,
 	.SetEnable = D_SetEnable,
-	.SetRssiCheck = D_SetRssiCheck,
+	.SetRssiDiff = D_SetRssiDiff,
+	.SetRssiLow = D_SetRssiLow,
 	.SetAgeTime = D_SetAgeTime,
 	.SetHoldTime = D_SetHoldTime,
 	.SetCheckTime = D_SetCheckTime,
+	.SetFrmChkFlag = D_SetFrmChkFlag,
+	.SetCndChkFlag = D_SetCndChkFlag,
 #ifdef BND_STRG_DBG
 	.SetMntAddr = D_SetMntAddr,
 #endif /* BND_STRG_DBG */

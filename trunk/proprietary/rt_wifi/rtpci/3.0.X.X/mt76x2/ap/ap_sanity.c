@@ -81,7 +81,7 @@ BOOLEAN PeerAssocReqCmmSanity(
 		return FALSE;
 
 	COPY_MAC_ADDR(&ie_lists->Addr2[0], &Fr->Hdr.Addr2[0]);
-	
+
 	NdisMoveMemory(&ie_lists->CapabilityInfo, &Fr->Octet[0], 2);
 	NdisMoveMemory(&ie_lists->ListenInterval, &Fr->Octet[2], 2);
 
@@ -158,7 +158,8 @@ BOOLEAN PeerAssocReqCmmSanity(
             case IE_EXT_SUPP_RATES:
                 if (eid_ptr->Len + ie_lists->SupportedRatesLen <= MAX_LEN_OF_SUPPORTED_RATES)
                 {
-                    NdisMoveMemory(&ie_lists->SupportedRates[ie_lists->SupportedRatesLen], eid_ptr->Octet,
+		    UINT32 _RateIdx = ie_lists->SupportedRatesLen %	MAX_LEN_OF_SUPPORTED_RATES;
+                    NdisMoveMemory(&ie_lists->SupportedRates[_RateIdx], eid_ptr->Octet,
 									eid_ptr->Len);
                     ie_lists->SupportedRatesLen += eid_ptr->Len;
                 }
@@ -490,7 +491,7 @@ BOOLEAN PeerAssocReqCmmSanity(
 				DBGPRINT(RT_DEBUG_WARN, ("%s():wrong IE_VHT_CAP, eid->Len = %d\n",
 							__FUNCTION__, eid_ptr->Len));
 			}
-
+			break;
 		case IE_VHT_OP:
 			if (eid_ptr->Len == sizeof(VHT_OP_IE))
 			{
@@ -498,7 +499,7 @@ BOOLEAN PeerAssocReqCmmSanity(
 				ie_lists->vht_op_len = eid_ptr->Len;
 				DBGPRINT(RT_DEBUG_TRACE, ("%s():IE_VHT_OP\n", __FUNCTION__));
 			}
-
+			break;
 		case IE_OPERATING_MODE_NOTIFY:
 			if (eid_ptr->Len == sizeof(OPERATING_MODE)) {
 				ie_lists->operating_mode_len = sizeof(OPERATING_MODE);
@@ -548,6 +549,8 @@ BOOLEAN PeerDisassocReqSanity(
     OUT USHORT *Reason) 
 {
     PFRAME_802_11 Fr = (PFRAME_802_11)Msg;
+    if (!Fr)
+	return FALSE;
 
     COPY_MAC_ADDR(pAddr1, &Fr->Hdr.Addr1);
     COPY_MAC_ADDR(pAddr2, &Fr->Hdr.Addr2);
@@ -575,6 +578,8 @@ BOOLEAN PeerDeauthReqSanity(
     OUT USHORT *Reason) 
 {
     PFRAME_802_11 Fr = (PFRAME_802_11)Msg;
+    if (!Fr)
+	return FALSE;
 
     COPY_MAC_ADDR(pAddr2, &Fr->Hdr.Addr2);
 	*SeqNum = Fr->Hdr.Sequence;
@@ -608,8 +613,10 @@ BOOLEAN APPeerAuthSanity(
     ) 
 {
     PFRAME_802_11 Fr = (PFRAME_802_11)Msg;
+    if (!Fr)
+	return FALSE;
 
-	COPY_MAC_ADDR(pAddr1,  &Fr->Hdr.Addr1);		/* BSSID */
+    COPY_MAC_ADDR(pAddr1,  &Fr->Hdr.Addr1);		/* BSSID */
     COPY_MAC_ADDR(pAddr2,  &Fr->Hdr.Addr2);		/* SA */
     NdisMoveMemory(Alg,    &Fr->Octet[0], 2);
     NdisMoveMemory(Seq,    &Fr->Octet[2], 2);

@@ -128,7 +128,7 @@ VOID RTMPQueueAckPeriodicExec(
 {
     MAC_TABLE_ENTRY *pEntry = (MAC_TABLE_ENTRY *)FunctionContext;
 	PNDIS_PACKET	pPacket;
-   	UINT cnt= 0;
+    UINT cnt= 0;
     if (pEntry)
     {
      	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER)pEntry->pAd;
@@ -222,7 +222,7 @@ VOID wdev_tx_pkts(NDIS_HANDLE dev_hnd, PPNDIS_PACKET pkt_list, UINT pkt_cnt, str
 {
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)dev_hnd;
 	PNDIS_PACKET pPacket;
-	BOOLEAN allowToSend;
+	BOOLEAN allowToSend = FALSE;
 	UCHAR wcid = MCAST_WCID;
 	UINT Index;
 
@@ -255,12 +255,12 @@ VOID wdev_tx_pkts(NDIS_HANDLE dev_hnd, PPNDIS_PACKET pkt_list, UINT pkt_cnt, str
 		}
 #endif /*RT_CFG80211_SUPPORT*/
 
-		if ((wdev->allow_data_tx == TRUE) && (wdev->tx_pkt_allowed))
+		if (likely((wdev->allow_data_tx == TRUE)) && likely((wdev->tx_pkt_allowed)))
 			allowToSend = wdev->tx_pkt_allowed(pAd, wdev, pPacket, &wcid);
 		else
 			allowToSend = FALSE;
 
-		if (allowToSend == TRUE)
+		if (likely(allowToSend == TRUE))
 		{
 			RTMP_SET_PACKET_WCID(pPacket, wcid);
 			RTMP_SET_PACKET_WDEV(pPacket, wdev->wdev_idx);
@@ -290,10 +290,12 @@ VOID wdev_tx_pkts(NDIS_HANDLE dev_hnd, PPNDIS_PACKET pkt_list, UINT pkt_cnt, str
 				if (ReduceTcpAck(pAd, pPacket) == FALSE)
 #endif /* REDUCE_TCP_ACK_SUPPORT */
 				{
-					BOOLEAN bResult = APSendPacket(pAd, pPacket);
 #ifdef MWDS
+					BOOLEAN bResult = APSendPacket(pAd, pPacket);
 					if((wcid == MCAST_WCID) && (bResult == NDIS_STATUS_SUCCESS))
 						MWDSSendClonePacket(pAd, pPacket, NULL);
+#else
+					APSendPacket(pAd, pPacket);
 #endif /* MWDS */
 				}
 			}

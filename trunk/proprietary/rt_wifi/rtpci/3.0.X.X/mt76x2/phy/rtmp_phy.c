@@ -311,9 +311,6 @@ static INT rtmp_bbp_init(RTMP_ADAPTER *pAd)
 		}
 #endif /* RTMP_RBUS_SUPPORT */
 
-#ifdef MICROWAVE_OVEN_SUPPORT
-#endif /* MICROWAVE_OVEN_SUPPORT */
-
 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd,
 				BBPRegTable[Index].Register,
 				BBPRegTable[Index].Value);

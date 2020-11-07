@@ -440,9 +440,6 @@ VOID STAHandleRxDataFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	UCHAR FromWhichBSSID = BSS0;
 	UCHAR UserPriority = 0;
 
-//+++Add by shiang for debug
-//---Add by shiangf for debug
-
 	if ((pHeader->FC.FrDs == 1) && (pHeader->FC.ToDs == 1)) {
 #ifdef CLIENT_WDS
 			if ((pRxBlk->wcid < MAX_LEN_OF_MAC_TABLE)
@@ -693,7 +690,8 @@ VOID STAHandleRxDataFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 				}
 			}
 		}
-
+#ifdef DOT11_N_SUPPORT
+#ifndef DOT11_VHT_AC
 #ifndef WFA_VHT_PF
 		// TODO: shiang@PF#2, is this atheros protection still necessary here???
 		/* check Atheros Client */
@@ -705,6 +703,8 @@ VOID STAHandleRxDataFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 				RTMP_UPDATE_PROTECT(pAd, 8 , ALLN_SETPROTECT, TRUE, FALSE);
 		}
 #endif /* WFA_VHT_PF */
+#endif /* DOT11_VHT_AC */
+#endif /* DOT11_N_SUPPORT */
 	}
 
 
@@ -1043,9 +1043,6 @@ VOID STAHandleRxDataFrame_Hdr_Trns(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	UCHAR UserPriority = 0;
 	UCHAR *pData;
 
-//+++Add by shiang for debug
-//---Add by shiangf for debug
-
 	if ((pHeader->FC.FrDs == 1) && (pHeader->FC.ToDs == 1)) {
 #ifdef CLIENT_WDS
 			if ((pRxBlk->wcid < MAX_LEN_OF_MAC_TABLE)
@@ -1179,7 +1176,8 @@ VOID STAHandleRxDataFrame_Hdr_Trns(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 #endif
 				ASSERT(pRxBlk->wcid == BSSID_WCID);
 		}
-
+#ifdef DOT11_N_SUPPORT
+#ifndef DOT11_VHT_AC
 #ifndef WFA_VHT_PF
 		// TODO: shiang@PF#2, is this atheros protection still necessary here???
 		/* check Atheros Client */
@@ -1191,6 +1189,8 @@ VOID STAHandleRxDataFrame_Hdr_Trns(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 				RTMP_UPDATE_PROTECT(pAd, 8 , ALLN_SETPROTECT, TRUE, FALSE);
 		}
 #endif /* WFA_VHT_PF */
+#endif /* DOT11_VHT_AC */
+#endif /* DOT11_N_SUPPORT */
 	}
 
 
@@ -1504,7 +1504,7 @@ INT STASendPacket(RTMP_ADAPTER *pAd, PNDIS_PACKET pPacket)
 	UCHAR QueIdx;
 	UCHAR UserPriority;
 	UCHAR Wcid;
-	unsigned long IrqFlags;
+	ULONG IrqFlags = 0;
 	MAC_TABLE_ENTRY *pMacEntry = NULL;
 	struct wifi_dev *wdev;
 
@@ -3333,12 +3333,13 @@ VOID STA_AMSDU_Frame_Tx(
 			/* NOTE: TxWI->TxWIMPDUByteCnt will be updated after final frame was handled. */
 			RTMPWriteTxWI_Data(pAd, (TXWI_STRUC *) (&pTxBlk->HeaderBuf[TXINFO_SIZE]), pTxBlk);
 		} else {
-			pHeaderBufPtr = &pTxBlk->HeaderBuf[0];
-			padding = ROUND_UP(AMSDU_SUBHEAD_LEN + subFramePayloadLen, 4) - 
-								(AMSDU_SUBHEAD_LEN + subFramePayloadLen);
+			// TODO: shiang-usw, check this, original code is use pTxBlk->HeaderBuf[0]
+			pHeaderBufPtr = &pTxBlk->HeaderBuf[TXINFO_SIZE];
+			padding = ROUND_UP(AMSDU_SUBHEAD_LEN + subFramePayloadLen, 4) - (AMSDU_SUBHEAD_LEN + subFramePayloadLen);
 			NdisZeroMemory(pHeaderBufPtr, padding + AMSDU_SUBHEAD_LEN);
 			pHeaderBufPtr += padding;
 			pTxBlk->MpduHeaderLen = padding;
+			pTxBlk->HdrPadLen += padding;
 		}
 
 		/*
@@ -3670,7 +3671,7 @@ VOID STA_Legacy_Frame_Tx_Hdr_Trns(
 
 #ifdef ADHOC_WPA2PSK_SUPPORT
 	if (ADHOC_ON(pAd)
-	    && (pAd->StaCfg.AuthMode == Ndis802_11AuthModeWPA2PSK)
+	    && (pAd->StaCfg.wdev.AuthMode == Ndis802_11AuthModeWPA2PSK)
 	    && (pAd->StaCfg.GroupCipher == Ndis802_11AESEnable)
 	    && (!pTxBlk->pMacEntry)) {
 		/* use Wcid as Hardware Key Index */

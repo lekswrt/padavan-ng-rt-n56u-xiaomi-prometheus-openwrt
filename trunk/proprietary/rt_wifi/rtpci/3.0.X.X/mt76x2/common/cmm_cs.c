@@ -38,6 +38,7 @@ static void ToneRadarProgram(PRTMP_ADAPTER pAd);
 #ifdef CONFIG_AP_SUPPORT
 static inline VOID CarrierDetectionResetStatus(PRTMP_ADAPTER pAd)
 {
+#ifdef MT76x2
 	if(pAd->chipCap.carrier_func == TONE_RADAR_V3)
 	{
 		RTMP_BBP_IO_WRITE32(pAd, TR_R1, 0x3);
@@ -48,11 +49,13 @@ static inline VOID CarrierDetectionResetStatus(PRTMP_ADAPTER pAd)
 		RTMP_CARRIER_IO_WRITE8(pAd, 1, 1);
 	}		
 #endif /* RTMP_BBP */
+#endif
 }
 
 static inline VOID CarrierDetectionStatusGet(PRTMP_ADAPTER pAd,
 											PUINT8 pStatus)
 {
+#ifdef MT76x2
 	*pStatus = 0;
 
 	if(pAd->chipCap.carrier_func == TONE_RADAR_V3)
@@ -67,11 +70,13 @@ static inline VOID CarrierDetectionStatusGet(PRTMP_ADAPTER pAd,
 		RTMP_CARRIER_IO_READ8(pAd, 1, pStatus);
 	}
 #endif /* RTMP_BBP */
+#endif
 }
 
 static inline VOID CarrierDetectionEnable(PRTMP_ADAPTER pAd,
 										BOOLEAN bEnable)
 {
+#ifdef MT76x2
 	if(pAd->chipCap.carrier_func == TONE_RADAR_V3)
 	{
 		RTMP_BBP_IO_WRITE32(pAd, TR_R0, bEnable);
@@ -82,6 +87,7 @@ static inline VOID CarrierDetectionEnable(PRTMP_ADAPTER pAd,
 		RTMP_CARRIER_IO_WRITE8(pAd, 0, bEnable);
 	}
 #endif /* RTMP_BBP */
+#endif
 }
 
 
@@ -900,6 +906,7 @@ VOID ToneRadarProgram_v2(PRTMP_ADAPTER pAd, ULONG threshold)
 */
 VOID ToneRadarProgram_v3(PRTMP_ADAPTER pAd, ULONG threshold)
 {
+#ifdef MT76x2
 	/* 
 		Carrier Sense (Tone Radar) BBP initialization 
 		(MT7650 Carrier sense programming guide_v1_20120824.docx)
@@ -912,7 +919,7 @@ VOID ToneRadarProgram_v3(PRTMP_ADAPTER pAd, ULONG threshold)
 	RTMP_BBP_IO_WRITE32(pAd, TR_R6, 0x80100000);
 	CarrierDetectionEnable(pAd, 1);
 	RTMP_IO_WRITE32(pAd, 0x212C, 0x0c350001);
-
+#endif
 }
 
 

@@ -57,40 +57,40 @@ UCHAR MT76x0_EeBuffer[1024] =
 #else
 UCHAR MT76x0_EeBuffer[EEPROM_SIZE] = 
 #endif
-	{
-	0x83, 0x38, 0x01, 0x00, 0x00, 0x0c, 0x43, 0x28, 0x83, 0x00, 0x83, 0x28, 0x14, 0x18, 0xff, 0xff,
-	0xff, 0xff, 0x83, 0x28, 0x14, 0x18, 0x00, 0x00, 0x01, 0x00, 0x6a, 0xff, 0x00, 0x02, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x0c, 0x43, 0x28, 0x83, 0x01, 0x00, 0x0c,
-	0x43, 0x28, 0x83, 0x02, 0x33, 0x0a, 0xec, 0x00, 0x33, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0x20, 0x01, 0x55, 0x77, 0xa8, 0xaa, 0x8c, 0x88, 0xff, 0xff, 0x0a, 0x08, 0x08, 0x06,
-	0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+{
+	0x10, 0x76, 0x00, 0x01, 0x00, 0x0c, 0x43, 0x76, 0x4c, 0x8c, 0x10, 0x76, 0xc3, 0x14, 0x00, 0x00, 
+	0x00, 0x00, 0x10, 0x76, 0xc3, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x43, 0x46, 0x00, 0x01, 
+	0xff, 0xff, 0xff, 0x9f, 0xef, 0xff, 0x30, 0x3e, 0x3c, 0x9b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0x11, 0xfd, 0x08, 0x04, 0xff, 0xff, 0x38, 0x01, 0xff, 0xff, 0x99, 0x99, 
+	0x8c, 0x88, 0xff, 0x07, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x0a, 0xff, 0xff, 
+	0xff, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x12, 0x12, 0x12, 0x11, 0x11, 0x11, 0x10, 0x10, 
+	0x10, 0x0f, 0x0f, 0x0f, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 
+	0x0e, 0x0e, 0x0e, 0x0d, 0x0d, 0x0d, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0x1e, 0x81, 0x40, 0x74, 0x95, 0xff, 0xff, 0xff, 0xff, 0xff, 0x64, 0x9b, 0x00, 0x00, 
+	0x3d, 0x3d, 0x00, 0x3c, 0x3d, 0x3d, 0x00, 0x3c, 0x3d, 0x3d, 0x00, 0x3c, 0x3d, 0x3d, 0x00, 0x3c, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0x08, 0x08, 0x06, 0x00, 0x08, 0x08, 0x06, 0x00, 0x06, 0x06, 0x04, 0x00, 0x3d, 0x3a, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0x66, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xcc, 0xaa,
-	0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xaa, 0xaa, 0x88, 0x66, 0xaa, 0xaa,
-	0x88, 0x66, 0xaa, 0xaa, 0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xcc, 0xaa,
-	0x88, 0x66, 0xcc, 0xaa, 0x88, 0x66, 0xaa, 0xaa, 0x88, 0x66, 0xaa, 0xaa, 0x88, 0x66, 0xaa, 0xaa,
-	0x88, 0x66, 0xaa, 0xaa, 0x88, 0x66, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	} ;
+};
 
 #define BIT0		(1 << 0)
 #define BIT1		(1 << 1)
@@ -142,15 +142,28 @@ UCHAR MT76x0_EeBuffer[EEPROM_SIZE] =
 
 static RTMP_REG_PAIR	MT76x0_MACRegTable[] = {
 	{IOCFG_6,			0xA0040080},
-	{PBF_SYS_CTRL,		0x80c00},
+	{PBF_SYS_CTRL,			0x80c00},
+	{0x80,				0xFF000403},
+	{0x20, 				0x00E00FFF},
+	{MAC_SYS_CTRL,			0xC},
 	{PBF_CFG,			0x77723c1f},
-	{FCE_PSE_CTRL,		0x1},
+	{FCE_PSE_CTRL,			0x1},
 
-	{AMPDU_MAX_LEN_20M1S,	0xAAA99887},
+	{MAX_LEN_CFG, MAX_AGGREGATION_SIZE | 0x003E3000},
+	{AMPDU_MAX_LEN_20M1S_MCS0_7, 0xAAA99887},
+	{AMPDU_MAX_LEN_20M1S_MCS8_9, 0xAA},
+
+	{PWR_PIN_CFG,		0x0},
 
 	{TX_SW_CFG0,		0x601}, /* Delay bb_tx_pe for proper tx_mcs_pwr update */
 	{TX_SW_CFG1,		0x00040000}, /* Set rf_tx_pe deassert time to 1us by Chee's comment @MT7650_CR_setting_1018.xlsx */
 	{TX_SW_CFG2,		0x0},
+
+	{TXOP_CTRL_CFG, 0x0400583F},
+	{TX_RTS_CFG, 0x00092B20},
+	{TX_TIMEOUT_CFG, 0x000A2290},
+	{TX_RTY_CFG, 0x47D01F0F},
+	{EXP_ACK_TIME, 0x002C00DC},
 
 // TODO: shiang-6590, check what tx report will send to us when following default value set as 2
 	{0xa44,					0x0}, /* disable Tx info report */
@@ -178,11 +191,10 @@ static RTMP_REG_PAIR	MT76x0_MACRegTable[] = {
 	{0x1238, 0x001700C8}, /* Disable bt_abort_tx_en(0x1238[21] = 0) which is not used at MT7650 @MT7650_E3_CR_setting_1115.xlsx */
 	{LDO_CTRL_0, 0x00A647B6}, /* PMU_OCLEVEL<5:1> from default <5'b10010> to <5'b11011> for normal driver */
 	{LDO_CTRL1, 0x6B006464}, /* Default LDO_DIG supply 1.26V, change to 1.2V */
+	{LEGACY_BASIC_RATE, 0x0000017F},
 	{HT_BASIC_RATE, 0x00004003}, /*MT7650_E6_MAC_CR_setting_20140821.xlsx , fix RDG issue with 7628 */
 	{HT_CTRL_CFG, 0x000001FF},	/*MT7650_E6_MAC_CR_setting_20140821.xlsx , fix RDG issue with 7628 */
-
-	/* enable HW to autofallback to legacy rate to prevent ping fail in long range */
-	{HT_FBK_TO_LEGACY, 0x00001818},
+	{TXOP_HLDR_ET,  0x00000000}, /* 76x0 don't need TGac, initial disable secondary EDCCA */
 };
 
 static UCHAR MT76x0_NUM_MAC_REG_PARMS = (sizeof(MT76x0_MACRegTable) / sizeof(RTMP_REG_PAIR));
@@ -208,8 +220,9 @@ static RTMP_REG_PAIR MT76x0_BBP_Init_Tab[] = {
 	{CORE_R42, 0x00000000},
 	{CORE_R44, 0x00000000},
 
-	{IBI_R11, 0x0FDE8081},
-	
+	/* Disable Tx FIFO empty check for hang issue - MT7650E3_BBP_CR_20121225 */
+	{IBI_R11, 0x00000080},
+
 	/*
 		0x2300[5] Default Antenna:
 		0 for WIFI main antenna
@@ -227,7 +240,6 @@ static RTMP_REG_PAIR MT76x0_BBP_Init_Tab[] = {
 	{AGC1_R24, 0x00002F3A},
 	{AGC1_R25, 0x8000005A},
 	{AGC1_R26, 0x007C2005},
-	{AGC1_R33, 0x00003238},
 	{AGC1_R34, 0x000A0C0C},
 	{AGC1_R37, 0x2121262C},
 	{AGC1_R41, 0x38383E45},
@@ -265,21 +277,37 @@ static RTMP_REG_PAIR MT76x0_BBP_Init_Tab[] = {
 	{RXFE_R3, 0x00000000},
 	{RXFE_R4, 0x00000000},
 
-	{RXO_R13, 0x00000192},
+	{RXO_R13, 0x00000092},
 	{RXO_R14, 0x00060612},
 	{RXO_R15, 0xC8321B18},
 	{RXO_R16, 0x0000001E},
 	{RXO_R17, 0x00000000},
 	{RXO_R18, 0xCC00A993},
 	{RXO_R19, 0xB9CB9CB9},
-	{RXO_R20, 0x26c00057},
 	{RXO_R21, 0x00000001},
 	{RXO_R24, 0x00000006},
-	{RXO_R28, 0x0000003F},
 };
 static UCHAR MT76x0_BBP_Init_Tab_Size = (sizeof(MT76x0_BBP_Init_Tab) / sizeof(RTMP_REG_PAIR));
 
 MT76x0_BBP_Table MT76x0_BPP_SWITCH_Tab[] = {
+	
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R8, 0x0E344EF0}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R8, 0x122C54F2}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R14, 0x310F2E39}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R14, 0x310F2A3F}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R32, 0x00003230}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R32, 0x0000181C}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R33, 0x00003240}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R33, 0x00003218}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R35, 0x11112016}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R35, 0x11112016}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{RXO_R28, 0x0000008A}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{RXO_R28, 0x0000008A}},	
 	
 	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R4, 0x1FEDA049}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R4, 0x1FECA054}},
@@ -287,9 +315,6 @@ MT76x0_BBP_Table MT76x0_BPP_SWITCH_Tab[] = {
 	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R6, 0x00000045}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R6, 0x0000000A}},
 	
-	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R8, 0x16344EF0}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R8, 0x122C54F2}},
-
 	{RF_G_BAND | RF_BW_20,	{AGC1_R12, 0x05052879}},
 	{RF_G_BAND | RF_BW_40,	{AGC1_R12, 0x050528F9}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R12, 0x050528F9}},
@@ -297,12 +322,6 @@ MT76x0_BBP_Table MT76x0_BPP_SWITCH_Tab[] = {
 	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R13, 0x35050004}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R13, 0x2C3A0406}},
 	
-	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R14, 0x310F2E3C}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R14, 0x310F2A3F}},
-
-	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R26, 0x007C2005}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R26, 0x007C2005}},
-
 	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R27, 0x000000E1}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R27, 0x000000EC}},
 
@@ -311,22 +330,16 @@ MT76x0_BBP_Table MT76x0_BPP_SWITCH_Tab[] = {
 	{RF_A_BAND | RF_BW_40,	{AGC1_R28, 0x00060801}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_80,	{AGC1_R28, 0x00060806}},
 
-	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R31, 0x00000E23}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R31, 0x00000E13}},
-
-	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R32, 0x00003218}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R32, 0x0000181C}},
-
-	{RF_G_BAND | RF_BW_20,	{AGC1_R35, 0x11111616}},
-	{RF_G_BAND | RF_BW_40,	{AGC1_R35, 0x11111516}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R35, 0x11111111}},
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R31, 0x00000F23}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R31, 0x00000F13}},
 
 	{RF_G_BAND | RF_BW_20,	{AGC1_R39, 0x2A2A3036}},
 	{RF_G_BAND | RF_BW_40,	{AGC1_R39, 0x2A2A2C36}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,    {AGC1_R39, 0x2A2A2A2A}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R39, 0x2A2A3036}},
+	{RF_A_BAND | RF_BW_80,							{AGC1_R39, 0x2A2A2A36}},
 	{RF_G_BAND | RF_BW_20,	{AGC1_R43, 0x27273438}},
 	{RF_G_BAND | RF_BW_40,	{AGC1_R43, 0x27272D38}},
-	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R43, 0x27271A1A}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R43, 0x27272B30}},
 
 	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R51, 0x17171C1C}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R51, 0xFFFFFFFF}},
@@ -335,7 +348,8 @@ MT76x0_BBP_Table MT76x0_BPP_SWITCH_Tab[] = {
 	{RF_G_BAND | RF_BW_40,	{AGC1_R53, 0x2626322F}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R53, 0xFFFFFFFF}},
 
-	{RF_G_BAND | RF_BW_20 | RF_BW_40,				{AGC1_R55, 0x40404040}},
+	{RF_G_BAND | RF_BW_20,							{AGC1_R55, 0x40404E58}},
+	{RF_G_BAND | RF_BW_40,							{AGC1_R55, 0x40405858}},
 	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R55, 0xFFFFFFFF}},
 	
 	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R58, 0x00001010}},
@@ -356,7 +370,7 @@ static BANK_RF_REG_PAIR MT76x0_RF_Central_RegTb[] = {
 	/*
 		R3 ~ R7: VCO Cal.
 	*/	
-	{RF_BANK0,	RF_R03, 0x63}, /* VCO Freq Cal - No Bypass, VCO Amp Cal - No Bypass */
+	{RF_BANK0,	RF_R03, 0x73}, /* VCO Freq Cal - No Bypass, VCO Amp Cal - No Bypass */
 	{RF_BANK0,	RF_R04, 0x30}, /* R4 b<7>=1, VCO cal */
 	{RF_BANK0,	RF_R05, 0x00},
 	{RF_BANK0,	RF_R06, 0x41}, /* Set the open loop amplitude to middle since bypassing amplitude calibration */
@@ -386,7 +400,7 @@ static BANK_RF_REG_PAIR MT76x0_RF_Central_RegTb[] = {
 		XO
 	*/
 	{RF_BANK0,	RF_R20, 0x22},
-	{RF_BANK0,	RF_R21, 0x10},
+	{RF_BANK0,	RF_R21, 0x12},
 	{RF_BANK0,	RF_R23, 0x00},
 	{RF_BANK0,	RF_R24, 0x33}, /* See band selection for R24<1:0> */
 	{RF_BANK0,	RF_R25, 0x00},
@@ -441,7 +455,6 @@ static BANK_RF_REG_PAIR MT76x0_RF_2G_Channel_0_RegTb[] = {
 	*/
 	/* RF_R00 Change in SelectBand6590 */
 
-	{RF_BANK5,	RF_R02, 0x00}, /* 0x1D: 5G+2G+BT(MT7650E),  0x0C: 5G+2G(MT7610U), 0x00: 5G only (MT7610E) */
 	{RF_BANK5,	RF_R03, 0x00},
 
 	/*
@@ -817,7 +830,7 @@ static MT76x0_FREQ_ITEM MT76x0_SDM_Frequency_Plan[] =
 	{192, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x29, 0, 0x0, 0x8, 0x15555, 0x3}, /* Freq 4960 */
 	{196, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x29, 0, 0x0, 0x8, 0x20000, 0x3}, /* Freq 4980 */
 	
-	{36, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x2B, 0, 0x0, 0x8, 0xAAAA,  0x3}, /* Freq 5180 */
+	{36, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x2B, 0, 0x0, 0x8, 0xB222,  0x3}, /* Freq 5180 */
 	{37, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x2B, 0, 0x0, 0x8, 0xD555,  0x3}, /* Freq 5185 */
 	{38, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x2B, 0, 0x0, 0x8, 0x10000, 0x3}, /* Freq 5190 */
 	{39, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x7F, 0xDD, 0xC3, 0x40, 0x0, 0x80, 0x0, 0/*0 -> 1*/, 0, 0, 0x2B, 0, 0x0, 0x8, 0x12AAA, 0x3}, /* Freq 5195 */
@@ -1135,20 +1148,21 @@ static VOID FullCalibration(
 //
 // Initialize FCE
 //
-VOID InitFce(
+static VOID InitFce(
 	PRTMP_ADAPTER pAd)
 {
-	L2_STUFFING_STRUC L2Stuffing;
+	L2_STUFFING_STRUC reg;
 
-	L2Stuffing.word = 0;
+	reg.word = 0;
 
-	DBGPRINT(RT_DEBUG_TRACE, ("%s: -->\n", __FUNCTION__));
+#ifdef RTMP_PCI_SUPPORT
 
-	RTMP_IO_READ32(pAd, FCE_L2_STUFF, &L2Stuffing.word);
-	L2Stuffing.field.FS_WR_MPDU_LEN_EN = 0;
-	RTMP_IO_WRITE32(pAd, FCE_L2_STUFF, L2Stuffing.word);
-
-	DBGPRINT(RT_DEBUG_TRACE, ("%s: <--\n", __FUNCTION__));
+	/* test the TP on MT7620/ MT7621 platform, the TP is not degrade */
+	RTMP_IO_WRITE32(pAd, 0x708, 0x1401);
+	RTMP_IO_READ32(pAd, FCE_L2_STUFF, &reg.word);
+	reg.field.FS_WR_MPDU_LEN_EN = 0;
+	RTMP_IO_WRITE32(pAd, FCE_L2_STUFF, reg.word);
+#endif
 }
 
 
@@ -1169,7 +1183,10 @@ VOID SelectBandMT76x0(
 		return;
 	}
 	
-	DBGPRINT(RT_DEBUG_INFO, ("%s: -->\n", __FUNCTION__));
+	DBGPRINT(RT_DEBUG_TRACE, ("%s: -->\n", __FUNCTION__));
+
+	if (IS_MT7610E(pAd))
+		rlt_rf_write(pAd, RF_BANK5, RF_R02, 0x00); /* 5G only */
 
 	if (Channel <= 14) 
 	{
@@ -1221,7 +1238,7 @@ VOID SelectBandMT76x0(
 		RTMP_IO_WRITE32(pAd, TX0_RF_GAIN_CORR, 0x01010102);
 	}
 
-	DBGPRINT(RT_DEBUG_INFO, ("%s: <--\n", __FUNCTION__));
+	DBGPRINT(RT_DEBUG_TRACE, ("%s: <--\n", __FUNCTION__));
 }
 
 /*
@@ -1234,6 +1251,7 @@ VOID SelectBandMT76x0(
 	Loop Filter Config: R33, R34
 	Pll_idiv: frac comp R35[6:0]
 */
+static int report_pa5_mode;
 VOID SetRfChFreqParametersMT76x0(
 	IN PRTMP_ADAPTER pAd, 
 	IN UCHAR Channel)
@@ -1249,7 +1267,7 @@ VOID SetRfChFreqParametersMT76x0(
 		return;
 	}
 	
-	DBGPRINT(RT_DEBUG_INFO, ("%s: -->\n", __FUNCTION__));
+	DBGPRINT(RT_DEBUG_TRACE, ("%s: -->\n", __FUNCTION__));
 
 	for (i = 0; i < MT76x0_SDM_Channel_Size; i++)
 	{
@@ -1492,8 +1510,13 @@ VOID SetRfChFreqParametersMT76x0(
 		((pAd->chipCap.PAType == EXT_PA_2G_ONLY) && (RfBand & RF_A_BAND)))
 	{
 		/* Internal PA */
+		if (!report_pa5_mode) {
+		    printk("MT7610: 5GHz iPA used.\n");
+		    report_pa5_mode++;
+		}
+
 		for(i = 0; i < MT76x0_RF_INT_PA_RegTb_Size; i++)
-	{
+		{
 			if (MT76x0_RF_INT_PA_RegTb[i].BwBand & RfBand)
 			{
 				rlt_rf_write(pAd, 
@@ -1528,8 +1551,13 @@ VOID SetRfChFreqParametersMT76x0(
 			MacReg |= (0x8);
 			RTMP_IO_WRITE32(pAd, RF_MISC, MacReg);
 		}
-		
+
 		/* External PA */
+		if (!report_pa5_mode) {
+		    printk("MT7610: 5GHz ePA used.\n");
+		    report_pa5_mode++;
+		}
+
 		for(i = 0; i < MT76x0_RF_EXT_PA_RegTb_Size; i++)
 		{
 			if (MT76x0_RF_EXT_PA_RegTb[i].BwBand & RfBand)
@@ -1563,7 +1591,7 @@ VOID SetRfChFreqParametersMT76x0(
 		RTMP_IO_WRITE32(pAd, TX_ALC_CFG_1, MacReg); /* Set Atten mode = 0 For Ext A band, Disable Tx Inc DCOC Cal by Chee's comment. @MT7650_CR_setting_1018.xlsx */		
 	}
 	
-	DBGPRINT(RT_DEBUG_INFO, ("%s: <--\n", __FUNCTION__));
+	DBGPRINT(RT_DEBUG_TRACE, ("%s: <--\n", __FUNCTION__));
 }
 
 static VOID NICInitMT76x0RFRegisters(RTMP_ADAPTER *pAd)
@@ -1597,6 +1625,9 @@ static VOID NICInitMT76x0RFRegisters(RTMP_ADAPTER *pAd)
 					MT76x0_RF_2G_Channel_0_RegTb[IdReg].Register,
 					MT76x0_RF_2G_Channel_0_RegTb[IdReg].Value);
 	}
+
+	if (IS_MT7610E(pAd))
+		rlt_rf_write(pAd, RF_BANK5, RF_R02, 0x00); /* 5G only */
 
 	for(IdReg = 0; IdReg < MT76x0_RF_5G_Channel_0_RegTb_Size; IdReg++)
 	{
@@ -1650,8 +1681,10 @@ static VOID NICInitMT76x0RFRegisters(RTMP_ADAPTER *pAd)
 		E2: B0.R21<0>: xo_cxo<0>, B0.R22<7:0>: xo_cxo<8:1> 
 	*/
 	RFValue = (UCHAR)(pAd->RfFreqOffset & 0xFF);
+//	if (!RFValue || RFValue == 0xFF); /* Max of 9-bit built-in crystal oscillator C1 code */
+//	    RFValue = 0xBF;
 	rlt_rf_write(pAd, RF_BANK0, RF_R22, RFValue);
-	
+
 	rlt_rf_read(pAd, RF_BANK0, RF_R22, &RFValue);
 	DBGPRINT(RT_DEBUG_TRACE, ("%s: B0.R22 = 0x%02x\n", __FUNCTION__, RFValue));
 
@@ -1694,7 +1727,10 @@ static VOID NICInitMT76x0MacRegisters(RTMP_ADAPTER *pAd)
 {
 	UINT32 IdReg;
 	UINT32 MacReg = 0;
-
+	USHORT trsw_mode = 0;
+#ifdef APCLI_SUPPORT
+	UINT32 pn_mode_value = 0;
+#endif /* APCLI_SUPPORT */
 	/*
 		Enable PBF and MAC clock
 		SYS_CTRL[11:10] = 0x3
@@ -1703,6 +1739,12 @@ static VOID NICInitMT76x0MacRegisters(RTMP_ADAPTER *pAd)
 	{
 		RTMP_IO_WRITE32(pAd, MT76x0_MACRegTable[IdReg].Register,
 								MT76x0_MACRegTable[IdReg].Value);
+	}
+
+	RT28xx_EEPROM_READ16(pAd, 0x24, trsw_mode);
+	if (((trsw_mode & ~(0xFFCF)) >> 4) == 0x3) {
+		RTMP_IO_WRITE32(pAd, TX_SW_CFG1, 0x00040200); /* Adjust TR_SW off delay for TRSW mode */
+		DBGPRINT(RT_DEBUG_TRACE, ("%s: TRSW = 0x3\n", __FUNCTION__));
 	}
 
 #ifdef HDR_TRANS_TX_SUPPORT
@@ -1762,9 +1804,37 @@ static VOID NICInitMT76x0MacRegisters(RTMP_ADAPTER *pAd)
 	MacReg &= ~(0x00000200);
 	RTMP_IO_WRITE32(pAd, 0x110, MacReg);
 
-
-
-	return;
+#ifdef MCS_LUT_SUPPORT
+	RTMP_IO_READ32(pAd, TX_FBK_LIMIT, &MacReg);
+	if (RTMP_TEST_MORE_FLAG(pAd, fASIC_CAP_MCS_LUT))
+		MacReg |= 0x40000;
+	else
+		MacReg &= (~0x40000);
+	RTMP_IO_WRITE32(pAd, TX_FBK_LIMIT, MacReg);
+#endif /* MCS_LUT_SUPPORT */
+#if 0
+	/* A workaround solution for EU bandwidth adaptation test */
+	if ((pAd->CommonCfg.Channel > 14) &&
+#ifdef DFS_SUPPORT
+		(pAd->CommonCfg.bIEEE80211H == TRUE) &&
+#endif
+		(pAd->CommonCfg.BBPCurrentBW == BW_80)) {
+		/* Improve BW Adaptation */
+		RTMP_IO_READ32(pAd, TXOP_CTRL_CFG, &MacReg);
+		MacReg = (MacReg & 0xFFFF) | (0x410 << 16);
+		RTMP_IO_WRITE32(pAd, TXOP_CTRL_CFG, MacReg);
+		RTMP_IO_WRITE32(pAd, TXOP_HLDR_ET, 0x3);
+	}
+#endif
+#ifdef APCLI_SUPPORT
+	/*
+	*bit 0 :  R/W PN_PAD_MODE Padding IV/EIV in RX MPDU when packet is decrypted
+	*0 : Disable                             1: Enable
+	*/
+	RTMP_IO_READ32(pAd, PN_PAD_MODE, &pn_mode_value);
+	pn_mode_value |= PN_PAD_MODE_OFFSET;
+	RTMP_IO_WRITE32(pAd, PN_PAD_MODE, pn_mode_value);
+#endif /* APCLI_SUPPORT */
 }
 
 
@@ -1875,8 +1945,8 @@ static VOID MT76x0_ChipBBPAdjust(RTMP_ADAPTER *pAd)
 #endif /* DOT11_N_SUPPORT */
 }
 
-
-void MT76x0_adjust_per_rate_pwr_delta(RTMP_ADAPTER *ad, u8 channel, char delta_pwr)
+#ifdef SINGLE_SKU_V2
+static void MT76x0_adjust_per_rate_pwr_delta(RTMP_ADAPTER *ad, u8 channel, char delta_pwr)
 {
 	u32 value = 0;
 
@@ -1917,9 +1987,11 @@ void MT76x0_adjust_per_rate_pwr_delta(RTMP_ADAPTER *ad, u8 channel, char delta_p
 	value |= TX_PWR_HT_VHT_STBC_MCS_7(ad->chipCap.rate_pwr_table.STBC[7].MCS_Power + delta_pwr);
 	RTMP_IO_WRITE32(ad, TX_PWR_CFG_9, value);
 }
+#endif /* SINGLE_SKU_V2 */
 
 #define MIN_TSSI_WORKABLE_PWR 20 //10 dB
-void percentage_delta_pwr(RTMP_ADAPTER *ad) 
+
+void percentage_delta_pwr(RTMP_ADAPTER *ad)
 {
 	CHAR mac_drop_pwr = 0, tx_alc_ch_init_0 = 0, tx_alc_ch_init_1 = 0, orig_mac_pwr = 0;
 	UCHAR mdsm_drop_pwr;
@@ -2015,8 +2087,10 @@ void percentage_delta_pwr(RTMP_ADAPTER *ad)
 	RTMP_BBP_IO_WRITE32(ad, TXBE_R4, bbp_val);
 	DBGPRINT(RT_DEBUG_ERROR, ("%s::<After> total drop power = %d + %d dBm, TXBE_R4 = 0x%0x , PowerPercentageWithBBP = %d\n", 
 		__FUNCTION__, mac_drop_pwr , bbp_drop_pwr, bbp_val , ad->CommonCfg.TxPowerPercentageWithBBP));
+#ifdef SINGLE_SKU_V2
+	MT76x0_adjust_per_rate_pwr_delta(ad, ad->hw_cfg.cent_ch, mac_drop_pwr*2);
+#endif /* SINGLE_SKU_V2 */
 }
-
 
 static VOID MT76x0_ChipSwitchChannel(
 	struct _RTMP_ADAPTER *pAd,
@@ -2047,6 +2121,7 @@ static VOID MT76x0_ChipSwitchChannel(
 	
 	RTMP_IO_READ32(pAd, EXT_CCA_CFG, &RegValue);
 	RegValue &= ~(0xFFF);
+#ifdef DOT11_VHT_AC
 	if (pAd->CommonCfg.BBPCurrentBW == BW_80)
 	{
 		rf_bw = RF_BW_80;
@@ -2067,7 +2142,9 @@ static VOID MT76x0_ChipSwitchChannel(
 			RegValue |= 0x81b;
 		}
 	}
-	else if (pAd->CommonCfg.BBPCurrentBW == BW_40)
+	else
+#endif /* DOT11_VHT_AC */
+	if (pAd->CommonCfg.BBPCurrentBW == BW_40)
 	{
 		rf_bw = RF_BW_40;
 		if (pAd->CommonCfg.CentralChannel > pAd->CommonCfg.Channel)
@@ -2082,12 +2159,6 @@ static VOID MT76x0_ChipSwitchChannel(
 		
 	}
 	RTMP_IO_WRITE32(pAd, EXT_CCA_CFG, RegValue);
-
-	if (pAd->CommonCfg.BBPCurrentBW == BW_20){
-		RTMP_IO_WRITE32(pAd, TX_SW_CFG0, 0x601);
-	} else {
-		RTMP_IO_WRITE32(pAd, TX_SW_CFG0, 0x201);
-	}
 
 #ifdef CONFIG_AP_SUPPORT
 #ifdef AP_QLOAD_SUPPORT
@@ -2122,6 +2193,14 @@ static VOID MT76x0_ChipSwitchChannel(
 		}
 	}	
 
+	/* set Japan Tx filter at channel 14 */
+	RTMP_BBP_IO_READ32(pAd, CORE_R1, &RegValue);
+	if (Channel == 14)
+		RegValue |= 0x20;		
+	else
+		RegValue &= (~0x20);
+	RTMP_BBP_IO_WRITE32(pAd, CORE_R1, RegValue);
+
 	for (Index = 0; Index < MT76x0_BPP_SWITCH_Tab_Size; Index++)
 	{
 		if (((rf_phy_mode | rf_bw) & MT76x0_BPP_SWITCH_Tab[Index].BwBand) == (rf_phy_mode | rf_bw))
@@ -2138,8 +2217,9 @@ static VOID MT76x0_ChipSwitchChannel(
 						eLNAgain -= (pAd->ALNAGain1*2);
 					else
 						eLNAgain -= (pAd->ALNAGain2*2);
-		
-					pAd->chipCap.IsTempSensorStateReset = TRUE;					
+#ifdef RTMP_TEMPERATURE_COMPENSATION_VGA
+					pAd->chipCap.IsTempSensorStateReset = TRUE;
+#endif /* RTMP_TEMPERATURE_COMPENSATION_VGA */
 				}
 				else
 				{
@@ -2210,9 +2290,12 @@ static VOID MT76x0_ChipSwitchChannel(
 			delta_power = pAd->chipCap.delta_tw_pwr_bw40_2G;
 		}
 		
-		if ( (pAd->DefaultTargetPwr == 0x00) || (pAd->DefaultTargetPwr == 0xFF) )
+		if ( (pAd->DefaultTargetPwr == 0x00) || (pAd->DefaultTargetPwr == 0xFF) || (pAd->DefaultTargetPwr < DEFAULT_RF_TX_POWER))
 		{
-			pAd->DefaultTargetPwr = 0x20;
+			if (channel > 14)
+			    pAd->DefaultTargetPwr = 0x23;
+			else
+			    pAd->DefaultTargetPwr = 0x20;
 			DBGPRINT(RT_DEBUG_ERROR, ("%s: EEPROM target power Error! Use Default Target Power = 0x%x\n", 
 					__FUNCTION__, pAd->DefaultTargetPwr));
 		}
@@ -2272,6 +2355,8 @@ static VOID MT76x0_ChipSwitchChannel(
 
 	percentage_delta_pwr(pAd);
 
+	/* 7610 RXIQ Workaround */
+	MT76x0Check_RXIQ_Result(pAd);
 	return;
 }
 
@@ -2302,7 +2387,7 @@ VOID MT76x0_NICInitAsicFromEEPROM(
 static UCHAR mt76x0_txpwr_chlist[] = {
 	1, 2,3,4,5,6,7,8,9,10,11,12,13,14,
 	36,38,40,44,46,48,52,54,56,60,62,64,
-	100,102,104,108,110,112,116,118,120,124,126,128,132,134,136,140,
+	100,102,104,108,110,112,116,118,120,124,126,128,132,134,136,140,144,
 	149,151,153,157,159,161,165,167,169,171,173,
 	42, 58, 106, 122, 155,
 };
@@ -2382,7 +2467,7 @@ INT MT76x0_ReadChannelPwr(RTMP_ADAPTER *pAd)
 
 
 		/* 3. U-NII upper band: 149, 151, 153; 157, 159, 161; 165, 167, 169; 171, 173 (including central frequency in BW 40MHz)*/
-		choffset = 14 + 12 + 16;
+		choffset = 14 + 12 + 17;
 		ASSERT((pAd->TxPower[choffset].Channel == 149));
 		for (i = 0; i < 6; i++)
 		{
@@ -2396,34 +2481,42 @@ INT MT76x0_ReadChannelPwr(RTMP_ADAPTER *pAd)
 				pAd->TxPower[idx + choffset + 1].Power = Power.field.Byte1;
 		}
 
-		/* choffset = 14 + 12 + 16 + 7; */
-		choffset = 14 + 12 + 16 + 11;
+		choffset = 14 + 12 + 17 + 11;
+
+		/* 4. Sanity Check and corrections */
+		for (i = 0; i < choffset; i++)
+		{
+			if (pAd->TxPower[i].Power > 0 && pAd->TxPower[i].Power < DEFAULT_RF_TX_POWER)
+			    pAd->TxPower[i].Power = DEFAULT_RF_TX_POWER;
+			/* channel 144 not calibrated by fabric machine (QA software issue), need map to 140, and 165-173 map to 161 */
+			if (i == 42)
+			    pAd->TxPower[i].Power = pAd->TxPower[i-1].Power;
+			if (i >= 49 && i <= 53)
+			    pAd->TxPower[i].Power = pAd->TxPower[48].Power;
+		}
 
 #ifdef DOT11_VHT_AC
 		ASSERT((pAd->TxPower[choffset].Channel == 42));
 
 		/* For VHT80MHz, we need assign tx power for central channel 42, 58, 106, 122, and 155 */
 		DBGPRINT(RT_DEBUG_TRACE, ("%s: Update Tx power control of the central channel (42, 58, 106, 122 and 155) for VHT BW80\n", __FUNCTION__));
-		
-		NdisMoveMemory(&pAd->TxPower[53], &pAd->TxPower[16], sizeof(CHANNEL_TX_POWER)); // channel 42 = channel 40
-		NdisMoveMemory(&pAd->TxPower[54], &pAd->TxPower[22], sizeof(CHANNEL_TX_POWER)); // channel 58 = channel 56
-		NdisMoveMemory(&pAd->TxPower[55], &pAd->TxPower[28], sizeof(CHANNEL_TX_POWER)); // channel 106 = channel 104
-		NdisMoveMemory(&pAd->TxPower[56], &pAd->TxPower[34], sizeof(CHANNEL_TX_POWER)); // channel 122 = channel 120
-		NdisMoveMemory(&pAd->TxPower[57], &pAd->TxPower[44], sizeof(CHANNEL_TX_POWER)); // channel 155 = channel 153
+
+		NdisMoveMemory(&pAd->TxPower[choffset], &pAd->TxPower[16], sizeof(CHANNEL_TX_POWER)); // channel 42 = channel 40
+		NdisMoveMemory(&pAd->TxPower[choffset+1], &pAd->TxPower[22], sizeof(CHANNEL_TX_POWER)); // channel 58 = channel 56
+		NdisMoveMemory(&pAd->TxPower[choffset+2], &pAd->TxPower[28], sizeof(CHANNEL_TX_POWER)); // channel 106 = channel 104
+		NdisMoveMemory(&pAd->TxPower[choffset+3], &pAd->TxPower[34], sizeof(CHANNEL_TX_POWER)); // channel 122 = channel 120
+		NdisMoveMemory(&pAd->TxPower[choffset+4], &pAd->TxPower[45], sizeof(CHANNEL_TX_POWER)); // channel 155 = channel 153
 
 		pAd->TxPower[choffset].Channel = 42;
 		pAd->TxPower[choffset+1].Channel = 58;
 		pAd->TxPower[choffset+2].Channel = 106;
 		pAd->TxPower[choffset+3].Channel = 122;
 		pAd->TxPower[choffset+4].Channel = 155;
-		
-		choffset += 5;		/* the central channel of VHT80 */
-		
-		choffset = (MAX_NUM_OF_CHANNELS - 1);
+
+		choffset = MAX_NUM_OF_CHANNELS;
 #endif /* DOT11_VHT_AC */
 
-
-		/* 4. Print and Debug*/
+		/* 5. Print and Debug*/
 		for (i = 0; i < choffset; i++)
 		{
 			DBGPRINT(RT_DEBUG_TRACE, ("E2PROM: TxPower[%03d], Channel=%d, Power[Tx:%d]\n",
@@ -2565,7 +2658,9 @@ VOID MT76x0_DisableTxRx(
 			return;
 		}
 	}
-	
+
+	RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_POLL_IDLE);
+
 	if (MTxCycle >= 2000)
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("Check RxQ page count max\n"));
@@ -2625,9 +2720,10 @@ VOID MT76x0_DisableTxRx(
 
 
 #ifdef ED_MONITOR
-void MT76x0_Set_ED_CCA(RTMP_ADAPTER *pAd, BOOLEAN enable)
-{
+void MT76x0_Set_ED_CCA(RTMP_ADAPTER *pAd, BOOLEAN enable) {
 	UINT32 MacReg = 0;
+	UINT32 reg_val = 0;
+	UCHAR ED_TH = 0x0e;
 	if (enable) {
 		RTMP_IO_READ32(pAd, CH_TIME_CFG, &MacReg);
 		MacReg |= 0x45;   // enable channel status check
@@ -2636,10 +2732,23 @@ void MT76x0_Set_ED_CCA(RTMP_ADAPTER *pAd, BOOLEAN enable)
 		RTMP_IO_READ32(pAd, TXOP_CTRL_CFG, &MacReg);
 		MacReg |= (1 << 20);
 		RTMP_IO_WRITE32(pAd, TXOP_CTRL_CFG, MacReg);
-	} else {
+		
+		RTMP_BBP_IO_READ32(pAd, AGC1_R2, &reg_val);
+		reg_val = (reg_val & 0xFFFF0000) | (ED_TH << 8) | ED_TH;
+		RTMP_BBP_IO_WRITE32(pAd, AGC1_R2, reg_val); 
+		
+		RTMP_IO_READ32(pAd, TXOP_HLDR_ET, &MacReg);
+		MacReg |= (1 << 1);  /* enable secondary EDCCA */
+		RTMP_IO_WRITE32(pAd, TXOP_HLDR_ET, MacReg);
+	}
+	else { 		
 		RTMP_IO_READ32(pAd, TXOP_CTRL_CFG, &MacReg);
 		MacReg &= ~(1 << 20);
 		RTMP_IO_WRITE32(pAd, TXOP_CTRL_CFG, MacReg);
+		
+		RTMP_IO_READ32(pAd, TXOP_HLDR_ET, &MacReg); 
+		MacReg &= ~(1 << 1); /* disable secondary EDCCA */
+		RTMP_IO_WRITE32(pAd, TXOP_HLDR_ET, MacReg);
 	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("%s::0x%x: 0x%08X\n", __FUNCTION__, TXOP_CTRL_CFG, MacReg));
@@ -2662,17 +2771,14 @@ VOID DyncVgaLockTimeout(
 
 void MT76x0_UpdateRssiForChannelModel(RTMP_ADAPTER * pAd)
 {
-	INT32 rx0_rssi, rx1_rssi;
+	INT32 rx0_rssi = 0;
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-	{
 		rx0_rssi = (CHAR)(pAd->ApCfg.RssiSample.LastRssi0);
-		rx1_rssi = (CHAR)(pAd->ApCfg.RssiSample.LastRssi1);
-	}
 #endif /* CONFIG_AP_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_INFO, ("%s:: rx0_rssi(%d), rx1_rssi(%d)\n", 
-		__FUNCTION__, rx0_rssi, rx1_rssi));	
+	//DBGPRINT(RT_DEBUG_LOUD, ("%s:: rx0_rssi(%d)\n", 
+	//	__FUNCTION__, rx0_rssi));	
 
 	/*
 		RSSI_DUT(n) = RSSI_DUT(n-1)*15/16 + RSSI_R2320_100ms_sample*1/16
@@ -2685,8 +2791,48 @@ void MT76x0_UpdateRssiForChannelModel(RTMP_ADAPTER * pAd)
 	else
 		pAd->chipCap.avg_rssi_all = pAd->chipCap.avg_rssi_0 / 256;
 
-	DBGPRINT(RT_DEBUG_INFO, ("%s:: update rssi all(%d)\n", 
-		__FUNCTION__, pAd->chipCap.avg_rssi_all));
+	//DBGPRINT(RT_DEBUG_LOUD, ("%s:: update rssi all(%d)\n", 
+	//	__FUNCTION__, pAd->chipCap.avg_rssi_all));
+}
+
+static void mt7610_long_range_dync_vga(RTMP_ADAPTER * pAd)
+{
+	UCHAR val1;
+	UINT32 bbp_val1;
+
+	RTMP_BBP_IO_READ32(pAd, AGC1_R8, &bbp_val1);
+	/* start with initial gain in this phase */
+	val1 = pAd->CommonCfg.MO_Cfg.Stored_BBP_R66 - pAd->CommonCfg.MO_Cfg.long_range_compensate_level;
+
+	if (pAd->RalinkCounters.OneSecFalseCCACnt > pAd->CommonCfg.MO_Cfg.nFalseCCATh) {
+		if (val1 > (pAd->CommonCfg.MO_Cfg.Stored_BBP_R66 - 0x04)) {
+			val1 -= 0x02;
+			if ((pAd->CommonCfg.MO_Cfg.long_range_compensate_level + 0x02) <= 0x04)
+				pAd->CommonCfg.MO_Cfg.long_range_compensate_level += 0x02;
+			bbp_val1 = (bbp_val1 & 0xffff80ff) | (val1 << 8);
+			RTMP_BBP_IO_WRITE32(pAd, AGC1_R8, bbp_val1);
+#ifdef DFS_SUPPORT
+			pAd->CommonCfg.RadarDetect.bAdjustDfsAgc = TRUE;
+#endif
+		}
+	} else if (pAd->RalinkCounters.OneSecFalseCCACnt < pAd->CommonCfg.MO_Cfg.nLowFalseCCATh) {
+		if (val1 < pAd->CommonCfg.MO_Cfg.Stored_BBP_R66) {
+			val1 += 0x02;
+			if (pAd->CommonCfg.MO_Cfg.long_range_compensate_level < 2)
+				pAd->CommonCfg.MO_Cfg.long_range_compensate_level = 0;
+			else
+				pAd->CommonCfg.MO_Cfg.long_range_compensate_level -= 0x02;
+			bbp_val1 = (bbp_val1 & 0xffff80ff) | (val1 << 8);
+			RTMP_BBP_IO_WRITE32(pAd, AGC1_R8, bbp_val1);
+#ifdef DFS_SUPPORT
+			pAd->CommonCfg.RadarDetect.bAdjustDfsAgc = TRUE;
+#endif
+		}
+	}
+	DBGPRINT(RT_DEBUG_LOUD,
+		("MT7610 long range one second False CCA=%d, fixed agc_vga_0:0%x, fixed agc_vga_1:0%x\n"
+		, pAd->RalinkCounters.OneSecFalseCCACnt, bbp_val1, bbp_val1));
+
 }
 
 #define shift_left16(x)			((x) << 16)
@@ -2727,20 +2873,30 @@ BOOLEAN dynamic_channel_model_adjust(RTMP_ADAPTER *pAd)
 		}
 	}
 
-	DBGPRINT(RT_DEBUG_INFO, ("%s:: dynamic ChE mode(0x%x)\n", 
+	DBGPRINT(RT_DEBUG_LOUD, ("%s:: dynamic ChE mode(0x%x)\n", 
 		__FUNCTION__, mode));
 
 	if (((pAd->chipCap.avg_rssi_all <= -76) && (pAd->CommonCfg.BBPCurrentBW == BW_80))
 		|| ((pAd->chipCap.avg_rssi_all <= -79) && (pAd->CommonCfg.BBPCurrentBW == BW_40))
 		|| ((pAd->chipCap.avg_rssi_all <= -82) && (pAd->CommonCfg.BBPCurrentBW == BW_20)))
 	{
-		no_dynamic_vga = TRUE; /* rssi too low, stop dynamic VGA , resume initial gain */
+		/* workaround for init gain falseCCA too high issue , 20151202 modify this phase to do 2dB dync vga */		
+		no_dynamic_vga = TRUE; /* keep this TRUE to skip original dync vga flow */
+
+		if(pAd->chipCap.skip_long_range_dync_vga != TRUE)
+		{
+			mt7610_long_range_dync_vga(pAd);
+		}
+		else
+		{
+			pAd->chipCap.dynamic_chE_mode = 0xEE; /* to restore to initial */
+		}
 	}
-	
-	if (((mode & 0xFF) != pAd->chipCap.dynamic_chE_mode) || no_dynamic_vga) {
-		default_init_vga = pAd->CommonCfg.MO_Cfg.Stored_BBP_R66;  			//44
-		eLNA_lower_init_vga = pAd->CommonCfg.MO_Cfg.Stored_BBP_R66 - 8;		//3C
-	
+
+	if ((mode & 0xFF) != pAd->chipCap.dynamic_chE_mode) {
+		default_init_vga = pAd->CommonCfg.MO_Cfg.Stored_BBP_R66;
+		eLNA_lower_init_vga = pAd->CommonCfg.MO_Cfg.Stored_BBP_R66 - 8;
+
 		/* VGA settings : MT7610E_DynamicVGA_plus_micro_wave_20150120.pptx */
 		switch (mode & 0xFF)
 		{
@@ -2784,12 +2940,12 @@ BOOLEAN dynamic_channel_model_adjust(RTMP_ADAPTER *pAd)
 				break;
 		
 			default:
-				DBGPRINT(RT_DEBUG_ERROR, ("%s:: no such dynamic ChE mode(0x%x)\n", 
+				DBGPRINT(RT_DEBUG_LOUD, ("%s:: no such dynamic ChE mode(0x%x)\n", 
 					__FUNCTION__, mode));
 				break;
 		}
 
-		DBGPRINT(RT_DEBUG_INFO, ("%s:: updated dynamic_chE_mode(0x%x)\n", 
+		DBGPRINT(RT_DEBUG_LOUD, ("%s: updated dynamic_chE_mode(0x%x)\n", 
 			__FUNCTION__, pAd->chipCap.dynamic_chE_mode));
 	} 
 
@@ -2799,7 +2955,7 @@ BOOLEAN dynamic_channel_model_adjust(RTMP_ADAPTER *pAd)
 void MT76x0_AsicDynamicVgaGainControl(RTMP_ADAPTER *pAd)
 {
 	if (dynamic_channel_model_adjust(pAd) == TRUE) {
-		DBGPRINT(RT_DEBUG_INFO, ("%s:: no need to do dynamic vga\n", __FUNCTION__));			
+		DBGPRINT(RT_DEBUG_LOUD, ("%s: no need to do dynamic vga\n", __FUNCTION__));			
 		return;
 	}	
 	
@@ -2813,7 +2969,7 @@ void MT76x0_AsicDynamicVgaGainControl(RTMP_ADAPTER *pAd)
 		RTMP_BBP_IO_READ32(pAd, bbp_reg, &bbp_val);
 		val = ((bbp_val & (0x0000ff00)) >> 8) & 0xff;
 
-		DBGPRINT(RT_DEBUG_TRACE,
+		DBGPRINT(RT_DEBUG_LOUD,
 			("0x10 one second False CCA=%d, fixed R66 at 0x%x\n", pAd->RalinkCounters.OneSecFalseCCACnt, val));
 
 		if (pAd->RalinkCounters.OneSecFalseCCACnt > pAd->CommonCfg.MO_Cfg.nFalseCCATh)
@@ -2910,7 +3066,7 @@ VOID MT76x0_AsicExtraPowerOverMAC(
 	ExtraPwrOverTxPwrCfg9 |= (ExtraPwrOverMAC & 0x00003F00) >> 8; /* Get Tx power for STBC MCS 7 */
 	RTMP_IO_WRITE32(pAd, TX_PWR_CFG_9, ExtraPwrOverTxPwrCfg9);
 	
-	DBGPRINT(RT_DEBUG_INFO, ("Offset = 0x13D4, TxPwr = 0x%08X, Offset = 0x13DC, TxPwr = 0x%08X\n", 
+	DBGPRINT(RT_DEBUG_TRACE, ("Offset = 0x13D4, TxPwr = 0x%08X, Offset = 0x13DC, TxPwr = 0x%08X\n", 
 		(UINT)ExtraPwrOverTxPwrCfg7, 
 		(UINT)ExtraPwrOverTxPwrCfg9));
 }
@@ -3303,7 +3459,7 @@ static VOID MT76x0_AsicGetTxPowerOffset(
 	INOUT PULONG pTxPwr)
 {
 	CONFIGURATION_OF_TX_POWER_CONTROL_OVER_MAC CfgOfTxPwrCtrlOverMAC;
-	DBGPRINT(RT_DEBUG_INFO, ("-->MT76x0_AsicGetTxPowerOffset\n"));
+	DBGPRINT(RT_DEBUG_LOUD, ("-->MT76x0_AsicGetTxPowerOffset\n"));
 
 	NdisZeroMemory(&CfgOfTxPwrCtrlOverMAC, sizeof(CfgOfTxPwrCtrlOverMAC));
 
@@ -3338,7 +3494,7 @@ static VOID MT76x0_AsicGetTxPowerOffset(
 #endif /* DOT11_VHT_AC */
 
 	NdisCopyMemory(pTxPwr, (UCHAR *)&CfgOfTxPwrCtrlOverMAC, sizeof(CfgOfTxPwrCtrlOverMAC));
-	DBGPRINT(RT_DEBUG_INFO, ("<--MT76x0_AsicGetTxPowerOffset\n"));
+	DBGPRINT(RT_DEBUG_LOUD, ("<--MT76x0_AsicGetTxPowerOffset\n"));
 }
 
 /*
@@ -3376,8 +3532,10 @@ VOID MT76x0_Init(RTMP_ADAPTER *pAd)
 	pChipCap->WPDMABurstSIZE = 3;
 #endif
 
-	pChipCap->SnrFormula = SNR_FORMULA2;
+	pChipCap->SnrFormula = SNR_FORMULA3;
+#ifdef WAPI_SUPPORT
 	pChipCap->FlgIsHwWapiSup = TRUE;
+#endif /* WAPI_SUPPORT */
 	pChipCap->VcoPeriod = 10;
 	pChipCap->FlgIsVcoReCalMode = VCO_CAL_MODE_3;
 	pChipCap->FlgIsHwAntennaDiversitySup = FALSE;
@@ -3390,11 +3548,14 @@ VOID MT76x0_Init(RTMP_ADAPTER *pAd)
 #ifdef FIFO_EXT_SUPPORT
 	pChipCap->FlgHwFifoExtCap = TRUE;
 #endif /* FIFO_EXT_SUPPORT */
-
-
 	pChipCap->asic_caps |= (fASIC_CAP_PMF_ENC);
 	pChipCap->asic_caps |= (fASIC_CAP_MCS_LUT);
-	pChipCap->phy_caps = (fPHY_CAP_24G | fPHY_CAP_5G);
+#if 0 /* current driver not work with USB */
+	if (IS_MT7610U(pAd))
+		pChipCap->phy_caps = (fPHY_CAP_24G | fPHY_CAP_5G);
+	else
+#endif
+		pChipCap->phy_caps = fPHY_CAP_5G;
 	pChipCap->phy_caps |= (fPHY_CAP_HT | fPHY_CAP_VHT);
 
 	pChipCap->RfReg17WtMethod = RF_REG_WT_METHOD_STEP_ON;
@@ -3457,7 +3618,7 @@ VOID MT76x0_Init(RTMP_ADAPTER *pAd)
 
 #ifdef DYNAMIC_VGA_SUPPORT
 	pChipCap->dynamic_vga_support = TRUE;
-	pChipCap->compensate_level = 0;
+	pChipCap->skip_long_range_dync_vga = FALSE;
 	pChipCap->avg_rssi_all = -90;
 	pChipCap->avg_rssi_0 = -90;
 	pChipCap->avg_rssi_1 = -90;
@@ -4268,6 +4429,8 @@ static VOID FullCalibration(
 			RTMP_CHIP_CALIBRATION(pAd, DPD_CALIBRATION, 0x0);
 	}
 }
+
+	MT76x0Check_RXIQ_Result(pAd);
 }
 
 
@@ -4366,6 +4529,8 @@ VOID MT76x0_Calibration(
 	RTMP_IO_WRITE32(pAd, 0x2124, reg_val);
 	RTMP_IO_WRITE32(pAd, TX_ALC_CFG_0, reg_tx_alc);
 
+	RTMPusecDelay(100000); // TODO: check response packet from FW
+
 	/*
 		14. RXDC Calibration parameter
 			1:Back Ground Enable
@@ -4395,7 +4560,7 @@ VOID MT76x0_TempSensor(
 			T=3.5(Dout-D25) + 25
 	*/
 	temperature = (35*(Dout-pAd->chipCap.TemperatureOffset))/10 + 25;
-	DBGPRINT(RT_DEBUG_INFO, 
+	DBGPRINT(RT_DEBUG_TRACE, 
 			("%s - Dout=%d (0x%x), TemperatureOffset = %d (0x%x), temperature = %d (0x%x)\n",
 			__FUNCTION__, Dout, Dout, pAd->chipCap.TemperatureOffset, pAd->chipCap.TemperatureOffset, temperature, temperature));
 	if (pAd->chipCap.LastTemperatureforVCO == 0x7FFF)
@@ -6640,4 +6805,28 @@ INT Set_AntennaSelect_Proc(
 }
 /******************************* Command API end ***************************/
 
+VOID MT76x0Check_RXIQ_Result(
+    IN PRTMP_ADAPTER pAd)
+{
+	/* 7610E RXIQ workaround , if 0x2C70[15:0] calibration result is 0, use 0x2C74[15:0] */
+	UINT32 reg_val=0;	
+	RTMP_IO_READ32(pAd, 0x2C70, &reg_val);
+
+	DBGPRINT(RT_DEBUG_OFF,("==== 2C70 [%x] ,RXBackup [%x]\n",reg_val,pAd->chipCap.RXIQBackup));  
+	if((reg_val & 0xffff) == 0)
+	{
+		DBGPRINT(RT_DEBUG_OFF,(" RX Cal =0 , use RXBackup [%x] to restore!!\n",pAd->chipCap.RXIQBackup));  
+		reg_val = pAd->chipCap.RXIQBackup;
+		RTMP_IO_WRITE32(pAd, 0x2C70, reg_val);
+		RTMP_IO_READ32(pAd, 0x2C70, &reg_val);
+		DBGPRINT(RT_DEBUG_OFF,(" result [%x]!!\n",reg_val)); 
+	}
+	else
+	{
+		pAd->chipCap.RXIQBackup = reg_val;
+		DBGPRINT(RT_DEBUG_OFF,("2C70 [%x] not 0 , backup [%x] \n"
+		,reg_val,pAd->chipCap.RXIQBackup));
+				
+	}
+}
 

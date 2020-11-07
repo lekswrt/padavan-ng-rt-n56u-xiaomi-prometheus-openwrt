@@ -312,16 +312,14 @@ BOOLEAN PeerAssocRspSanity(
 				break;
 #endif /* DOT11R_FT_SUPPORT */
 			case IE_EXT_CAPABILITY:
-				if (pEid->Len >= 1)
-				{
-					UCHAR MaxSize;
-					UCHAR MySize = sizeof(EXT_CAP_INFO_ELEMENT);
+			    if (pEid->Len >= 1)
+			    {
+				UCHAR cp_len, buf_space = sizeof(EXT_CAP_INFO_ELEMENT);
 
-					MaxSize = min(pEid->Len, MySize);
-					NdisMoveMemory(pExtCapInfo, &pEid->Octet[0], MaxSize);
-					DBGPRINT(RT_DEBUG_WARN, ("PeerAssocReqSanity - IE_EXT_CAPABILITY!\n"));
-				}
-				break;
+				cp_len = min(pEid->Len, buf_space);
+				NdisMoveMemory(pExtCapInfo,&pEid->Octet[0], cp_len);
+			    }
+			    break;
 			default:
 				DBGPRINT(RT_DEBUG_TRACE, ("%s():ignore unrecognized EID = %d\n", __FUNCTION__, pEid->Eid));
 				break;
@@ -335,7 +333,7 @@ BOOLEAN PeerAssocRspSanity(
 	/* Check the MIC during FT */
 	if (pAd->StaCfg.Dot11RCommInfo.bFtSupport &&
 	    pAd->StaCfg.Dot11RCommInfo.bInMobilityDomain &&
-	    pAd->StaCfg.WepStatus != Ndis802_11WEPDisabled) {
+	    pAd->StaCfg.wdev.WepStatus != Ndis802_11WEPDisabled) {
 		UINT8 rcvd_mic[16];
 		UINT8 ft_mic[16];
 

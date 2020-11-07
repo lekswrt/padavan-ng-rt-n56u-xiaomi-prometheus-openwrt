@@ -81,25 +81,7 @@ VOID RTMPWriteTxWI(
 	pTxWI->TxWINSEQ = NSeq;
 	/* John tune the performace with Intel Client in 20 MHz performance*/
 #ifdef DOT11_N_SUPPORT
-	BASize = pAd->CommonCfg.TxBASize;
-#ifdef RT65xx
-	if (IS_RT65XX(pAd))
-	{
-		if (BASize > 31)
-			BASize =31;
-	}
-	else
-#endif /* RT65xx */
-	if (pAd->MACVersion == 0x28720200)
-	{
-		if (BASize > 13)
-			BASize =13;
-	}
-	else
-	{
-		if( BASize >7 )
-			BASize =7;
-	}
+	BASize = 0;
 
 	pTxWI->TxWIBAWinSize = BASize;
 	pTxWI->TxWIShortGI = pTransmit->field.ShortGI;
@@ -177,16 +159,7 @@ VOID RTMPWriteTxWI(
 
 	pTxWI->TxWIPacketId = pTxWI->TxWIMCS;
 	NdisMoveMemory(pOutTxWI, &TxWI, TXWISize);
-
-#ifdef DBG
-//+++Add by shiang for debug
-if (0){
-	hex_dump("TxWI", (UCHAR *)pOutTxWI, TXWISize);
 }
-//---Add by shiang for debug
-#endif
-}
-
 
 VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 {
@@ -239,11 +212,24 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 
 	pTxWI->TxWIAMPDU = ((pTxBlk->TxFrameType == TX_AMPDU_FRAME) ? TRUE : FALSE);
 	BASize = pAd->CommonCfg.TxBASize;
-	if((pTxBlk->TxFrameType == TX_AMPDU_FRAME) && (pMacEntry))
-	{
-		UCHAR RABAOriIdx = pTxBlk->pMacEntry->BAOriWcidArray[pTxBlk->UserPriority];
 
-		BASize = pAd->BATable.BAOriEntry[RABAOriIdx].BAWinSize;
+	if(pTxWI->TxWIAMPDU && pMacEntry)
+	{
+		/*
+ 		 * Under HT20, 2x2 chipset, OPEN, and with some atero chipsets
+ 		 * reduce BASize to 7 to add one bulk A-MPDU during one TXOP
+ 		 * to improve throughput
+ 		 */
+		if ((pAd->CommonCfg.BBPCurrentBW == BW_20) && (pAd->Antenna.field.TxPath == 2)
+			&& (pMacEntry->bIAmBadAtheros) && (pMacEntry->WepStatus == Ndis802_11EncryptionDisabled))
+		{
+			BASize = 7;
+		}
+		else
+		{
+			UCHAR RABAOriIdx = pTxBlk->pMacEntry->BAOriWcidArray[pTxBlk->UserPriority];
+			BASize = pAd->BATable.BAOriEntry[RABAOriIdx].BAWinSize;
+		}
 	}
 
 	pTxWI->TxWIBAWinSize = BASize;
@@ -323,7 +309,10 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 			}
 		}
 
-		pTxWI->TxWIMpduDensity = pMacEntry->MpduDensity;
+		if ((pAd->CommonCfg.BBPCurrentBW == BW_20) && (pMacEntry->bIAmBadAtheros))
+			pTxWI->TxWIMpduDensity = 7;
+		else
+			pTxWI->TxWIMpduDensity = pMacEntry->MpduDensity;
 	}
 #endif /* DOT11_N_SUPPORT */
 	
@@ -365,7 +354,6 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 	}	
 #endif /* INF_AMAZON_SE */	
 
-
 #ifdef FPGA_MODE
 	if (pAd->fpga_on & 0x6)
 	{
@@ -379,6 +367,7 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 #endif /* FPGA_MODE */
 
 #ifdef MCS_LUT_SUPPORT
+	pTxWI->TxWILutEn = 0;
 	if ((RTMP_TEST_MORE_FLAG(pAd, fASIC_CAP_MCS_LUT)) && 
 		(pTxWI->TxWIWirelessCliID < 128) && 
 		(pMacEntry && pMacEntry->bAutoTxRateSwitch == TRUE))
@@ -396,7 +385,6 @@ VOID RTMPWriteTxWI_Data(RTMP_ADAPTER *pAd, TXWI_STRUC *pTxWI, TX_BLK *pTxBlk)
 		rate_ctrl.field.MCS = pTxWI->TxWIMCS; 
 		if (rate_ctrl.word == pTransmit->word)
 			pTxWI->TxWILutEn = 1;
-		pTxWI->TxWILutEn = 0;
 	}
 
 #ifdef PEER_DELBA_TX_ADAPT
@@ -609,6 +597,7 @@ VOID RTMPWriteTxWI_Cache(
 #endif /* FPGA_MODE */
 
 #ifdef MCS_LUT_SUPPORT
+	pTxWI->TxWILutEn = 0;
 	if (RTMP_TEST_MORE_FLAG(pAd, fASIC_CAP_MCS_LUT) && 
 		(pTxWI->TxWIWirelessCliID < 128) && 
 		(pMacEntry && pMacEntry->bAutoTxRateSwitch == TRUE))
@@ -626,7 +615,6 @@ VOID RTMPWriteTxWI_Cache(
 		rate_ctrl.field.MCS = pTxWI->TxWIMCS; 
 		if (rate_ctrl.word == pTransmit->word)
 			pTxWI->TxWILutEn = 1;
-		pTxWI->TxWILutEn = 0;
 	}
 
 #ifdef PEER_DELBA_TX_ADAPT
@@ -655,6 +643,29 @@ VOID RTMPWriteTxWI_Cache(
 #endif /* DOT11_VHT_AC */
 }
 
+
+#ifdef MCS_LUT_SUPPORT
+INT set_lut_phy_rate(
+	RTMP_ADAPTER *pAd, UINT8 wcid,
+	UINT8 mcs, UINT8 bw, 	UINT8 gi,
+	UINT8 stbc, UINT8 mode)
+{
+	UINT32 mac_reg = 0;
+	USHORT reg_id = 0x1C00 + (wcid << 3);
+	
+#ifdef RLT_MAC
+	mac_reg = (mcs | (bw << 7) | (gi << 9) | (stbc << 10) | (mode << 13));
+#endif /* RLT_MAC */
+#ifdef RTMP_MAC
+	mac_reg = (mcs | (bw << 7) | (gi << 8) | (stbc << 9) | (mode << 14));
+#endif /* RTMP_MAC */
+
+	if (mac_reg)
+		RTMP_IO_WRITE32(pAd, reg_id, mac_reg);
+
+	return TRUE;
+}
+#endif /* MCS_LUT_SUPPORT */
 
 INT rtmp_mac_set_band(RTMP_ADAPTER *pAd, int  band)
 {

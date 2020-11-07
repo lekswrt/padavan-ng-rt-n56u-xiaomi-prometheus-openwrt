@@ -370,7 +370,9 @@ VOID    WscStateMachineInit(
 			WscInitCommonTimers(pAd, pWScControl);
 			pWScControl->WscUpdatePortCfgTimerRunning = FALSE;
 			WSC_TIMER_INIT(pAd, pWScControl, &pWScControl->WscUpdatePortCfgTimer, pWScControl->WscUpdatePortCfgTimerRunning, WscUpdatePortCfgTimeout);
+#ifdef WSC_V2_SUPPORT
 			WSC_TIMER_INIT(pAd, pWScControl, &pWScControl->WscSetupLockTimer, pWScControl->WscSetupLockTimerRunning, WscSetupLockTimeout);
+#endif
 		}
 
 #ifdef APCLI_SUPPORT
@@ -1660,7 +1662,7 @@ VOID WscEapEnrolleeAction(
             	    	WPS_DH_P_VALUE, sizeof(WPS_DH_P_VALUE),
             	    	pWscControl->RegData.EnrolleeRandom, sizeof(pWscControl->RegData.EnrolleeRandom),
             	    	pWscControl->RegData.Pke, (UINT *) &DH_Len);
-
+				
 		/* Need to prefix zero padding */
                 if((DH_Len != sizeof(pWscControl->RegData.Pke)) &&
                     (DH_Len < sizeof(pWscControl->RegData.Pke)))
@@ -2743,7 +2745,7 @@ VOID WscEapRegistrarAction(
 #endif /* CONFIG_AP_SUPPORT */
 
 					}
-					else if ((FALSE
+					else if (FALSE
 #ifdef CONFIG_AP_SUPPORT
 #ifdef APCLI_SUPPORT
 || ((CurOpMode == AP_MODE) && isApCli)
@@ -2752,7 +2754,7 @@ VOID WscEapRegistrarAction(
 #ifdef CONFIG_STA_SUPPORT
 || (CurOpMode == STA_MODE)
 #endif /* CONFIG_STA_SUPPORT */
-						) && (pWscControl->bConfiguredAP == TRUE))
+						&& (pWscControl->bConfiguredAP == TRUE))
 					{
 						/* Some WPS AP expects to receive WSC_NACK when AP is configured */
 						OpCode |= WSC_OPCODE_NACK;
@@ -4725,7 +4727,7 @@ VOID WscSendEapRspId(
 						  EAPOL);
         
 		if (pWscControl->WscConfMode == WSC_ENROLLEE)
-			Length = sizeof(EAP_FRAME) + sizeof(enrIdentity) - 1;
+		Length = sizeof(EAP_FRAME) + sizeof(enrIdentity) - 1;
 		else if (pWscControl->WscConfMode == WSC_REGISTRAR)
 			Length = sizeof(EAP_FRAME) + sizeof(regIdentity) - 1;
 	}
@@ -8918,6 +8920,7 @@ if (CurOpMode == STA_MODE)
 			pAd->ApCfg.ApCliTab[BSS0].MlmeAux.Channel = ApUuidBssid[0].Channel;
 		}
 #endif /* APCLI_SUPPORT */
+
 	}
 
 	if (ApUuidBssid != NULL)
@@ -9690,18 +9693,18 @@ INT	WscGetConfWithoutTrigger(
         
         rcu_read_lock();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,21)
-		for_each_process(p)
+	for_each_process(p)
 #else
-		for_each_task(p)
+	for_each_task(p)
 #endif
-		{
+	{
             if(!strcmp(p->comm, WSC_SINGLE_TRIGGER_APPNAME))
             {
             	if (pAd->dev_idx == 0)
-                	send_sig(SIGXFSZ, p, 0);
+                send_sig(SIGXFSZ, p, 0);
                 else
                 	send_sig(SIGWINCH, p, 0);
-            }
+        }
         }
         rcu_read_unlock();
     }
@@ -10038,14 +10041,14 @@ VOID WscPBCSessionOverlapCheck(
 					(pWscControl->bWscPBCAddrMode && 
 					!MAC_ADDR_EQUAL(pWscControl->WscPBCAddr,pWscStaPbcProbeInfo->StaMacAddr[i])) ||
 #endif /* SMART_MESH */
-					RTMP_TIME_AFTER(now, pWscStaPbcProbeInfo->ReciveTime[i] + 120*OS_HZ))
-				{
-					NdisZeroMemory(&(pWscStaPbcProbeInfo->StaMacAddr[i][0]), MAC_ADDR_LEN);
-					pWscStaPbcProbeInfo->ReciveTime[i] = 0;
-					pWscStaPbcProbeInfo->Valid[i] = FALSE;
-					pWscStaPbcProbeInfo->WscPBCStaProbeCount--;
-				}
+				RTMP_TIME_AFTER(now, pWscStaPbcProbeInfo->ReciveTime[i] + 120*OS_HZ))
+			{
+				NdisZeroMemory(&(pWscStaPbcProbeInfo->StaMacAddr[i][0]), MAC_ADDR_LEN);
+				pWscStaPbcProbeInfo->ReciveTime[i] = 0;
+				pWscStaPbcProbeInfo->Valid[i] = FALSE;
+				pWscStaPbcProbeInfo->WscPBCStaProbeCount--;
 			}
+		}
 		}
 		
 		if (pWscStaPbcProbeInfo->WscPBCStaProbeCount > 1)
@@ -11943,3 +11946,4 @@ BOOLEAN WscGetDataFromPeerByTag(
 }
 
 #endif /* WSC_INCLUDED */
+

@@ -250,25 +250,25 @@ static VOID	WscParseEncrSettings(
 			case WSC_ID_E_SNONCE1:
 				/* for verification with our enrollee nonce */
                 if(pReg)
-                    NdisMoveMemory(pReg->Es1, pData, WscLen);
+				NdisMoveMemory(pReg->Es1, pData, WscLen);
 				break;
 
 			case WSC_ID_E_SNONCE2:
 				/* for verification with our enrollee nonce */
                 if(pReg)
-                    NdisMoveMemory(pReg->Es2, pData, WscLen);
+				NdisMoveMemory(pReg->Es2, pData, WscLen);
 				break;
 
 			case WSC_ID_R_SNONCE1:
 				/* for verification with our enrollee nonce */
                 if(pReg)
-                    NdisMoveMemory(pReg->Rs1, pData, WscLen);
+				NdisMoveMemory(pReg->Rs1, pData, WscLen);
 				break;
 
 			case WSC_ID_R_SNONCE2:
 				/* for verification with our enrollee nonce */
                 if(pReg)
-                    NdisMoveMemory(pReg->Rs2, pData, WscLen);
+				NdisMoveMemory(pReg->Rs2, pData, WscLen);
 				break;
 
 			case WSC_ID_KEY_WRAP_AUTH:
@@ -288,10 +288,10 @@ static VOID	WscParseEncrSettings(
 				}
                 if(pProfile)
                 {
-                    pProfile->Profile[0].SSID.SsidLength = Idx;
-                    RTMPMoveMemory(pProfile->Profile[0].SSID.Ssid, pData, pProfile->Profile[0].SSID.SsidLength);
-                    /* Svae the total number, always get the first profile */
-                    pProfile->ProfileCnt = 1;
+				pProfile->Profile[0].SSID.SsidLength = Idx;
+				RTMPMoveMemory(pProfile->Profile[0].SSID.Ssid, pData, pProfile->Profile[0].SSID.SsidLength);
+				/* Svae the total number, always get the first profile */
+				pProfile->ProfileCnt = 1;
                 }
 				break;
 
@@ -299,25 +299,25 @@ static VOID	WscParseEncrSettings(
 				if (pReg && !MAC_ADDR_EQUAL(pData, pReg->SelfInfo.MacAddr))
 					DBGPRINT(RT_DEBUG_TRACE, ("WscParseEncrSettings --> Enrollee macAddr not match\n"));
                 if(pProfile)
-                    RTMPMoveMemory(pProfile->Profile[0].MacAddr, pData, 6);				
+				RTMPMoveMemory(pProfile->Profile[0].MacAddr, pData, 6);				
 				break;
 						
 			case WSC_ID_AUTH_TYPE:
 				tmpVal = get_unaligned((PUSHORT) pData);
                 if(pProfile)
-                    pProfile->Profile[0].AuthType = cpu2be16(tmpVal);/*cpu2be16(*((PUSHORT) pData)); */
+				pProfile->Profile[0].AuthType = cpu2be16(tmpVal);/*cpu2be16(*((PUSHORT) pData)); */
 				break;
 								
 			case WSC_ID_ENCR_TYPE:
 				tmpVal = get_unaligned((PUSHORT) pData);
                 if(pProfile)
-                    pProfile->Profile[0].EncrType = cpu2be16(tmpVal);/*cpu2be16(*((PUSHORT) pData)); */
+				pProfile->Profile[0].EncrType = cpu2be16(tmpVal);/*cpu2be16(*((PUSHORT) pData)); */
 				break;
 
 			case WSC_ID_NW_KEY_INDEX:
                 /* Netork Key Index: 1 ~ 4 */
                 if(pProfile)
-                    pProfile->Profile[0].KeyIndex = (*pData);
+				pProfile->Profile[0].KeyIndex = (*pData);
 				break;
 			
 			case WSC_ID_NW_KEY:
@@ -325,8 +325,8 @@ static VOID	WscParseEncrSettings(
 					break;
                 if(pProfile)
                 {
-                    pProfile->Profile[0].KeyLength = WscLen;
-                    RTMPMoveMemory(pProfile->Profile[0].Key, pData, pProfile->Profile[0].KeyLength);
+				pProfile->Profile[0].KeyLength = WscLen;
+				RTMPMoveMemory(pProfile->Profile[0].Key, pData, pProfile->Profile[0].KeyLength);
                 }
 				break;
 
@@ -341,7 +341,7 @@ static VOID	WscParseEncrSettings(
 	}
 	/* Validate HMAC, reuse KDK buffer */
     if(pReg)
-        RT_HMAC_SHA256(pReg->AuthKey, 32, pPlainData, HmacLen, Temp, SHA256_DIGEST_SIZE);
+    RT_HMAC_SHA256(pReg->AuthKey, 32, pPlainData, HmacLen, Temp, SHA256_DIGEST_SIZE);
 	
 	if (RTMPEqualMemory(Hmac, Temp, 8) != 1)
 	{
@@ -675,7 +675,7 @@ VOID WscGenPSK1(
 	else
 #endif /* WSC_NFC_SUPPORT */
 	{
-		DBGPRINT(RT_DEBUG_OFF, ("sn - PinCodeLen = %d\n", pReg->PinCodeLen)); //snowpin test
+		printk("sn - PinCodeLen = %d\n", pReg->PinCodeLen); //snowpin test
 		hex_dump("WscGenPSK1: PIN", pReg->PIN, 8); //snowpin test
 		// Generate PSK1    
 		if (pReg->PinCodeLen == 4)
@@ -2429,8 +2429,8 @@ int BuildMessageM8(
             {   
 		WscCreateProfileFromCfg(pAdapter, REGISTRAR_ACTION | AP_MODE, 
 		                        pWscControl, &pWscControl->WscProfile);
-                pCredential = &pAdapter->ApCfg.MBSSID[apidx].WscControl.WscProfile.Profile[0];
-            }
+		pCredential = &pAdapter->ApCfg.MBSSID[apidx].WscControl.WscProfile.Profile[0];
+	}
 #ifdef APCLI_SUPPORT   
             else if(bFromApCli)
             {
@@ -3050,8 +3050,8 @@ int ProcessMessageM1(
 				
 			case WSC_ID_SC_STATE:
 				pReg->PeerInfo.ScState = get_unaligned((PUSHORT) pData);/**((PUSHORT) pData); */
-				/* Don't overwrite the credential of M7 received from AP when this flag is TRUE in registrar mode! */
-				pWscControl->bConfiguredAP = (pReg->PeerInfo.ScState == WSC_SCSTATE_CONFIGURED) ? TRUE:FALSE;
+					/* Don't overwrite the credential of M7 received from AP when this flag is TRUE in registrar mode! */
+					pWscControl->bConfiguredAP = (pReg->PeerInfo.ScState == WSC_SCSTATE_CONFIGURED) ? TRUE:FALSE;
 				DBGPRINT(RT_DEBUG_TRACE, ("Update the bConfiguredAP: %d\n", pWscControl->bConfiguredAP));
 				FieldCheck[(WSC_TLV_BYTE2(WSC_ID_SC_STATE))] ^= (1 << WSC_TLV_BYTE1(WSC_ID_SC_STATE));
 				break;
@@ -3214,7 +3214,7 @@ int ProcessMessageM2(
     IF_DEV_CONFIG_OPMODE_ON_STA(pAdapter)
 		CurOpMode = STA_MODE;
 #endif /* CONFIG_STA_SUPPORT */
-
+	
 	DBGPRINT(RT_DEBUG_INFO, ("CurOpMode = %u\n", CurOpMode));
 
 	pReg->PeerInfo.Version2 = 0;
@@ -3483,7 +3483,9 @@ int ProcessMessageM2(
 
 	/* Create KDK input data */
 	NdisMoveMemory(&KdkInput[0], pReg->SelfNonce, 16);
+		
 	NdisMoveMemory(&KdkInput[16], pReg->SelfInfo.MacAddr, 6);
+		
 	NdisMoveMemory(&KdkInput[22], pReg->RegistrarNonce, 16);
 	
 	/* Generate the KDK */

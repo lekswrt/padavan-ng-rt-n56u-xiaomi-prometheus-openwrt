@@ -892,7 +892,15 @@ VOID MCUCtrlInit(PRTMP_ADAPTER pAd)
 
 VOID MCUCtrlExit(PRTMP_ADAPTER pAd)
 {
-	struct MCU_CTRL *MCtrl = &pAd->MCUCtrl;
+	RtmpOsMsDelay(30);
+
+	if (!pAd)
+		return;
+
+	MCtrl = &pAd->MCUCtrl;
+
+	if (!MCtrl)
+		return;
 
 	RTMP_SEM_EVENT_DESTORY(&MCtrl->FWUploadSem);
 	RTMP_SEM_EVENT_DESTORY(&MCtrl->CmdRspEventListLock);
@@ -1104,7 +1112,7 @@ INT BurstWrite(PRTMP_ADAPTER pAd, UINT32 Offset, UINT32 *Data, UINT32 Cnt)
 		NdisMoveMemory(Pos, &Value, 4);
 		Pos += 4;
 
-	};
+	}
 
 	NdisZeroMemory(&CmdUnit, sizeof(CmdUnit));
 	CmdUnit.u.ANDES.Type = BURST_WRITE;

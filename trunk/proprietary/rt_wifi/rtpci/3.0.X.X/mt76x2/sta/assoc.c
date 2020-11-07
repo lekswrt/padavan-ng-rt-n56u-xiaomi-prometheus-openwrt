@@ -168,7 +168,9 @@ VOID MlmeAssocReqAction(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM *Elem)
 {
+#ifdef VHT_TXBF_SUPPORT
 	ULONG Idx;
+#endif /* VHT_TXBF_SUPPORT */
 	UCHAR ApAddr[6];
 	HEADER_802_11 AssocHdr;
 	UCHAR WmeIe[9] = {IE_VENDOR_SPECIFIC, 0x07, 0x00, 0x50, 0xf2, 0x02, 0x00, 0x01, 0x00};
@@ -697,7 +699,9 @@ VOID MlmeReassocReqAction(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM * Elem)
 {
+#ifdef VHT_TXBF_SUPPORT
 	ULONG Idx;
+#endif /* VHT_TXBF_SUPPORT */
 	UCHAR ApAddr[6];
 	HEADER_802_11 ReassocHdr;
 	UCHAR WmeIe[9] = {IE_VENDOR_SPECIFIC, 0x07, 0x00, 0x50, 0xf2, 0x02, 0x00, 0x01, 0x00};
@@ -779,7 +783,7 @@ VOID MlmeReassocReqAction(
 
 			/* Indicate the FT procedure */
 			if (pAd->StaCfg.Dot11RCommInfo.bInMobilityDomain &&
-			    pAd->StaCfg.WepStatus != Ndis802_11WEPDisabled) {
+			    pAd->StaCfg.wdev.WepStatus != Ndis802_11WEPDisabled) {
 				UINT8 FtIeLen = 0;
 				PMAC_TABLE_ENTRY pEntry;
 				FT_MIC_CTR_FIELD mic_ctr;
@@ -1166,7 +1170,7 @@ VOID MlmeDisassocReqAction(
 
 #ifdef WAPI_SUPPORT
 	WAPI_InternalCmdAction(pAd,
-			       pAd->StaCfg.AuthMode,
+			       pAd->StaCfg.wdev.AuthMode,
 			       BSS0, pDisassocReq->Addr, WAI_MLME_DISCONNECT);
 #endif /* WAPI_SUPPORT */
 
@@ -1367,6 +1371,10 @@ VOID PeerAssocRspAction(
                                 }
 #endif /* DOT11W_PMF_SUPPORT */
 			}
+
+			if(Status == MLME_ASSOC_REJ_DATA_RATE)
+				printk("APCLI_ASSOC - receive ASSOC_RSP reject - AP not support reqested rates or modes\n");
+
 			pAd->Mlme.AssocMachine.CurrState = ASSOC_IDLE;
 			MlmeEnqueue(pAd, MLME_CNTL_STATE_MACHINE, MT2_ASSOC_CONF, 2, &Status, 0);
 
@@ -1782,7 +1790,7 @@ VOID PeerDisassocAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 
 #ifdef WAPI_SUPPORT
 			WAPI_InternalCmdAction(pAd,
-					       pAd->StaCfg.AuthMode,
+					       pAd->StaCfg.wdev.AuthMode,
 					       BSS0,
 					       Addr2, WAI_MLME_DISCONNECT);
 #endif /* WAPI_SUPPORT */

@@ -527,14 +527,14 @@ int __init rt_pci_init_module(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
 	return pci_register_driver(&rt_pci_driver);
 #else
-	return pci_module_init(&rt_pci_driver);
+    return pci_module_init(&rt_pci_driver);
 #endif
 }
 
 
 void __exit rt_pci_cleanup_module(void)
 {
-	pci_unregister_driver(&rt_pci_driver);
+    pci_unregister_driver(&rt_pci_driver);
 }
 
 #ifndef MULTI_INF_SUPPORT

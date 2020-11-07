@@ -29,7 +29,7 @@
 
  
 #include	"rt_config.h"
-
+#include	<linux/prefetch.h>
 
 #ifdef DBG
 VOID dump_txd(RTMP_ADAPTER *pAd, TXD_STRUC *pTxD)
@@ -176,7 +176,7 @@ VOID ral_write_txd(
 	/* Always use Long preamble before verifiation short preamble functionality works well.*/
 	/* Todo: remove the following line if short preamble functionality works*/
 	
-	OPSTATUS_CLEAR_FLAG(pAd, fOP_STATUS_SHORT_PREAMBLE_INUSED);
+	//OPSTATUS_CLEAR_FLAG(pAd, fOP_STATUS_SHORT_PREAMBLE_INUSED);
 
 	ral_write_txinfo(pAd, pTxBlk, pTxInfo, bWIV, QueueSEL);
 	
@@ -260,23 +260,6 @@ USHORT RtmpPCI_WriteSingleTxResource(
 	pTxD->LastSec1 = (bIsLast && pTxD->SDLen1) ? 1 : 0;
 
 	ral_write_txd(pAd, pTxBlk, pTxD, pTxInfo, FALSE, FIFO_EDCA);
-
-#ifdef DBG
-//+++Add by shiang for debug
-if (0) {
-	DBGPRINT(RT_DEBUG_OFF, ("%s():pTxD->SDPtr0=0x%x, SrcBufPtr=0x%p!\n", __FUNCTION__, pTxD->SDPtr0, pTxBlk->pSrcBufData));
-	
-	hex_dump("DataTxD", pTxRing->Cell[TxIdx].AllocVa, TXD_SIZE);
-	dump_txd(pAd, (TXD_STRUC *)pTxRing->Cell[TxIdx].AllocVa);
-
-	hex_dump("DataTxInfo", pTxRing->Cell[TxIdx].AllocVa + sizeof(TXD_STRUC), sizeof(TXINFO_STRUC));
-	dump_txinfo(pAd, (TXINFO_STRUC *)(pTxRing->Cell[TxIdx].AllocVa + sizeof(TXD_STRUC)));
-
-	hex_dump("DataPktHdr", pDMAHeaderBufVA, inf_hdr_len);
-	hex_dump("DataPktInfo", pTxBlk->pSrcBufData, pTxD->SDLen1);
-}
-//---Add by shiang for debug
-#endif
 
 #ifdef RT_BIG_ENDIAN
 	RTMPWIEndianChange(pAd, (PUCHAR)(pDMAHeaderBufVA), TYPE_TXWI);
@@ -424,6 +407,10 @@ VOID RtmpPCI_FinalWriteTxResource(
 	
 	/* get Tx Ring Resource*/
 	pTxRing = &pAd->TxRing[pTxBlk->QueIdx];
+
+	if (FirstTxIdx >= TX_RING_SIZE)
+		return;
+
 	pTxWI = (TXWI_STRUC *) pTxRing->Cell[FirstTxIdx].DmaBuf.AllocVa;
 	pTxWI->TxWIMPDUByteCnt = totalMPDUSize;
 #ifdef RT_BIG_ENDIAN
@@ -573,29 +560,13 @@ int RtmpPCIMgmtKickOut(
 	pTxD->SDLen1 = 0;
 	pTxD->SDPtr0 = PCI_MAP_SINGLE(pAd, (pSrcBufVA + TXINFO_SIZE), pkt_len, 0, RTMP_PCI_DMA_TODEVICE);
 	pTxD->SDLen0 = pkt_len;
+	pTxD->Burst = 0;
 
 	ral_write_txd(pAd, NULL, pTxD, pTxInfo, TRUE, FIFO_MGMT);
 
 #ifdef RT_BIG_ENDIAN
 	RTMPDescriptorEndianChange((UCHAR *)pTxD, TYPE_TXD);
 	WriteBackToDescriptor((UCHAR *)pDestTxD, (UCHAR *)pTxD, FALSE, TYPE_TXD);
-#endif
-
-#ifdef DBG
-//+++Add by shiang for debug
-if (0) {
-	TXWI_STRUC *pTxWI = (TXWI_STRUC *)(pSrcBufVA + TXINFO_SIZE);
-	
-	DBGPRINT(RT_DEBUG_OFF, ("%s():pTxD->SDPtr0=0x%x, SrcBufPtr=0x%p, SwIdx=%ld\n", __FUNCTION__,
-							pTxD->SDPtr0, (UCHAR *)(pSrcBufVA + TXINFO_SIZE), SwIdx));
-
-	hex_dump("MgmtTxDInfo", pAd->MgmtRing.Cell[SwIdx].AllocVa, TXD_SIZE);
-	dump_txd(pAd, (TXD_STRUC *)pAd->MgmtRing.Cell[SwIdx].AllocVa);
-	dump_txinfo(pAd, (TXINFO_STRUC *)(pAd->MgmtRing.Cell[SwIdx].AllocVa + sizeof(TXD_STRUC)));
-	dumpTxWI(pAd, pTxWI);
-	hex_dump("MgmtPktInfo", (pSrcBufVA + TXINFO_SIZE), pTxD->SDLen0);
-}
-//---Add by shiang for debug
 #endif
 
 	pAd->RalinkCounters.KickTxCount++;
@@ -737,7 +708,6 @@ BOOLEAN  RTMPFreeTXDUponTxDmaDone(
 #endif /* RALINK_QA */
 #endif /* RALINK_ATE */
 
-#ifdef VENDOR_FEATURE1_SUPPORT
 		/*
 			Note:
 
@@ -748,14 +718,11 @@ BOOLEAN  RTMPFreeTXDUponTxDmaDone(
 			Based on different platform, try to find the best value to
 			replace '4' here (overflow rate target is about 0%).
 		*/
-		if (++pAd->FifoUpdateRx >= 4)
+		if (++pAd->FifoUpdateRx >= FIFO_STAT_READ_PERIOD)
 		{
 			NICUpdateFifoStaCounters(pAd);
 			pAd->FifoUpdateRx = 0;
 		}
-#else
-		NICUpdateFifoStaCounters(pAd);
-#endif /* VENDOR_FEATURE1_SUPPORT */
 
 		/* Note : If (pAd->ate.bQATxStart == TRUE), we will never reach here. */
 		FREE++;
@@ -925,7 +892,7 @@ BOOLEAN	RTMPHandleTxRingDmaDoneInterrupt(
 	IN RTMP_ADAPTER *pAd,
 	IN UINT32 int_source)
 {
-    unsigned long	IrqFlags;
+	ULONG IrqFlags = 0;
 	BOOLEAN			bReschedule = FALSE;
 	INT_SOURCE_CSR_STRUC TxRingBitmap = (INT_SOURCE_CSR_STRUC)int_source;
 	
@@ -1321,6 +1288,8 @@ PNDIS_PACKET RxRingDeQueue(
 
 	if (pNewPacket)
 	{
+		struct _RXWI_NMAC *rxwi_n;
+
 		/* unmap the rx buffer*/
 		PCI_UNMAP_SINGLE(pAd, pRxCell->DmaBuf.AllocPa,
 					 pRxCell->DmaBuf.AllocSize, RTMP_PCI_DMA_FROMDEVICE);
@@ -1342,8 +1311,13 @@ PNDIS_PACKET RxRingDeQueue(
 		NdisMoveMemory(pRxBlk->pRxInfo, pRxInfo, RXINFO_SIZE);
 #endif /* RT_BIG_ENDIAN */
 		SET_OS_PKT_DATAPTR(pRxPacket, GET_OS_PKT_DATAPTR(pRxPacket) + RXINFO_SIZE);
-		SET_OS_PKT_LEN(pRxPacket, GET_OS_PKT_LEN(pRxPacket) - RXINFO_SIZE);
+		rxwi_n = (struct _RXWI_NMAC *)(GET_OS_PKT_DATAPTR(pRxPacket));
+		pRxBlk->pRxWI = (RXWI_STRUC *)(GET_OS_PKT_DATAPTR(pRxPacket));
 #endif /* RLT_MAC */
+
+		SET_OS_PKT_LEN(pRxPacket,
+			rxwi_n->MPDUtotalByteCnt+sizeof(RXWI_STRUC)+(pRxBlk->pRxInfo->L2PAD?2:0));
+		SET_OS_PKT_DATATAIL(pRxPacket, GET_OS_PKT_DATAPTR(pRxPacket), GET_OS_PKT_LEN(pRxPacket));
 
 		pRxCell->DmaBuf.AllocSize = RX_BUFFER_AGGRESIZE;
 		pRxCell->pNdisPacket = (PNDIS_PACKET) pNewPacket;
@@ -1389,6 +1363,14 @@ PNDIS_PACKET RxRingDeQueue(
 #ifdef RTMP_MAC
 	RTMP_IO_WRITE32(pAd, RX_CRX_IDX, pRxRing->RxCpuIdx);
 #endif /* RTMP_MAC */
+
+#ifdef  CONFIG_WIFI_PREFETCH_RXDATA
+	/* prefetch to enhance throughput */
+	if ((RxRingNo == 0) && *pRxPending > 0) {
+		prefetch(pRxRing->Cell[pRxRing->RxSwReadIdx].pNdisPacket);
+	}
+#endif /* CONFIG_WIFI_PREFETCH_RXDATA */
+
 #else /* CACHE_LINE_32B */
 
 	/*
@@ -1408,7 +1390,7 @@ PNDIS_PACKET RxRingDeQueue(
 	*/
 	if (pRxRing->RxSwReadIdx & 0x01)
 	{
-		RTMP_DMACB *pRxCellLast;
+		RTMP_DMACB *pRxCellLast = NULL;
 #ifdef RT_BIG_ENDIAN
 		PRXD_STRUC pDestRxDLast;
 #endif
@@ -1431,7 +1413,8 @@ PNDIS_PACKET RxRingDeQueue(
 #endif
 
 		/* flush cache from last BD */
-		RTMP_DCACHE_FLUSH(pRxCellLast->AllocPa, 32); /* use RXD_SIZE should be OK */
+		if (pRxCellLast)
+		    RTMP_DCACHE_FLUSH(pRxCellLast->AllocPa, 32); /* use RXD_SIZE should be OK */
 
 		/* update SW read and CPU index */
 		INC_RING_INDEX(pRxRing->RxSwReadIdx, RX_RING_SIZE);
@@ -1526,13 +1509,13 @@ NDIS_STATUS MlmeHardTransmitTxRing(RTMP_ADAPTER *pAd, UCHAR QueIdx, PNDIS_PACKET
 	PHEADER_802_11 pHeader_802_11;
 	BOOLEAN bAckRequired, bInsertTimestamp;
 	ULONG SrcBufPA;
-	UCHAR MlmeRate;
+	UCHAR MlmeRate, wcid, tx_rate;
 	ULONG SwIdx = pAd->TxRing[QueIdx].TxCpuIdx;
 	TXWI_STRUC *pFirstTxWI;
 	ULONG FreeNum;
 	MAC_TABLE_ENTRY *pMacEntry = NULL;
 	UINT8 TXWISize = pAd->chipCap.TXWISize;
-
+	HTTRANSMIT_SETTING *transmit;
 
 	RTMP_QueryPacketInfo(pPacket, &PacketInfo, &pSrcBufVA, &SrcBufLen);
 	if (pSrcBufVA == NULL)
@@ -1589,7 +1572,10 @@ NDIS_STATUS MlmeHardTransmitTxRing(RTMP_ADAPTER *pAd, UCHAR QueIdx, PNDIS_PACKET
 	
 	bInsertTimestamp = FALSE;
 	if (pHeader_802_11->FC.Type == BTYPE_CNTL) /* must be PS-POLL*/
-		bAckRequired = FALSE;
+    		if (pHeader_802_11->FC.SubType == SUBTYPE_BLOCK_ACK_REQ)
+        	    bAckRequired = TRUE;
+		else
+		    bAckRequired = FALSE;
 	else /* BTYPE_MGMT or BTYPE_DATA(must be NULL frame)*/
 	{
 		if (pHeader_802_11->Addr1[0] & 0x01) /* MULTICAST, BROADCAST*/
@@ -1604,6 +1590,7 @@ NDIS_STATUS MlmeHardTransmitTxRing(RTMP_ADAPTER *pAd, UCHAR QueIdx, PNDIS_PACKET
 			if (pHeader_802_11->FC.SubType == SUBTYPE_PROBE_RSP)
 			{
 				bInsertTimestamp = TRUE;
+				bAckRequired = FALSE;
 			}
 		}
 	}
@@ -1638,26 +1625,26 @@ NDIS_STATUS MlmeHardTransmitTxRing(RTMP_ADAPTER *pAd, UCHAR QueIdx, PNDIS_PACKET
 		For inter-frame gap, the number is for this frame and next frame
 		For MLME rate, we will fix as 2Mb to match other vendor's implement
 	*/
-/*	pAd->CommonCfg.MlmeTransmit.field.MODE = 1;*/
-	
-/* management frame doesn't need encryption. so use RESERVED_WCID no matter u are sending to specific wcid or not */
+	/*	pAd->CommonCfg.MlmeTransmit.field.MODE = 1;*/
+
+	/* management frame doesn't need encryption. so use RESERVED_WCID no matter u are sending to specific wcid or not */
 	/* Only beacon use Nseq=TRUE. So here we use Nseq=FALSE.*/
 	if (pMacEntry == NULL)
 	{
-		RTMPWriteTxWI(pAd, pFirstTxWI, FALSE, FALSE, bInsertTimestamp, FALSE, bAckRequired, FALSE,
-						0, RESERVED_WCID, (SrcBufLen - TXINFO_SIZE - TXWISize - TSO_SIZE), PID_MGMT, 0,
-						(UCHAR)pAd->CommonCfg.MlmeTransmit.field.MCS, IFS_BACKOFF, FALSE,
-						&pAd->CommonCfg.MlmeTransmit);
+		wcid = RESERVED_WCID;
+		tx_rate = (UCHAR)pAd->CommonCfg.MlmeTransmit.field.MCS;
+		transmit = &pAd->CommonCfg.MlmeTransmit;
 	}
 	else
 	{
-		RTMPWriteTxWI(pAd, pFirstTxWI, FALSE, FALSE,
-					bInsertTimestamp, FALSE, bAckRequired, FALSE,
-					0, pMacEntry->Aid, (SrcBufLen - TXINFO_SIZE - TXWISize - TSO_SIZE),
-					pMacEntry->MaxHTPhyMode.field.MCS, 0,
-					(UCHAR)pMacEntry->MaxHTPhyMode.field.MCS,
-					IFS_BACKOFF, FALSE, &pMacEntry->MaxHTPhyMode);
+		wcid = pMacEntry->Aid;
+		tx_rate = (UCHAR)pMacEntry->MaxHTPhyMode.field.MCS;
+		transmit = &pMacEntry->MaxHTPhyMode;
 	}
+
+	RTMPWriteTxWI(pAd, pFirstTxWI, FALSE, FALSE, bInsertTimestamp, FALSE, bAckRequired, FALSE,
+					0, wcid, (SrcBufLen - TXINFO_SIZE - TXWISize - TSO_SIZE), PID_MGMT, 0,
+					tx_rate, IFS_BACKOFF, FALSE, transmit);
 
 	pAd->TxRing[QueIdx].Cell[SwIdx].pNdisPacket = pPacket;
 	pAd->TxRing[QueIdx].Cell[SwIdx].pNextNdisPacket = NULL;
@@ -1666,27 +1653,15 @@ NDIS_STATUS MlmeHardTransmitTxRing(RTMP_ADAPTER *pAd, UCHAR QueIdx, PNDIS_PACKET
 #endif
 	SrcBufPA = PCI_MAP_SINGLE(pAd, (pSrcBufVA + TXINFO_SIZE), (SrcBufLen - TXINFO_SIZE), 0, RTMP_PCI_DMA_TODEVICE);
 
-	ral_write_txd(pAd, NULL, pTxD, pTxInfo, TRUE, FIFO_EDCA);
 	pTxD->LastSec0 = 1;
 	pTxD->LastSec1 = 0;
 	pTxD->SDLen0 = (SrcBufLen - TXINFO_SIZE);
 	pTxD->SDLen1 = 0;
 	pTxD->SDPtr0 = SrcBufPA;
 	pTxD->DMADONE = 0;
+	pTxD->Burst = 0;
 
-#ifdef DBG
-//+++Add by shiang for debug
-if (0){
-	DBGPRINT(RT_DEBUG_OFF, ("%s():pTxD->SDPtr0=0x%x, SrcBufPtr=0x%p, TxRing=%d, SwIdx=%ld\n", __FUNCTION__,
-							pTxD->SDPtr0, (UCHAR *)(pSrcBufVA + TXINFO_SIZE), QueIdx, SwIdx));
-
-	hex_dump("MgmtTxDInfo", pAd->TxRing[QueIdx].Cell[SwIdx].AllocVa, TXD_SIZE);
-	dump_txd(pAd, (TXD_STRUC *)pAd->TxRing[QueIdx].Cell[SwIdx].AllocVa);
-	dump_txinfo(pAd, (TXINFO_STRUC *)(pAd->TxRing[QueIdx].Cell[SwIdx].AllocVa + sizeof(TXD_STRUC)));
-	hex_dump("MgmtPktInfo", (pSrcBufVA + TXINFO_SIZE), pTxD->SDLen0);
-}
-//---Add by shiang for debug
-#endif
+	ral_write_txd(pAd, NULL, pTxD, pTxInfo, TRUE, FIFO_EDCA);
 
 #ifdef RT_BIG_ENDIAN
 	RTMPDescriptorEndianChange((PUCHAR)pTxD, TYPE_TXD);
@@ -1764,8 +1739,9 @@ BOOLEAN RxRing1DoneInterruptHandle(RTMP_ADAPTER *pAd)
 				b. be released if it is discarded
 		*/
 
+		NdisZeroMemory(&rxblk,sizeof(RX_BLK));
 		pRxBlk = &rxblk;
-		
+
 		pRxPacket = RxRingDeQueue(pAd, pRxBlk, &bReschedule, &RxPending, &bCmdRspPacket, 1);
 
 		if ((pRxPacket == NULL) && !bCmdRspPacket)

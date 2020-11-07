@@ -84,9 +84,9 @@
 #include "ft_cmm.h"
 
 #define TYPE_FUNC
-#define FT_KDP_DEBUG
-#define FT_KDP_FUNC_TEST
-/*#define FT_KDP_EMPTY */ /* empty codes to debug */
+/* #define FT_KDP_DEBUG */ /* debug messages for FT */
+/* #define FT_KDP_FUNC_TEST */ /* do not check security of bssid for debug*/
+/* #define FT_KDP_EMPTY */ /* empty codes to debug */
 
 #define IAPP_SHOW_IP_HTONL(__IP)	\
 	(htonl(__IP) >> 24) & 0xFF,		\
@@ -683,6 +683,7 @@ BOOLEAN TYPE_FUNC FT_KDP_KeyRequestToUs(
 {
 #ifndef FT_KDP_EMPTY
 	UINT32 IDR0KH;
+	MAC_TABLE_ENTRY *pEntry = NULL;
 	UINT32 ApIdx;
 
 
@@ -751,6 +752,11 @@ BOOLEAN TYPE_FUNC FT_KDP_KeyRequestToUs(
 				pEvtKeyReq->KeyInfo.R1KHID[4],
 				pEvtKeyReq->KeyInfo.R1KHID[5]));
 #endif /* FT_KDP_DEBUG */
+		pEntry = MacTableLookup(pAd, pEvtKeyReq->MacAddr);
+		if (!pEntry)
+			return FALSE;
+		else
+			ApIdx = pEntry->func_tb_idx;
 
 		/* calculate the PMK-R1 Key for the station vs. the AP */
 		if (FT_QueryKeyInfoForKDP(pAd, ApIdx, pEvtKeyReq) == FALSE)
@@ -958,7 +964,7 @@ VOID TYPE_FUNC FT_KDP_StationInform(
 	/* check if we are in security mode; if not, return */
 	for(IdBssNum=0; IdBssNum<pAd->ApCfg.BssidNum; IdBssNum++)
 	{
-		if (pAd->ApCfg.MBSSID[IdBssNum].WepStatus != Ndis802_11WEPDisabled)
+		if (pAd->ApCfg.MBSSID[IdBssNum].wdev.WepStatus != Ndis802_11WEPDisabled)
 			break;
 	}
 
@@ -1000,7 +1006,7 @@ VOID TYPE_FUNC FT_KDP_StationInform(
 	for(IdBssNum=0; IdBssNum<pAd->ApCfg.BssidNum; IdBssNum++)
 	{
 #ifndef FT_KDP_FUNC_TEST
-		if (pAd->ApCfg.MBSSID[IdBssNum].WepStatus != Ndis802_11WEPDisabled)
+		if (pAd->ApCfg.MBSSID[IdBssNum].wdev.WepStatus != Ndis802_11WEPDisabled)
 #endif /* FT_KDP_FUNC_TEST */
 		{
 			/* copy our MAC address to be the R1KHID */

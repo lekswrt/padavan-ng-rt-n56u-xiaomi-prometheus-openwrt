@@ -824,14 +824,13 @@ static inline VOID DfsProgramBbpValues(PRTMP_ADAPTER pAd,
 
 		/* reg 0x27, Period Delt[7:0], (Period Measurement Uncertainty)*/
 		RTMP_DFS_IO_WRITE8(pAd, 0x27, (pDfsTable->entry[idx].EpsilonT & 0xff));
-		
 		if (pDfsProgramParam->RadarEventExpire[idx] != 0)
 		{
-			RTMP_DFS_IO_WRITE8(pAd,0x39, (pDfsTable->entry[idx].EventExpiration & 0xff));
-			RTMP_DFS_IO_WRITE8(pAd,0x3a, ((pDfsTable->entry[idx].EventExpiration >> 8) & 0xff) );
-			RTMP_DFS_IO_WRITE8(pAd,0x3b, ((pDfsTable->entry[idx].EventExpiration >> 16) & 0xff));
-			RTMP_DFS_IO_WRITE8(pAd,0x3c, ((pDfsTable->entry[idx].EventExpiration >> 24) & 0xff));
-		}
+		    RTMP_DFS_IO_WRITE8(pAd,0x39, (pDfsTable->entry[idx].EventExpiration & 0xff));
+		    RTMP_DFS_IO_WRITE8(pAd,0x3a, ((pDfsTable->entry[idx].EventExpiration >> 8) & 0xff) );
+		    RTMP_DFS_IO_WRITE8(pAd,0x3b, ((pDfsTable->entry[idx].EventExpiration >> 16) & 0xff));
+		    RTMP_DFS_IO_WRITE8(pAd,0x3c, ((pDfsTable->entry[idx].EventExpiration >> 24) & 0xff));
+        	}
 	}
 
 	/* reset status */

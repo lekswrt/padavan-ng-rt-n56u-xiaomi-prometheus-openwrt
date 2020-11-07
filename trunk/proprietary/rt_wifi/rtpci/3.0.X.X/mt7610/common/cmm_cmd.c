@@ -112,7 +112,12 @@ NDIS_STATUS RTEnqueueInternalCmd(
 {
 	NDIS_STATUS	status;
 	PCmdQElmt	cmdqelmt = NULL;
-	
+
+	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("--->RTEnqueueInternalCmd - NIC is not exist!!\n"));
+		return NDIS_STATUS_FAILURE;
+	}
 
 	status = os_alloc_mem(pAd, (PUCHAR *)&cmdqelmt, sizeof(CmdQElmt));
 	if ((status != NDIS_STATUS_SUCCESS) || (cmdqelmt == NULL))

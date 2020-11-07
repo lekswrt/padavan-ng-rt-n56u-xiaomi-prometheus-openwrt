@@ -468,8 +468,8 @@ UCHAR RateTableVht1S[] =
 	4,		0x49,		0,		30, 50,				3,		0, 0, 5,		1, /* VHT, MCS0, BW80, STBC */
 	5,		0x49,		1,		20, 50,				4,		0, 0, 6,		1, /* VHT, MCS1, BW80, STBC */
 	6,		0x49,		2,		20, 50,				5,		0, 0, 7, 		1, /* VHT, MCS2, BW80, STBC */
-	7,		0x49,		3,		15, 50,				6,		0, 0, 8, 		1, /* VHT, MCS3, BW80, STBC */
-	8,		0x49,		4,		15, 50,				7,		0, 0, 9, 		1, /* VHT, MCS4, BW80, STBC */
+	7,		0x49,		3,		15, 30,				6,		0, 0, 8, 		1, /* VHT, MCS3, BW80, STBC */
+	8,		0x49,		4,		15, 30,				7,		0, 0, 9, 		1, /* VHT, MCS4, BW80, STBC */
 	9,		0x49,		5,		10, 25,				8,		0, 0, 10, 		1, /* VHT, MCS5, BW80, STBC */
 	10,		0x49,		6,		8, 14,				9,		0, 0, 11, 		1, /* VHT, MCS6, BW80, STBC */
 	11,		0x49,		7,		8, 14,				10,		0, 0, 12, 		1, /* VHT, MCS7, BW80, STBC */
@@ -509,8 +509,8 @@ UCHAR RateTableVht1S_MCS7[] =
 	4,		0x49,		0,		30, 50,				3,		0, 0, 5,		1, /* VHT, MCS0, BW80, STBC */
 	5,		0x49,		1,		20, 50,				4,		0, 0, 6,		1, /* VHT, MCS1, BW80, STBC */
 	6,		0x49,		2,		20, 50,				5,		0, 0, 7, 		1, /* VHT, MCS2, BW80, STBC */
-	7,		0x49,		3,		15, 50,				6,		0, 0, 8, 		1, /* VHT, MCS3, BW80, STBC */
-	8,		0x49,		4,		15, 50,				7,		0, 0, 9, 		1, /* VHT, MCS4, BW80, STBC */
+	7,		0x49,		3,		15, 30,				6,		0, 0, 8, 		1, /* VHT, MCS3, BW80, STBC */
+	8,		0x49,		4,		15, 30,				7,		0, 0, 9, 		1, /* VHT, MCS4, BW80, STBC */
 	9,		0x49,		5,		10, 25,				8,		0, 0, 10, 		1, /* VHT, MCS5, BW80, STBC */
 	10,		0x49,		6,		8, 14,				9,		0, 0, 11, 		1, /* VHT, MCS6, BW80, STBC */
 	11,		0x49,		7,		8, 14,				10,		0, 0, 12, 		1, /* VHT, MCS7, BW80, STBC */
@@ -743,27 +743,20 @@ VOID APMlmeSetTxRate(
 {
 	UCHAR tx_mode = pTxRate->Mode;
 	UCHAR tx_bw = pTxRate->BW;
+	ULONG TxErrorRatio = 0, TxTotalCnt = 0, TxSuccess = 0, TxRetransmit = 0, TxFailCount = 0;
 
-#ifdef DOT11_N_SUPPORT
-	if (tx_mode == MODE_HTMIX || tx_mode == MODE_HTGREENFIELD)
-	{
-		if ((pTxRate->STBC) && (pEntry->MaxHTPhyMode.field.STBC) && (pAd->Antenna.field.TxPath >= 2))
-			pEntry->HTPhyMode.field.STBC = STBC_USE;
-		else
-			pEntry->HTPhyMode.field.STBC = STBC_NONE;
-
-		if ((pTxRate->ShortGI || pAd->WIFItestbed.bShortGI) && (pEntry->MaxHTPhyMode.field.ShortGI))
-			pEntry->HTPhyMode.field.ShortGI = GI_400;
-		else
-			pEntry->HTPhyMode.field.ShortGI = GI_800;
-	}
+	/* fix drop to CCK or legacy OFDM modes in 5GHz if not supported by config. 5GHz support only OFDM mode */
+	if (tx_mode == MODE_CCK && (pAd->LatchRfRegs.Channel > 14 || !WMODE_EQUAL(pAd->CommonCfg.PhyMode, WMODE_B)))
+		tx_mode = MODE_OFDM;
+	else if (tx_mode == MODE_OFDM && (pAd->LatchRfRegs.Channel > 14 && WMODE_HT_ONLY(pAd->CommonCfg.PhyMode)))
+		tx_mode = MODE_HTMIX;
 
 #ifdef DOT11_VHT_AC
 	if (tx_mode == MODE_VHT)
 	{
 		RTMP_RA_GRP_TB *pAdaptTbEntry = (RTMP_RA_GRP_TB *)pTxRate;
 		UCHAR bw_cap = BW_20;
-		
+
 		if (pEntry->MaxHTPhyMode.field.BW != pAdaptTbEntry->BW)
 		{
 			switch (pEntry->MaxHTPhyMode.field.BW)
@@ -790,7 +783,44 @@ VOID APMlmeSetTxRate(
 		else
 			tx_bw = pAdaptTbEntry->BW;
 
-		if ((CLIENT_STATUS_TEST_FLAG(pEntry, fCLIENT_STATUS_SGI80_CAPABLE)) && 
+		if ((pEntry->force_op_mode == TRUE))
+		{
+			switch (pEntry->operating_mode.ch_width) {
+				case 1:
+					bw_cap = BW_40;
+					break;
+				case 2:
+					bw_cap = BW_80;
+					break;
+				case 0:
+				default:
+					bw_cap = BW_20;
+					break;
+			}
+			if ((tx_bw != BW_10) && (tx_bw >= bw_cap))
+				tx_bw = bw_cap;
+		}
+	}
+#endif /* DOT11_VHT_AC */
+
+#ifdef DOT11_N_SUPPORT
+	if (tx_mode == MODE_HTMIX || tx_mode == MODE_HTGREENFIELD)
+	{
+		if ((pTxRate->STBC) && (pEntry->MaxHTPhyMode.field.STBC) && (pAd->Antenna.field.TxPath >= 2))
+			pEntry->HTPhyMode.field.STBC = STBC_USE;
+		else
+			pEntry->HTPhyMode.field.STBC = STBC_NONE;
+
+		if ((pTxRate->ShortGI || pAd->WIFItestbed.bShortGI) && (pEntry->MaxHTPhyMode.field.ShortGI))
+			pEntry->HTPhyMode.field.ShortGI = GI_400;
+		else
+			pEntry->HTPhyMode.field.ShortGI = GI_800;
+	}
+
+#ifdef DOT11_VHT_AC
+	if (tx_mode == MODE_VHT)
+	{
+		if ( CLIENT_STATUS_TEST_FLAG(pEntry, fCLIENT_STATUS_SGI80_CAPABLE) &&
 			(pTxRate->ShortGI
 #ifdef WFA_VHT_PF
 			|| pAd->vht_force_sgi
@@ -824,6 +854,7 @@ VOID APMlmeSetTxRate(
 
 	/* BW depends on BSSWidthTrigger and Negotiated BW */
 	if (pAd->CommonCfg.bRcvBSSWidthTriggerEvents ||
+		(pAd->CommonCfg.AddHTInfo.AddHtInfo.RecomWidth == 0) ||
 		(pEntry->MaxHTPhyMode.field.BW==BW_20) ||
 		(pAd->CommonCfg.BBPCurrentBW==BW_20))
 		pEntry->HTPhyMode.field.BW = BW_20;
@@ -837,8 +868,8 @@ VOID APMlmeSetTxRate(
 		pEntry->HTPhyMode.field.BW = BW_80;
 
 #ifdef NEW_RATE_ADAPT_SUPPORT
-	if ((pEntry->pTable == RateTableVht2S) 
-		|| (pEntry->pTable == RateTableVht1S) 
+	if ((pEntry->pTable == RateTableVht2S)
+		|| (pEntry->pTable == RateTableVht1S)
 		|| (pEntry->pTable == RateTableVht1S_MCS7)
 		|| (pEntry->pTable == RateTableVht1S_BW20_MCS8))
 	{
@@ -857,6 +888,31 @@ VOID APMlmeSetTxRate(
 			pEntry->HTPhyMode.field.STBC = STBC_USE;
 		}
 #endif /* WFA_VHT_PF */
+	}
+	else if (IS_VHT_STA(pEntry))
+	{
+		UCHAR bw_max = pEntry->MaxHTPhyMode.field.BW;
+
+		if (pEntry->force_op_mode == TRUE)
+		{
+			switch (pEntry->operating_mode.ch_width) {
+				case 1:
+					bw_max = BW_40;
+					break;
+				case 2: /* not support for BW_80 for other rate table */
+				case 0:
+				default:
+					bw_max = BW_20;
+					break;
+			}
+		}
+
+		if ((bw_max != BW_10) &&
+			(bw_max > pAd->CommonCfg.BBPCurrentBW))
+		{
+			bw_max = pAd->CommonCfg.BBPCurrentBW;
+		}
+		pEntry->HTPhyMode.field.BW = bw_max;
 	}
 #endif /* NEW_RATE_ADAPT_SUPPORT */
 
@@ -886,9 +942,9 @@ VOID APMlmeSetTxRate(
 			pEntry->HTPhyMode.field.BW = BW_20;
 			pEntry->HTPhyMode.field.MCS = 0;
 		}
-		else if (pEntry->HTPhyMode.field.MCS == 0 &&
-				(pAd->CommonCfg.DebugFlags & DBF_FORCE_20MHZ) == 0
+		else if (pEntry->HTPhyMode.field.MCS == 0
 #ifdef DBG_CTRL_SUPPORT
+				&& (pAd->CommonCfg.DebugFlags & DBF_FORCE_20MHZ) == 0
 				&& (pAd->CommonCfg.DebugFlags & DBF_DISABLE_20MHZ_MCS1) == 0
 #endif /* DBG_CTRL_SUPPORT */
 		)
@@ -922,9 +978,43 @@ VOID APMlmeSetTxRate(
 #endif /* DBG_CTRL_SUPPORT */
 #endif /* RANGE_EXTEND */
 
+	/* if PER very high - fallback to 40MHz BW and some time hold it */
+	TxRetransmit = pEntry->OneSecTxRetryOkCount;
+	TxSuccess = pEntry->OneSecTxNoRetryOkCount;
+	TxFailCount = pEntry->OneSecTxFailCount;
+	TxTotalCnt = TxRetransmit + TxSuccess + TxFailCount;
+
+	if(TxTotalCnt)
+		TxErrorRatio = ((TxRetransmit + TxFailCount) * 100) / TxTotalCnt;
+
+	/* only high traffic case */
+	if (TxTotalCnt > 15 && pEntry->HTPhyMode.field.BW == BW_80 && pEntry->LastSecTxRateChangeAction == RATE_DOWN) {
+		if (TxErrorRatio > 60) {
+			/* select hold limit BW time */
+			if (pEntry->OneSecBWLimitHoldCount == 0)
+				pEntry->OneSecBWLimitHoldCount = 10;
+			else
+				if (pEntry->OneSecBWLimitHoldCount < 10)
+					pEntry->OneSecBWLimitHoldCount++;
+		}
+	} else {
+		pEntry->OneSecBWLimitHoldCount = 0;
+	}
+
+	/* if hold time not 0 or all transmits is fail - switch to 40MHz  */
+	if (TxTotalCnt > 15 && pEntry->HTPhyMode.field.BW == BW_80 && (pEntry->OneSecBWLimitHoldCount > 0 || TxErrorRatio == 100)) {
+		/* first try SGI disable */
+		if (TxErrorRatio > 60)
+		    pEntry->HTPhyMode.field.ShortGI = GI_800;
+		/* if not help => fallback to 40MHz BW, if errors dropdown to 70% - do not touch BW */
+		if (TxErrorRatio > 70)
+		    pEntry->HTPhyMode.field.BW = BW_40;
+		pEntry->OneSecBWLimitHoldCount--;
+	}
+
 	/* Reexam each bandwidth's SGI support. */
 	if ((pEntry->HTPhyMode.field.BW==BW_20 && !CLIENT_STATUS_TEST_FLAG(pEntry, fCLIENT_STATUS_SGI20_CAPABLE)) ||
-		(pEntry->HTPhyMode.field.BW==BW_40 && !CLIENT_STATUS_TEST_FLAG(pEntry, fCLIENT_STATUS_SGI40_CAPABLE)) )
+		(pEntry->HTPhyMode.field.BW==BW_40 && !CLIENT_STATUS_TEST_FLAG(pEntry, fCLIENT_STATUS_SGI40_CAPABLE)) || (TxErrorRatio > 70))
 		pEntry->HTPhyMode.field.ShortGI = GI_800;
 
 #ifdef DBG_CTRL_SUPPORT
@@ -940,16 +1030,22 @@ VOID APMlmeSetTxRate(
 	AsicFifoExtEntryClean(pAd, pEntry);
 #endif /* FIFO_EXT_SUPPORT */
 
+	/* if PER>1% and rate target down, or Low/Zero traffic - clean QA counters (new mode=>new count cycle, prevent pessimistic trend) */
+	if (pEntry->LastSecTxRateChangeAction == RATE_DOWN) {
+		RESET_ONE_SEC_TX_CNT(pEntry);
+
+		if ((TxErrorRatio > 1 || TxTotalCnt < 15))
+			MlmeClearTxQuality(pEntry);
+	}
+
 #ifdef MCS_LUT_SUPPORT
 	asic_mcs_lut_update(pAd, pEntry);
+	pAd->LastTxRate = (USHORT)(pEntry->HTPhyMode.word);
 #endif /* MCS_LUT_SUPPORT */
 
 
 }
 #endif /* CONFIG_AP_SUPPORT */
-
-
-
 
 VOID MlmeSelectTxRateTable(
 	IN PRTMP_ADAPTER pAd,
@@ -1565,9 +1661,9 @@ VOID MlmeRAInit(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 #ifdef NEW_RATE_ADAPT_SUPPORT
 	MlmeSetMcsGroup(pAd, pEntry);
 
-	pEntry->lastRateIdx = 1;
-	pEntry->lowTrafficCount = 0;
+	pEntry->lastRateIdx = 0xFF;
 	pEntry->perThrdAdj = PER_THRD_ADJ;
+	pEntry->lowTrafficCount = 0;
 #endif /* NEW_RATE_ADAPT_SUPPORT */
 
 #ifdef TXBF_SUPPORT
@@ -1579,8 +1675,6 @@ VOID MlmeRAInit(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 	pEntry->fLastSecAccordingRSSI = FALSE;
 	pEntry->LastSecTxRateChangeAction = RATE_NO_CHANGE;
 	pEntry->CurrTxRateIndex = 0;
-	pEntry->CurrTxRateStableTime = 0;
-	pEntry->TxRateUpPenalty = 0;
 
 	MlmeClearAllTxQuality(pEntry);
 }
@@ -2054,7 +2148,7 @@ VOID RTMPSetSupportMCS(
 		}
 		else
 		{
-			NdisMoveMemory(&SupportedRates[SupRateLen], ExtRate, MAX_LEN_OF_SUPPORTED_RATES - ExtRateLen);
+			NdisMoveMemory(&SupportedRates[SupRateLen], ExtRate, MAX_LEN_OF_SUPPORTED_RATES - SupRateLen);
 			SupportedRatesLen = MAX_LEN_OF_SUPPORTED_RATES;
 
 		}
@@ -2177,7 +2271,7 @@ VOID RTMPSetSupportMCS(
 		}
 
 #ifdef DOT11_VHT_AC
-		if ((vht_cap_len > 0)&& (vht_cap != NULL))
+		if ((vht_cap_len > 0)&& (vht_cap != NULL) && pDesired_ht_phy->bVhtEnable)
 		{
 			/* Currently we only support for MCS0~MCS7, so don't check mcs_map */
 			NdisZeroMemory(&pEntry->SupportVHTMCS[0], sizeof(pEntry->SupportVHTMCS));

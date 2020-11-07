@@ -94,11 +94,11 @@ LONG WdsEntryAlloc(
 			break;
 		}
 	}
+	NdisReleaseSpinLock(&pAd->WdsTabLock);
 
 	if (i == MAX_WDS_ENTRY)
 		DBGPRINT(RT_DEBUG_ERROR, ("%s: Unable to allocate WdsEntry.\n", __FUNCTION__));
 
-	NdisReleaseSpinLock(&pAd->WdsTabLock);
 
 	return WdsTabIdx;
 }
@@ -142,7 +142,8 @@ BOOLEAN MacTableDeleteWDSEntry(
 		return FALSE;
 
 
-	MacTableDeleteEntry(pAd, wcid, pAddr);
+	else
+		return MacTableDeleteEntry(pAd, wcid, pAddr);
 
 	return TRUE;
 }
@@ -216,6 +217,16 @@ MAC_TABLE_ENTRY *MacTableInsertWDSEntry(
 					pEntry->RateLen = 12;
 					break;
 #endif /* DOT11_N_SUPPORT */
+#ifdef DOT11_VHT_AC
+				case MODE_VHT:
+					HTPhyMode.field.MCS = 9 ;// below case will modified it again
+					HTPhyMode.field.ShortGI = pAd->WdsTab.WdsEntry[WdsTabIdx].HTPhyMode.field.ShortGI;
+					HTPhyMode.field.BW = pAd->WdsTab.WdsEntry[WdsTabIdx].HTPhyMode.field.BW;
+					HTPhyMode.field.STBC = pAd->WdsTab.WdsEntry[WdsTabIdx].HTPhyMode.field.STBC;
+					HTPhyMode.field.MODE = MODE_VHT;
+					pEntry->RateLen = 12; //seems useless
+					break;
+#endif /* DOT11_VHT_AC */
 
 				default:
 					break;
@@ -224,11 +235,10 @@ MAC_TABLE_ENTRY *MacTableInsertWDSEntry(
 			pEntry->MaxHTPhyMode.word = HTPhyMode.word;
 			pEntry->MinHTPhyMode.word = pAd->WdsTab.WdsEntry[WdsTabIdx].MinHTPhyMode.word;
 			pEntry->HTPhyMode.word = pEntry->MaxHTPhyMode.word;
-
 #ifdef DOT11_N_SUPPORT
 			/* default */
 			pEntry->MpduDensity = 5;
-			pEntry->MaxRAmpduFactor = 3;
+			pEntry->MaxRAmpduFactor = 2;
 
 			if (pAd->WdsTab.WdsEntry[WdsTabIdx].PhyMode >= MODE_HTMIX)
 			{
@@ -260,12 +270,66 @@ MAC_TABLE_ENTRY *MacTableInsertWDSEntry(
 					CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_MCSFEEDBACK_CAPABLE);
 				
 				CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_WMM_CAPABLE);
+#ifdef DOT11_VHT_AC
+				if ((pAd->WdsTab.WdsEntry[WdsTabIdx].PhyMode >= MODE_VHT) &&
+				    (pAd->CommonCfg.Channel > 14))
+				{
+					VHT_CAP_IE vht_cap;
+					VHT_CAP_INFO *vht_cap_info;
+					build_vht_cap_ie(pAd, (UCHAR *)&vht_cap, pAd->CommonCfg.vht_max_mcs_cap);
+
+					vht_cap_info = (VHT_CAP_INFO *)&vht_cap;
+
+					pEntry->MaxHTPhyMode.field.MODE = MODE_VHT;
+					if ((pEntry->MaxHTPhyMode.field.BW == BW_40) && (pAd->WdsTab.WdsEntry[pEntry->MatchWDSTabIdx].DesiredHtPhyInfo.vht_bw == VHT_BW_80))
+						pEntry->MaxHTPhyMode.field.BW = BW_80;
+
+					/* TODO: implement get_vht_max_mcs to get peer max MCS */
+					if (vht_cap.mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_9) {
+						if ((pEntry->MaxHTPhyMode.field.BW == BW_20))
+							pEntry->MaxHTPhyMode.field.MCS = 8;
+						else
+							pEntry->MaxHTPhyMode.field.MCS = 9;
+					} else if (vht_cap.mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_8) {
+						pEntry->MaxHTPhyMode.field.MCS = 8;
+					} else if (vht_cap.mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_7) {
+						pEntry->MaxHTPhyMode.field.MCS = 7;
+					}
+
+					if (vht_cap_info->sgi_80M)
+						CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_SGI80_CAPABLE);
+
+					if (vht_cap_info->sgi_160M)
+						CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_SGI160_CAPABLE);
+
+					if (pAd->CommonCfg.vht_stbc)
+					{
+						if (vht_cap_info->tx_stbc)
+							CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_VHT_TXSTBC_CAPABLE);
+						if (vht_cap_info->rx_stbc)
+							CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_VHT_RXSTBC_CAPABLE);
+					}
+					NdisMoveMemory(&pEntry->vht_cap_ie, &vht_cap, sizeof(VHT_CAP_IE));
+				}
+				else
+				{
+					NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
+				}
+				pEntry->force_op_mode = FALSE;
+#endif /* DOT11_VHT_AC */
 			}
-#endif /* DOT11_N_SUPPORT */
 			else
 			{
 				NdisZeroMemory(&pEntry->HTCapability, sizeof(HT_CAPABILITY_IE));
+#ifdef DOT11_VHT_AC
+				NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
+#endif /* DOT11_VHT_AC */
+				pEntry->force_op_mode = FALSE;
 			}
+#endif /* DOT11_N_SUPPORT */
+
+			// for now, we set this by default!
+			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_RALINK_CHIPSET);
 
 			/*if (!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_TX_RATE_SWITCH_ENABLED)) */
 			if (pAd->WdsTab.WdsEntry[WdsTabIdx].bAutoTxRateSwitch == FALSE)
@@ -407,8 +471,8 @@ MAC_TABLE_ENTRY *FindWdsEntry(
 							pAd->CommonCfg.ExtRate,
 							pAd->CommonCfg.ExtRateLen,
 #ifdef DOT11_VHT_AC
-							0,
-							NULL,
+							sizeof(VHT_CAP_IE),
+							&pEntry->vht_cap_ie,
 #endif /* DOT11_VHT_AC */
 							&pAd->CommonCfg.HtCapability,
 							sizeof(pAd->CommonCfg.HtCapability));
@@ -455,9 +519,9 @@ VOID WdsTableMaintenance(
 		/* delete those MAC entry that has been idle for a long time */
 		if (pEntry->NoDataIdleCount >= MAC_TABLE_AGEOUT_TIME)
 		{
-			DBGPRINT(RT_DEBUG_TRACE, ("ageout %02x:%02x:%02x:%02x:%02x:%02x from WDS #%d after %d-sec silence\n",
+			printk("ageout %02x:%02x:%02x:%02x:%02x:%02x from WDS #%d after %d-sec silence\n",
 					pEntry->Addr[0],pEntry->Addr[1],pEntry->Addr[2],pEntry->Addr[3],
-					pEntry->Addr[4],pEntry->Addr[5], idx, MAC_TABLE_AGEOUT_TIME));
+					pEntry->Addr[4],pEntry->Addr[5], idx, MAC_TABLE_AGEOUT_TIME);
 			WdsEntryDel(pAd, pEntry->Addr);
 			MacTableDeleteWDSEntry(pAd, pEntry->Aid, pEntry->Addr);
 		}
@@ -515,8 +579,8 @@ VOID AsicUpdateWdsRxWCIDTable(
 						pAd->CommonCfg.ExtRate,
 						pAd->CommonCfg.ExtRateLen,
 #ifdef DOT11_VHT_AC
-						0,
-						NULL,
+						sizeof(VHT_CAP_IE),
+						&pEntry->vht_cap_ie,
 #endif /* DOT11_VHT_AC */
 						&pAd->CommonCfg.HtCapability,
 						sizeof(pAd->CommonCfg.HtCapability));
@@ -526,6 +590,8 @@ VOID AsicUpdateWdsRxWCIDTable(
 			case 0xff: /* user doesn't specific a Mode for WDS link. */
 			case MODE_OFDM: /* specific OFDM mode. */
 				pEntry->SupportRateMode = SUPPORT_OFDM_MODE;
+				if (WMODE_CAP_2G(pAd->CommonCfg.PhyMode))
+					pEntry->SupportRateMode |= SUPPORT_CCK_MODE;
 				break;
 
 			case MODE_CCK:
@@ -538,6 +604,11 @@ VOID AsicUpdateWdsRxWCIDTable(
 				pEntry->SupportRateMode = (SUPPORT_HT_MODE | SUPPORT_OFDM_MODE | SUPPORT_CCK_MODE);
 				break;
 #endif /* DOT11_N_SUPPORT */
+#ifdef DOT11_VHT_AC
+			case MODE_VHT:
+				pEntry->SupportRateMode = (SUPPORT_VHT_MODE| SUPPORT_HT_MODE | SUPPORT_OFDM_MODE);
+				break;
+#endif /* DOT11_VHT_AC */
 
 			default:
 				break;
@@ -610,6 +681,10 @@ VOID WdsPeerBeaconProc(
 	IN UCHAR MaxSupportedRateLen,
 	IN BOOLEAN bWmmCapable,
 	IN ULONG ClientRalinkIe,
+#ifdef DOT11_VHT_AC
+	IN UCHAR vht_cap_len,
+	IN VHT_CAP_IE *vht_cap,
+#endif /* DOT11_VHT_AC */
 	IN HT_CAPABILITY_IE *pHtCapability,
 	IN UCHAR HtCapabilityLen)
 {
@@ -648,7 +723,6 @@ VOID WdsPeerBeaconProc(
 				CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_AGGREGATION_CAPABLE);
 				CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_PIGGYBACK_CAPABLE);
 				/*RTMPSetPiggyBack(pAd, TRUE); */
-				
 			}
 			else if (ClientRalinkIe & 0x00000001)
 			{
@@ -712,11 +786,58 @@ VOID WdsPeerBeaconProc(
 				CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_MCSFEEDBACK_CAPABLE);
 
 			NdisMoveMemory(&pEntry->HTCapability, pHtCapability, sizeof(HT_CAPABILITY_IE));
+#ifdef DOT11_VHT_AC
+			if ((WMODE_CAP_AC(pAd->CommonCfg.PhyMode)) &&
+			    (pAd->CommonCfg.Channel > 14) && vht_cap_len)
+			{
+				VHT_CAP_INFO *vht_cap_info = (VHT_CAP_INFO *)vht_cap;
+
+				pEntry->MaxHTPhyMode.field.MODE = MODE_VHT;
+				if ((pEntry->MaxHTPhyMode.field.BW == BW_40) && (pAd->WdsTab.WdsEntry[pEntry->MatchWDSTabIdx].DesiredHtPhyInfo.vht_bw == VHT_BW_80))
+					pEntry->MaxHTPhyMode.field.BW = BW_80;
+
+				/* TODO: implement get_vht_max_mcs to get peer max MCS */
+				if (vht_cap->mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_9) {
+					if ((pEntry->MaxHTPhyMode.field.BW == BW_20))
+						pEntry->MaxHTPhyMode.field.MCS = 8;
+					else
+						pEntry->MaxHTPhyMode.field.MCS = 9;
+				} else if (vht_cap->mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_8) {
+					pEntry->MaxHTPhyMode.field.MCS = 8;
+				} else if (vht_cap->mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_7) {
+					pEntry->MaxHTPhyMode.field.MCS = 7;
+				}
+
+				if (vht_cap_info->sgi_80M)
+					CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_SGI80_CAPABLE);
+
+				if (vht_cap_info->sgi_160M)
+					CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_SGI160_CAPABLE);
+
+				if (pAd->CommonCfg.vht_stbc)
+				{
+					if (vht_cap_info->tx_stbc)
+						CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_VHT_TXSTBC_CAPABLE);
+					if (vht_cap_info->rx_stbc)
+						CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_VHT_RXSTBC_CAPABLE);
+				}
+				NdisMoveMemory(&pEntry->vht_cap_ie, &vht_cap, sizeof(VHT_CAP_IE));
+			}
+			else
+			{
+				NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
+			}
+			pEntry->force_op_mode = FALSE;
+#endif /* DOT11_VHT_AC */
 		}
 		else
 		{
 			NdisZeroMemory(&pEntry->HTCapability, sizeof(HT_CAPABILITY_IE));
 			pAd->MacTab.fAnyStationIsLegacy = TRUE;
+#ifdef DOT11_VHT_AC
+			NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
+#endif /* DOT11_VHT_AC */
+			pEntry->force_op_mode = FALSE;
 		}
 #endif /* DOT11_N_SUPPORT */
 
@@ -754,6 +875,12 @@ VOID WdsPeerBeaconProc(
 				pEntry->SupportRateMode = (SUPPORT_HT_MODE | SUPPORT_OFDM_MODE | SUPPORT_CCK_MODE);
 				break;
 #endif /* DOT11_N_SUPPORT */
+
+#ifdef DOT11_VHT_AC
+			case MODE_VHT:
+				pEntry->SupportRateMode = (SUPPORT_VHT_MODE| SUPPORT_HT_MODE | SUPPORT_OFDM_MODE /*| SUPPORT_CCK_MODE*/);
+				break;
+#endif /* DOT11_VHT_AC */
 
 			default:
 				break;
@@ -817,29 +944,44 @@ INT	Show_WdsTable_Proc(
 							pAd->RxRing.RxCpuIdx,
 							pAd->RxRing.RxDmaIdx));
 #endif /* RTMP_MAC_PCI */
-	
-	DBGPRINT(RT_DEBUG_OFF, ("\n%-19s%-4s%-4s%-4s%-7s%-7s%-7s%-10s%-6s%-6s%-6s%-6s\n",
-				"MAC", "IDX", "AID", "PSM", "RSSI0", "RSSI1", "RSSI2", "PhMd", "BW", "MCS", "SGI", "STBC"));
-	
+
+	printk("\n%-19s%-4s%-4s%-4s%-7s%-7s%-7s%-10s%-6s%-6s%-6s%-6s\n",
+				"MAC", "IDX", "AID", "PSM", "RSSI0", "RSSI1", "RSSI2", "PhMd", "BW", "MCS", "SGI", "STBC");
+
 	for (i=0; i<MAX_LEN_OF_MAC_TABLE; i++)
 	{
 		PMAC_TABLE_ENTRY pEntry = &pAd->MacTab.Content[i];
 		if (IS_ENTRY_WDS(pEntry))
 		{
-			DBGPRINT(RT_DEBUG_OFF, ("%02X:%02X:%02X:%02X:%02X:%02X  ", PRINT_MAC(pEntry->Addr)));
-			DBGPRINT(RT_DEBUG_OFF,("%-4d", (int)pEntry->MatchWDSTabIdx));
-			DBGPRINT(RT_DEBUG_OFF, ("%-4d", (int)pEntry->Aid));
-			DBGPRINT(RT_DEBUG_OFF, ("%-4d", (int)pEntry->PsMode));
-			DBGPRINT(RT_DEBUG_OFF, ("%-7d", pEntry->RssiSample.AvgRssi0));
-			DBGPRINT(RT_DEBUG_OFF, ("%-7d", pEntry->RssiSample.AvgRssi1));
-			DBGPRINT(RT_DEBUG_OFF, ("%-7d", pEntry->RssiSample.AvgRssi2));
-			DBGPRINT(RT_DEBUG_OFF, ("%-10s", get_phymode_str(pEntry->HTPhyMode.field.MODE)));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6s", get_bw_str(pEntry->HTPhyMode.field.BW)));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d", pEntry->HTPhyMode.field.MCS));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d", pEntry->HTPhyMode.field.ShortGI));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d\n", pEntry->HTPhyMode.field.STBC));
+			printk("%02X:%02X:%02X:%02X:%02X:%02X  ", PRINT_MAC(pEntry->Addr));
+			printk("%-4d", (int)pEntry->MatchWDSTabIdx);
+			printk("%-4d", (int)pEntry->Aid);
+			printk("%-4d", (int)pEntry->PsMode);
+			printk("%-7d", pEntry->RssiSample.AvgRssi0);
+			printk("%-7d", pEntry->RssiSample.AvgRssi1);
+			printk("%-7d", pEntry->RssiSample.AvgRssi2);
+			printk("%-10s", get_phymode_str(pEntry->HTPhyMode.field.MODE));
+			printk("%-6s", get_bw_str(pEntry->HTPhyMode.field.BW));
+#ifdef DOT11_VHT_AC
+			if (pEntry->HTPhyMode.field.MODE == MODE_VHT)
+				printk("%dS-M%-2d", ((pEntry->HTPhyMode.field.MCS>>4) + 1), (pEntry->HTPhyMode.field.MCS & 0xf));
+			else
+#endif /* DOT11_VHT_AC */
+			printk("%-6d", pEntry->HTPhyMode.field.MCS);
+			printk("%-6d", pEntry->HTPhyMode.field.ShortGI);
+			printk("%-6d\n", pEntry->HTPhyMode.field.STBC);
+			printk(" MaxCap:%-10s", get_phymode_str(pEntry->MaxHTPhyMode.field.MODE));
+			printk("%-6s", get_bw_str(pEntry->MaxHTPhyMode.field.BW));
+#ifdef DOT11_VHT_AC
+			if (pEntry->MaxHTPhyMode.field.MODE == MODE_VHT)
+				printk("%dS-M%d", ((pEntry->MaxHTPhyMode.field.MCS>>4) + 1), (pEntry->MaxHTPhyMode.field.MCS & 0xf));
+			else
+#endif /* DOT11_VHT_AC */
+			printk("%-6d", pEntry->MaxHTPhyMode.field.MCS);
+			printk("%-6d", pEntry->MaxHTPhyMode.field.ShortGI);
+			printk("%-6d\n", pEntry->MaxHTPhyMode.field.STBC);
 		}
-	} 
+	}
 
 	return TRUE;
 }
@@ -873,6 +1015,10 @@ VOID rtmp_read_wds_from_file(
 	        else if ((strncmp(macptr, "GREENFIELD", 10) == 0) || (strncmp(macptr, "greenfield", 10) == 0))
 	            pAd->WdsTab.WdsEntry[i].PhyMode = MODE_HTGREENFIELD;
 #endif /* DOT11_N_SUPPORT */
+#ifdef DOT11_VHT_AC
+	        else if ((strncmp(macptr, "VHT", 3) == 0) || (strncmp(macptr, "vht", 3) == 0))
+	            pAd->WdsTab.WdsEntry[i].PhyMode = MODE_VHT;
+#endif /* DOT11_VHT_AC */
 	        else
 	            pAd->WdsTab.WdsEntry[i].PhyMode = 0xff;
 		

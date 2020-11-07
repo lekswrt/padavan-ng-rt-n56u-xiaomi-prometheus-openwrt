@@ -1706,14 +1706,14 @@ INT Set_Cli_Status_Show_Proc(
 				cli_info.tx_sgi,get_phymode_str(cli_info.tx_phymode)));
 
 			DBGPRINT(RT_DEBUG_OFF, 
-				("\tRX Flow Statistics: Total Count = %lld, Error Count = %lu, Total Bytes  = %lu\n",
+				("\tRX Flow Statistics: Total Count = %lld, Error Count = %lu, Total Bytes  = %lld\n",
 				cli_info.rx_total_packets, cli_info.rx_fail_cnt, cli_info.rx_total_bytes));
 
 			DBGPRINT(RT_DEBUG_OFF, 
-				("\tTX Flow Statistics: Total Count = %lld, Failure Count = %lu, Total Bytes = %lu\n",
+				("\tTX Flow Statistics: Total Count = %lld, Failure Count = %lu, Total Bytes = %lld\n",
 				cli_info.tx_total_packets, cli_info.tx_fail_cnt, cli_info.tx_total_bytes));
 		}
-	} 
+	}
 	DBGPRINT(RT_DEBUG_TRACE, ("<==%s\n", __FUNCTION__));
 
 	return TRUE;
@@ -2341,7 +2341,7 @@ INT Smart_Mesh_Pkt_Report_Action(
 	UCHAR			s_addr[MAC_ADDR_LEN];
 	UCHAR			MESH_IE[] = {0x55, 0x72};
 	UCHAR			FrameBuf[512];
-	UINT32 			MCS = 0, BW = 0, ShortGI = 0, PHYMODE = 0, frame_len, offset=0;
+	UINT32 			MCS,BW,ShortGI,PHYMODE,frame_len,offset=0;
 	UCHAR 			MntIdx = (WCID - WCID_OF_MONITOR_STA_BASE);
 	MNT_STA_ENTRY   *pEntry = pAd->MntTable + MntIdx;
 	struct sk_buff *skb = NULL;
@@ -2458,7 +2458,7 @@ INT Smart_Mesh_Pkt_Report_Action(
 	/* Report to upper layer */
 	skb->protocol = eth_type_trans(skb, skb->dev);
 	netif_rx(skb);
-done:	
+done:
 	return TRUE;
 }
 

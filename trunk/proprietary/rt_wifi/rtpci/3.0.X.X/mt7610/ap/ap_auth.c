@@ -26,6 +26,9 @@
  */
 
 #include "rt_config.h"
+#ifdef DOT11R_FT_SUPPORT
+#include "ft.h"
+#endif /* DOT11R_FT_SUPPORT */
 
 static VOID APMlmeDeauthReqAction(
     IN PRTMP_ADAPTER pAd, 
@@ -103,27 +106,30 @@ static VOID APMlmeDeauthReqAction(
 	UCHAR					apidx;
 
 
+    if (!pAd)
+	return;
+
     pInfo = (MLME_DEAUTH_REQ_STRUCT *)Elem->Msg;
 
     if (Elem->Wcid < MAX_LEN_OF_MAC_TABLE)
     {
-		pEntry = &pAd->MacTab.Content[Elem->Wcid];
-		if (!pEntry)
-			return;
+	pEntry = &pAd->MacTab.Content[Elem->Wcid];
+	if (!pEntry)
+		return;
 		
 #ifdef WAPI_SUPPORT
-		WAPI_InternalCmdAction(pAd, 
-							   pEntry->AuthMode, 
-							   pEntry->apidx, 
-							   pEntry->Addr, 
-							   WAI_MLME_DISCONNECT);		
+	WAPI_InternalCmdAction(pAd, 
+				   pEntry->AuthMode, 
+				   pEntry->apidx, 
+				   pEntry->Addr, 
+				   WAI_MLME_DISCONNECT);		
 #endif /* WAPI_SUPPORT */
 		
-		/* send wireless event - for deauthentication */
-		RTMPSendWirelessEvent(pAd, IW_DEAUTH_EVENT_FLAG, pInfo->Addr, 0, 0);  
-		ApLogEvent(pAd, pInfo->Addr, EVENT_DISASSOCIATED);
+	/* send wireless event - for deauthentication */
+	RTMPSendWirelessEvent(pAd, IW_DEAUTH_EVENT_FLAG, pInfo->Addr, 0, 0);  
+	//ApLogEvent(pAd, pInfo->Addr, EVENT_DISASSOCIATED);
 
-		apidx = pEntry->apidx;
+	apidx = pEntry->apidx;
 
         /* 1. remove this STA from MAC table */
         MacTableDeleteEntry(pAd, Elem->Wcid, pInfo->Addr);
@@ -133,10 +139,10 @@ static VOID APMlmeDeauthReqAction(
         if (NStatus != NDIS_STATUS_SUCCESS) 
             return;
 
-        DBGPRINT(RT_DEBUG_TRACE,
-				("AUTH - Send DE-AUTH req to %02x:%02x:%02x:%02x:%02x:%02x\n",
+        printk ("%s AUTH - Send DE-AUTH req to %02x:%02x:%02x:%02x:%02x:%02x\n",
+				pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP",
 				pInfo->Addr[0], pInfo->Addr[1], pInfo->Addr[2],
-				pInfo->Addr[3], pInfo->Addr[4], pInfo->Addr[5]));
+				pInfo->Addr[3], pInfo->Addr[4], pInfo->Addr[5]);
            		
         MgtMacHeaderInit(pAd, &Hdr, SUBTYPE_DEAUTH, 0, pInfo->Addr,
 						pAd->ApCfg.MBSSID[apidx].Bssid);
@@ -160,6 +166,8 @@ static VOID APPeerDeauthReqAction(
 	UINT16			SeqNum;
     MAC_TABLE_ENTRY	*pEntry;
 
+    if (!pAd)
+	return;
 
 
     if (! PeerDeauthReqSanity(pAd, Elem->Msg, Elem->MsgLen, Addr2, &SeqNum, &Reason)) 
@@ -169,8 +177,27 @@ static VOID APPeerDeauthReqAction(
 
 	/*pEntry = MacTableLookup(pAd, Addr2); */
 	if (Elem->Wcid < MAX_LEN_OF_MAC_TABLE)
-    {
+	{
 		pEntry = &pAd->MacTab.Content[Elem->Wcid];
+		if (!pEntry)
+			return;
+
+		{
+			MULTISSID_STRUCT *pMbss = &pAd->ApCfg.MBSSID[pEntry->apidx];
+			PFRAME_802_11 Fr = (PFRAME_802_11)Elem->Msg;
+
+			if (!Fr || (memcmp(&Fr->Hdr.Addr1, pMbss->Bssid, 6) != 0))
+			{
+#ifdef DBG
+				unsigned char *tmp = (unsigned char *)pMbss->Bssid;
+				unsigned char *tmp2 = (unsigned char *)&Fr->Hdr.Addr1;
+
+				DBGPRINT(RT_DEBUG_WARN, ("da not match bssid,bssid:0x%02x%02x%02x%02x%02x%02x, addr1:0x%02x%02x%02x%02x%02x%02x\n",
+					PRINT_MAC(tmp), PRINT_MAC(tmp2)));
+#endif /* DBG */
+				return;
+			}
+		}
 
 #ifdef DOT1X_SUPPORT    
 		/* Notify 802.1x daemon to clear this sta info */
@@ -190,23 +217,24 @@ static VOID APPeerDeauthReqAction(
 
 		/* send wireless event - for deauthentication */
 		RTMPSendWirelessEvent(pAd, IW_DEAUTH_EVENT_FLAG, Addr2, 0, 0);  
-		ApLogEvent(pAd, Addr2, EVENT_DISASSOCIATED);
+		//ApLogEvent(pAd, Addr2, EVENT_DISASSOCIATED);
 		
-        if (pEntry->CMTimerRunning == TRUE)
-        {
-            /*
+    		if (pEntry->CMTimerRunning == TRUE)
+    		{
+        		/*
 				If one who initilized Counter Measure deauth itself,
 				AP doesn't log the MICFailTime
 			*/
-            pAd->ApCfg.aMICFailTime = pAd->ApCfg.PrevaMICFailTime;
-        }
+        		pAd->ApCfg.aMICFailTime = pAd->ApCfg.PrevaMICFailTime;
+    		}
 
-		MacTableDeleteEntry(pAd, Elem->Wcid, Addr2);
-
-        DBGPRINT(RT_DEBUG_TRACE,
-				("AUTH - receive DE-AUTH(seq-%d) from "
-				 "%02x:%02x:%02x:%02x:%02x:%02x, reason=%d\n", SeqNum,
-				Addr2[0], Addr2[1], Addr2[2], Addr2[3], Addr2[4], Addr2[5], Reason));
+		if (!IS_ENTRY_CLIENT(pEntry)) {
+		    DBGPRINT(RT_DEBUG_TRACE, ("%s: receive not client de-auth ###\n", __FUNCTION__));
+		} else {
+		    MacTableDeleteEntry(pAd, Elem->Wcid, Addr2);
+		    printk("%s AUTH - receive DE-AUTH(seq-%d) from %02x:%02x:%02x:%02x:%02x:%02x, reason=%d\n", pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", SeqNum,
+		    Addr2[0], Addr2[1], Addr2[2], Addr2[3], Addr2[4], Addr2[5], Reason);
+		}
 
 #ifdef MAC_REPEATER_SUPPORT
 		if (pAd->ApCfg.bMACRepeaterEn == TRUE)
@@ -247,18 +275,40 @@ static VOID APPeerAuthReqAtIdleAction(
 	ULONG FrameLen = 0;
 	MAC_TABLE_ENTRY *pEntry;
 	UCHAR ChTxtIe = 16, ChTxtLen = CIPHER_TEXT_LEN;
+#ifdef DOT11R_FT_SUPPORT
+	PFT_CFG pFtCfg;
+	FT_INFO FtInfo;
+	PFT_INFO pFtInfoBuf;
+#endif /* DOT11R_FT_SUPPORT */
+	MULTISSID_STRUCT *pMbss;
+	CHAR rssi;
 #ifdef BAND_STEERING
-	BOOLEAN bAuthCheck = TRUE;
+	BOOLEAN bBndStrgCheck = TRUE;
+	BOOLEAN bAllowStaConnectInHt = FALSE;
 #endif /* BAND_STEERING */
 
+	if (pAd == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: pAd is NULL\n",__FUNCTION__));
+ 		return;
+	}
 
-	if (! APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, Addr1,
-							Addr2, &Alg, &Seq, &Status, Chtxt
-		))
+	/* disallow new association */
+	if (pAd->ApCfg.BANClass3Data == TRUE)
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("Disallow new Association\n"));
+		return;
+	}
+
+	if (!APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, Addr1, Addr2, &Alg, &Seq, &Status, Chtxt
+#ifdef DOT11R_FT_SUPPORT
+							,&FtInfo
+#endif /* DOT11R_FT_SUPPORT */
+	    ))
 		return;
     
 
-    /* Find which MBSSID to be authenticate */
+	/* Find which MBSSID to be authenticate */
 	for (apidx=0; apidx<pAd->ApCfg.BssidNum; apidx++)
 	{	
 		if (RTMPEqualMemory(Addr1, pAd->ApCfg.MBSSID[apidx].Bssid, MAC_ADDR_LEN))
@@ -270,6 +320,14 @@ static VOID APPeerAuthReqAtIdleAction(
 		DBGPRINT(RT_DEBUG_TRACE, ("AUTH - Bssid not found\n"));
 		return;
 	}
+
+	if (apidx >= HW_BEACON_MAX_NUM)
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("Index out of bound\n"));
+		return;
+	}
+
+	pMbss = &pAd->ApCfg.MBSSID[apidx];
 
 	if ((pAd->ApCfg.MBSSID[apidx].MSSIDDev != NULL) &&
 		!(RTMP_OS_NETDEV_STATE_RUNNING(pAd->ApCfg.MBSSID[apidx].MSSIDDev)))
@@ -306,12 +364,11 @@ static VOID APPeerAuthReqAtIdleAction(
 	}
 
 
-    pRcvHdr = (PHEADER_802_11)(Elem->Msg);
+	pRcvHdr = (PHEADER_802_11)(Elem->Msg);
 	DBGPRINT(RT_DEBUG_TRACE,
 			("AUTH - MBSS(%d), Rcv AUTH seq#%d, Alg=%d, Status=%d from "
 			"[wcid=%d]%02x:%02x:%02x:%02x:%02x:%02x\n",
 			apidx, Seq, Alg, Status, Elem->Wcid, PRINT_MAC(Addr2)));
-
 
 #ifdef WSC_V2_SUPPORT
 	/* Do not check ACL when WPS V2 is enabled and ACL policy is positive. */
@@ -342,19 +399,116 @@ static VOID APPeerAuthReqAtIdleAction(
     }
 
 #ifdef BAND_STEERING
+	if (WMODE_CAP_N(pAd->CommonCfg.PhyMode))
+		    bAllowStaConnectInHt = TRUE;
+
 	BND_STRG_CHECK_CONNECTION_REQ(	pAd,
-										NULL, 
+										NULL,
 										Addr2,
 										Elem->MsgType,
 										Elem->Rssi0,
 										Elem->Rssi1,
 										Elem->Rssi2,
-										&bAuthCheck);
-	if (bAuthCheck == FALSE)
+										bAllowStaConnectInHt,
+										&bBndStrgCheck);
+#ifdef BAND_STEERING_AUTH_REJ
+	if (bBndStrgCheck == FALSE && pAd->CommonCfg.Channel <= 14) {
+		APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, Alg, Seq + 1, MLME_UNSPECIFY_FAIL);
+		DBGPRINT(RT_DEBUG_TRACE, ("AUTH - BndStrg check failed.\n"));
+
+                /* If this STA exists, delete it. */
+                if (pEntry)
+                        MacTableDeleteEntry(pAd, pEntry->Aid, pEntry->Addr);
+
+                RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, Addr2, apidx, 0);
 		return;
+	}
+#endif /* BAND_STEERING_AUTH_REJ */
 #endif /* BAND_STEERING */
 
-	if ((Alg == AUTH_MODE_OPEN) && 
+#ifdef DOT11K_RRM_SUPPORT
+	for (i = 0; i < MAX_MBSSID_NUM(pAd); i++) {
+		if (pAd->OpMode == OPMODE_AP && IS_RRM_ENABLE(pAd, i) && pAd->CommonCfg.RRMFirstScan == TRUE) {
+			DBGPRINT(RT_DEBUG_TRACE, ("RRM Enabled, wait bootup scan. Disallow new Association\n"));
+			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, Alg, Seq + 1, MLME_UNSPECIFY_FAIL);
+            		/* If this STA exists, delete it. */
+            		if (pEntry)
+                    		MacTableDeleteEntry(pAd, pEntry->Aid, pEntry->Addr);
+			return;
+		}
+	}
+#endif /* DOT11K_RRM_SUPPORT */
+
+         /* YF@20130102: Refuse the weak signal of AuthReq */
+         rssi = RTMPMaxRssi(pAd,  ConvertToRssi(pAd, (CHAR)Elem->Rssi0, RSSI_0),
+                                  ConvertToRssi(pAd, (CHAR)Elem->Rssi1, RSSI_1),
+                                  ConvertToRssi(pAd, (CHAR)Elem->Rssi2, RSSI_2));
+
+         if ((pMbss->AuthFailRssiThreshold != 0 && rssi != 0 && rssi < pMbss->AuthFailRssiThreshold) ||
+             (pMbss->AuthNoRspRssiThreshold != 0 && rssi != 0 && rssi < pMbss->AuthNoRspRssiThreshold))
+         {
+    		DBGPRINT(RT_DEBUG_TRACE, ("AUTH-MBSS(%d): AUTH_FAIL_REQ Threshold = %d, AUTH_NO_RSP_REQ Threshold = %d, AUTH RSSI = %d\n",
+ 				  apidx, pMbss->AuthFailRssiThreshold, pMbss->AuthNoRspRssiThreshold, rssi));
+
+		if (pMbss->AuthFailRssiThreshold != 0 && rssi < pMbss->AuthFailRssiThreshold) {
+            		DBGPRINT(RT_DEBUG_TRACE, ("Reject this AUTH_REQ due to Weak Signal.\n"));
+                	APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, Alg, Seq + 1, MLME_UNSPECIFY_FAIL);
+		}
+
+                /* If this STA exists, delete it. */
+                if (pEntry)
+                        MacTableDeleteEntry(pAd, pEntry->Aid, pEntry->Addr);
+
+                RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, Addr2, apidx, 0);
+                return;
+         }
+
+#ifdef DOT11R_FT_SUPPORT
+	pFtCfg = &pMbss->FtCfg;
+	if ((pFtCfg->FtCapFlag.Dot11rFtEnable)
+		&& (Alg == AUTH_MODE_FT))
+	{
+		USHORT result;
+
+		if (!pEntry)
+			pEntry = MacTableInsertEntry(pAd, Addr2, apidx, OPMODE_AP, TRUE);
+
+		if (pEntry)
+		{
+		    os_alloc_mem(pAd, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO));
+
+        	    if (pFtInfoBuf)
+        	    {
+    			result = FT_AuthReqHandler(pAd, pEntry, &FtInfo, pFtInfoBuf);
+    			if (result == MLME_SUCCESS)
+    			{
+    				NdisMoveMemory(&pEntry->MdIeInfo, &FtInfo.MdIeInfo, sizeof(FT_MDIE_INFO));
+
+    				pEntry->AuthState = AS_AUTH_OPEN;
+    				pEntry->Sst = SST_AUTH;
+    			}
+
+    			FT_EnqueueAuthReply(pAd, pRcvHdr, Alg, 2, result,
+    						&pFtInfoBuf->MdIeInfo, &pFtInfoBuf->FtIeInfo, NULL,
+    						pFtInfoBuf->RSN_IE, pFtInfoBuf->RSNIE_Len);
+
+			NdisZeroMemory(pEntry->LastTK, LEN_TK);
+            		os_free_mem(NULL, pFtInfoBuf);
+			if (result == MLME_SUCCESS) {
+				/* Install pairwise key */
+				WPAInstallPairwiseKey(pAd, pEntry->apidx, pEntry, TRUE);
+				/* Update status */
+				pEntry->WpaState = AS_PTKINITDONE;
+				pEntry->GTKState = REKEY_ESTABLISHED;
+			}
+		    }
+		}
+		return;
+	}
+	else
+#endif /* DOT11R_FT_SUPPORT */
+
+	if ((Alg == AUTH_MODE_OPEN) &&
 		(pAd->ApCfg.MBSSID[apidx].AuthMode != Ndis802_11AuthModeShared)) 
 	{
 		if (!pEntry)
@@ -369,8 +523,7 @@ static VOID APPeerAuthReqAtIdleAction(
 			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, Alg, Seq + 1, MLME_SUCCESS);
 
 		}
-		else
-			; /* MAC table full, what should we respond ????? */
+		/* else  MAC table full, what should we respond ????? */
 	}
 	else if ((Alg == AUTH_MODE_KEY) && 
 				((pAd->ApCfg.MBSSID[apidx].AuthMode == Ndis802_11AuthModeShared)
@@ -413,9 +566,8 @@ static VOID APPeerAuthReqAtIdleAction(
 			MiniportMMRequest(pAd, 0, pOutBuffer, FrameLen);
 			MlmeFreeMemory(pAd, pOutBuffer);
 		}
-		else
-			; /* MAC table full, what should we respond ???? */
-	} 
+		/* else  MAC table full, what should we respond ????? */
+	}
 	else
 	{
 		/* wrong algorithm */
@@ -443,12 +595,23 @@ static VOID APPeerAuthConfirmAction(
 	UCHAR			Addr1[MAC_ADDR_LEN];
 	UINT32			apidx;
 
+#ifdef DOT11R_FT_SUPPORT
+	PFT_CFG pFtCfg;
+	FT_INFO FtInfo;
+	PFT_INFO pFtInfoBuf;
+#endif /* DOT11R_FT_SUPPORT */
 
+	if (pAd == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: pAd is NULL\n",__FUNCTION__));
+ 		return;
+	}
 
-
-	if (! APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, Addr1,
-							Addr2, &Alg, &Seq, &Status, Chtxt
-		)) 
+	if (! APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, Addr1, Addr2, &Alg, &Seq, &Status, Chtxt
+#ifdef DOT11R_FT_SUPPORT
+							,&FtInfo
+#endif /* DOT11R_FT_SUPPORT */
+	    ))
 		return;
 
 	for (apidx=0; apidx<pAd->ApCfg.BssidNum; apidx++)
@@ -460,6 +623,12 @@ static VOID APPeerAuthConfirmAction(
 	if (apidx >= pAd->ApCfg.BssidNum)
 	{	
 		DBGPRINT(RT_DEBUG_TRACE, ("AUTH - Bssid not found\n"));
+		return;
+	}
+
+	if (apidx >= HW_BEACON_MAX_NUM)
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("Index out of bound\n"));
 		return;
 	}
 
@@ -509,6 +678,34 @@ static VOID APPeerAuthConfirmAction(
 
 	if (pEntry && MAC_ADDR_EQUAL(Addr2, pAd->ApMlmeAux.Addr)) 
 	{
+#ifdef DOT11R_FT_SUPPORT
+		pFtCfg = &pAd->ApCfg.MBSSID[apidx].FtCfg;
+		if ((pFtCfg->FtCapFlag.Dot11rFtEnable) && (Alg == AUTH_MODE_FT))
+		{
+			USHORT result;
+
+            os_alloc_mem(pAd, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO));
+            if (pFtInfoBuf)
+            {
+                NdisZeroMemory(pFtInfoBuf, sizeof(FT_INFO));
+                os_alloc_mem(pAd, (UCHAR **)&(pFtInfoBuf->RicInfo.pRicInfo), 512);
+                if (pFtInfoBuf->RicInfo.pRicInfo != NULL)
+                {
+                    result = FT_AuthConfirmHandler(pAd, pEntry, &FtInfo,	pFtInfoBuf);
+    				FT_EnqueueAuthReply(pAd, pRcvHdr, Alg, 4, result,
+    					&pFtInfoBuf->MdIeInfo, &pFtInfoBuf->FtIeInfo,
+    					&pFtInfoBuf->RicInfo, pFtInfoBuf->RSN_IE, pFtInfoBuf->RSNIE_Len);
+    				os_free_mem(NULL, pFtInfoBuf->RicInfo.pRicInfo);
+                }
+                os_free_mem(NULL, pFtInfoBuf);
+			}
+			else
+			{
+				return;
+			}
+		}
+		else
+#endif /* DOT11R_FT_SUPPORT */
 		if ((pRcvHdr->FC.Wep == 1) &&
 			NdisEqualMemory(Chtxt, pAd->ApMlmeAux.Challenge, CIPHER_TEXT_LEN)) 
 		{
@@ -590,8 +787,10 @@ VOID APCls2errAction(
 				break;
 		}
 
-		if (idx == pAd->ApCfg.BssidNum)
+		if (idx >= pAd->ApCfg.BssidNum) {
+			DBGPRINT(RT_DEBUG_INFO,("AUTH - Class 2 error but not my bssid %02x:%02x:%02x:%02x:%02x:%02x\n", PRINT_MAC(pHeader->Addr1)));
 			return;
+		}
 	}
 
 	/* send out DEAUTH request frame */

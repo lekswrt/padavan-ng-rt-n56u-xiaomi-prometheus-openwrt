@@ -71,6 +71,9 @@ UCHAR MlmeSelectUpRate(
 
 	while (1)
 	{
+		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST) || pEntry==NULL || pAd==NULL || pEntry->pTable==NULL)
+        		return 0;
+
 		if ((pEntry->HTCapability.MCSSet[2] == 0xff) && (pAd->CommonCfg.TxStream == 3))
 		{
 			switch (pEntry->mcsGroup)
@@ -153,6 +156,7 @@ UCHAR MlmeSelectUpRate(
 			}
 		}
 
+#ifdef RANGE_EXTEND
 		/*  If going up from CCK to MCS32 make sure it's allowed */
 		if (PTX_RA_GRP_ENTRY(pEntry->pTable, UpRateIdx)->CurrMCS == 32)
 		{
@@ -166,12 +170,10 @@ UCHAR MlmeSelectUpRate(
 #endif /* DBG_CTRL_SUPPORT */
 			)
 				mcs32Supported = 1;
-
 #ifdef DBG_CTRL_SUPPORT
 			if ((pAd->CommonCfg.DebugFlags & DBF_DISABLE_20MHZ_MCS0)==0)
 				mcs0Fallback = 1;
 #endif /* DBG_CTRL_SUPPORT */
-
 			if (pEntry->MaxHTPhyMode.field.BW != BW_40 ||
 				pAd->CommonCfg.BBPCurrentBW != BW_40 ||
 				(!mcs32Supported && !mcs0Fallback))
@@ -181,6 +183,7 @@ UCHAR MlmeSelectUpRate(
 				break;
 			}
 		}
+#endif /* RANGE_EXTEND */
 
 		/*  If ShortGI and not allowed then mark it as bad. We'll try another group below */
 		if (PTX_RA_GRP_ENTRY(pEntry->pTable, UpRateIdx)->ShortGI &&
@@ -217,11 +220,19 @@ UCHAR MlmeSelectDownRate(
 	IN PMAC_TABLE_ENTRY	pEntry,
 	IN UCHAR CurrRateIdx)
 {
-	UCHAR DownRateIdx = PTX_RA_GRP_ENTRY(pEntry->pTable, CurrRateIdx)->downMcs;
+	UCHAR DownRateIdx;
 	RTMP_RA_GRP_TB *pDownRate;
+
+	if (pAd==NULL || RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST) || pEntry==NULL || pEntry->pTable==NULL)
+        	return 0;
+
+	DownRateIdx = PTX_RA_GRP_ENTRY(pEntry->pTable, CurrRateIdx)->downMcs;
 
 	/*  Loop until a valid down rate is found */
 	while (1) {
+		if (pAd==NULL || RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST) || pEntry==NULL || pEntry->pTable==NULL)
+        		    return 0;
+
 		pDownRate = PTX_RA_GRP_ENTRY(pEntry->pTable, DownRateIdx);
 
 		/*  Break out of loop if rate is valid */
@@ -239,6 +250,7 @@ UCHAR MlmeSelectDownRate(
 			)
 				break;
 		}
+#ifdef RANGE_EXTEND
 		else if (pDownRate->CurrMCS == MCS_32)
 		{
 			BOOLEAN valid_mcs32 = FALSE;
@@ -249,7 +261,6 @@ UCHAR MlmeSelectDownRate(
 #endif /* DOT11_VHT_AC */
 			)
 				valid_mcs32 = TRUE;
-
 			/*  If 20MHz MCS0 fallback enabled and in 40MHz then MCS32 is valid and will be mapped to 20MHz MCS0 */
 			if (valid_mcs32
 #ifdef DBG_CTRL_SUPPORT
@@ -266,6 +277,7 @@ UCHAR MlmeSelectDownRate(
 			)
 				break;
 		}
+#endif /* RANGE_EXTEND */
 		else
 			break;	/*  All other rates are valid */
 
@@ -279,7 +291,6 @@ UCHAR MlmeSelectDownRate(
 
 	return DownRateIdx;
 }
-
 
 /*
 	MlmeGetSupportedMcsAdapt - fills in the table of supported MCSs
@@ -661,6 +672,7 @@ UCHAR MlmeSelectTxRateAdapt(
 		else if ((pEntry->HTCapability.MCSSet[0] == 0xff) &&
 				(pEntry->HTCapability.MCSSet[1] == 0xff) &&
 				(pAd->CommonCfg.TxStream > 1) &&
+				(pEntry->MmpsMode != MMPS_STATIC) &&
 				((pAd->CommonCfg.TxStream == 2) || (pEntry->HTCapability.MCSSet[2] == 0x0)))
 		{
 			if (mcs[15]>=0 && (Rssi > (-72+RssiOffset)))
@@ -783,34 +795,7 @@ UCHAR MlmeSelectTxRateAdapt(
 		pCurrTxRate - pointer to Rate table entry for rate
 		TxErrorRatio - the PER
 */
-static ULONG MlmeRAEstimateThroughput(
-	IN RTMP_ADAPTER *pAd,
-	IN MAC_TABLE_ENTRY *pEntry,
-	IN RTMP_RA_GRP_TB *pCurrTxRate,
-	IN ULONG TxErrorRatio)
-{
-	ULONG estTP = (100-TxErrorRatio)*pCurrTxRate->dataRate;
-
-	/*  Adjust rates for MCS32-40MHz mapped to MCS0-20MHz and for non-CCK 40MHz */
-	if (pCurrTxRate->CurrMCS == MCS_32)
-	{
-#ifdef DBG_CTRL_SUPPORT
-		if ((pAd->CommonCfg.DebugFlags & DBF_DISABLE_20MHZ_MCS0)==0)
-			estTP /= 2;
-#endif /* DBG_CTRL_SUPPORT */
-	}
-	else if ((pCurrTxRate->Mode==MODE_HTMIX) || (pCurrTxRate->Mode==MODE_HTGREENFIELD))
-	{
-		if (pEntry->MaxHTPhyMode.field.BW==BW_40 
-#ifdef DBG_CTRL_SUPPORT
-			|| (pAd->CommonCfg.DebugFlags & DBF_FORCE_40MHZ)
-#endif /* DBG_CTRL_SUPPORT */
-		)
-			estTP *= 2;
-	}
-
-	return estTP;
-}
+/*Nobody uses it currently*/
 
 /*
 	MlmeRAHybridRule - decide whether to keep the new rate or use old rate
@@ -828,18 +813,12 @@ BOOLEAN MlmeRAHybridRule(
 	IN ULONG			NewTxOkCount,
 	IN ULONG			TxErrorRatio)
 {
-	ULONG newTP, oldTP;
-
-	if (100*NewTxOkCount < pAd->CommonCfg.TrainUpLowThrd*pEntry->LastTxOkCount)
-		return TRUE;
+	DBGPRINT(RT_DEBUG_TRACE, ("RAA : Tx OK Counter %lu %lu\n", NewTxOkCount , pEntry->LastTxOkCount));
 
 	if (100*NewTxOkCount > pAd->CommonCfg.TrainUpHighThrd*pEntry->LastTxOkCount)
 		return FALSE;
 
-	newTP = MlmeRAEstimateThroughput(pAd, pEntry, pCurrTxRate, TxErrorRatio);
-	oldTP = MlmeRAEstimateThroughput(pAd, pEntry, PTX_RA_GRP_ENTRY(pEntry->pTable, pEntry->lastRateIdx), pEntry->LastTxPER);
-
-	return (oldTP > newTP);
+	return TRUE;
 }
 
 /*
@@ -863,7 +842,6 @@ VOID MlmeNewRateAdapt(
 	IN ULONG			TrainDown,
 	IN ULONG			TxErrorRatio)
 {
-	USHORT		phyRateLimit20 = 0;
 	BOOLEAN		bTrainUp = FALSE;
 #ifdef TXBF_SUPPORT
 	BOOLEAN 	invertTxBf = FALSE;
@@ -871,8 +849,6 @@ VOID MlmeNewRateAdapt(
 	UCHAR *pTable = pEntry->pTable;
 	UCHAR CurrRateIdx = pEntry->CurrTxRateIndex;
 	RTMP_RA_GRP_TB *pCurrTxRate = PTX_RA_GRP_ENTRY(pTable, CurrRateIdx);
-
-	pEntry->CurrTxRateStableTime++;
 
 	pEntry->LastSecTxRateChangeAction = RATE_NO_CHANGE;
 
@@ -916,40 +892,33 @@ VOID MlmeNewRateAdapt(
 	}
 	else
 	{
-		RTMP_RA_GRP_TB *pUpRate = PTX_RA_GRP_ENTRY(pTable, UpRateIdx);
-
 		/*  Upgrade TX quality if PER <= Rate-Up threshold */
 		if (TxErrorRatio <= TrainUp)
 		{
 			bTrainUp = TRUE;
 			MlmeDecTxQuality(pEntry, CurrRateIdx);  /*  quality very good in CurrRate */
 
-			if (pEntry->TxRateUpPenalty) /* always == 0, always go to else */
-				pEntry->TxRateUpPenalty --;
-			else
-			{
-				/*
-					Decrement the TxQuality of the UpRate and all of the MCS groups.
-					Note that UpRate may mot equal one of the MCS groups if MlmeSelectUpRate
-					skipped over a rate that is not valid for this configuration.
-				*/
-				MlmeDecTxQuality(pEntry, UpRateIdx);
+			/*
+				Decrement the TxQuality of the UpRate and all of the MCS groups.
+				Note that UpRate may mot equal one of the MCS groups if MlmeSelectUpRate
+				skipped over a rate that is not valid for this configuration.
+			*/
+			MlmeDecTxQuality(pEntry, UpRateIdx);
 
-				if (pCurrTxRate->upMcs3!=CurrRateIdx &&
-					pCurrTxRate->upMcs3!=UpRateIdx)
-					MlmeDecTxQuality(pEntry, pCurrTxRate->upMcs3);
+			if (pCurrTxRate->upMcs3!=CurrRateIdx &&
+				pCurrTxRate->upMcs3!=UpRateIdx)
+				MlmeDecTxQuality(pEntry, pCurrTxRate->upMcs3);
 
-				if (pCurrTxRate->upMcs2!=CurrRateIdx &&
-						pCurrTxRate->upMcs2!=UpRateIdx &&
-						pCurrTxRate->upMcs2!=pCurrTxRate->upMcs3)
-					MlmeDecTxQuality(pEntry, pCurrTxRate->upMcs2);
+			if (pCurrTxRate->upMcs2!=CurrRateIdx &&
+					pCurrTxRate->upMcs2!=UpRateIdx &&
+					pCurrTxRate->upMcs2!=pCurrTxRate->upMcs3)
+				MlmeDecTxQuality(pEntry, pCurrTxRate->upMcs2);
 
-				if (pCurrTxRate->upMcs1!=CurrRateIdx &&
-						pCurrTxRate->upMcs1!=UpRateIdx &&
-						pCurrTxRate->upMcs1!=pCurrTxRate->upMcs3 &&
-						pCurrTxRate->upMcs1!=pCurrTxRate->upMcs2)
-					MlmeDecTxQuality(pEntry, pCurrTxRate->upMcs1);
-			}
+			if (pCurrTxRate->upMcs1!=CurrRateIdx &&
+					pCurrTxRate->upMcs1!=UpRateIdx &&
+					pCurrTxRate->upMcs1!=pCurrTxRate->upMcs3 &&
+					pCurrTxRate->upMcs1!=pCurrTxRate->upMcs2)
+				MlmeDecTxQuality(pEntry, pCurrTxRate->upMcs1);
 		}
 		else if (pEntry->mcsGroup > 0) /* even if TxErrorRatio > TrainUp */
 		{
@@ -960,10 +929,6 @@ VOID MlmeNewRateAdapt(
 			MlmeDecTxQuality(pEntry, CurrRateIdx);  /*  quality very good in CurrRate */
 			MlmeDecTxQuality(pEntry, UpRateIdx);    /*  may improve next UP rate's quality */
 		}
-
-		/*  Don't try up rate if it's greater than the limit */
-		if ((phyRateLimit20 != 0) && (pUpRate->dataRate >= phyRateLimit20))
-			return;
 
 		/*  If UpRate is good then train up in current BF state */
 		if ((CurrRateIdx != UpRateIdx) && (MlmeGetTxQuality(pEntry, UpRateIdx) <= 0) && bTrainUp)
@@ -996,6 +961,8 @@ VOID MlmeNewRateAdapt(
 			}
 			else if (pEntry->eTxBfEnCond>0 || pEntry->iTxBfEn)
 			{
+				RTMP_RA_GRP_TB *pUpRate = PTX_RA_GRP_ENTRY(pTable, UpRateIdx);
+
 				/*  First try Up Rate with BF */
 				if ((CurrRateIdx != UpRateIdx) &&
 					 MlmeTxBfAllowed(pAd, pEntry, (RTMP_RA_LEGACY_TB *)pUpRate))
@@ -1043,11 +1010,16 @@ VOID MlmeNewRateAdapt(
 				pEntry->LastSecTxRateChangeAction==RATE_UP? "++": "--", CurrRateIdx, pEntry->CurrTxRateIndex));
 		}
 
-		pEntry->CurrTxRateStableTime = 0;
-		pEntry->TxRateUpPenalty = 0;
-
 		/*  Save last rate information */
 		pEntry->lastRateIdx = CurrRateIdx;
+
+		/*  Update TxQuality */
+		if (pEntry->LastSecTxRateChangeAction == RATE_DOWN)
+		{
+			MlmeSetTxQuality(pEntry, pEntry->CurrTxRateIndex, 0);
+			pEntry->PER[pEntry->CurrTxRateIndex] = 0;
+		}
+
 #ifdef TXBF_SUPPORT
 		if (pEntry->eTxBfEnCond > 0)
 		{
@@ -1061,14 +1033,7 @@ VOID MlmeNewRateAdapt(
 		}
 #endif /*  TXBF_SUPPORT */
 
-		/*  Update TxQuality */
-		if (pEntry->LastSecTxRateChangeAction == RATE_DOWN)
-		{
-			MlmeSetTxQuality(pEntry, pEntry->CurrTxRateIndex, 0);
-			pEntry->PER[pEntry->CurrTxRateIndex] = 0;
-		}
-
-		/*  Set timer for check in 100 msec */
+		/* Set timer for check in 100 msec */
 #ifdef CONFIG_AP_SUPPORT
 		IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
 		{
@@ -1109,14 +1074,14 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 {
 	PUCHAR					pTable;
 	UCHAR					CurrRateIdx;
-	ULONG					AccuTxTotalCnt, TxTotalCnt, TxCnt;
+	ULONG					TxTotalCnt = 0, TxCnt = 0;
 	ULONG					TxErrorRatio = 0;
 	MAC_TABLE_ENTRY			*pEntry;
 	RTMP_RA_GRP_TB *pCurrTxRate;
 	UCHAR					TrainUp, TrainDown;
 	CHAR					Rssi, ratio;
 	ULONG					TxSuccess, TxRetransmit, TxFailCount;
-	ULONG					OneSecTxNoRetryOKRationCount;
+	ULONG					OneSecTxNoRetryOKRationCount = 0;
 	BOOLEAN					rateChanged;
 #ifdef TXBF_SUPPORT
 	BOOLEAN					CurrPhyETxBf, CurrPhyITxBf;
@@ -1126,9 +1091,8 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 
 
 	pTable = pEntry->pTable;
-
 	Rssi = RTMPAvgRssi(pAd, &pEntry->RssiSample);
-
+#ifndef MULTI_CLIENT_SUPPORT
 	if (pAd->MacTab.Size == 1)
 	{
 		TX_STA_CNT1_STRUC StaTx1;
@@ -1142,7 +1106,7 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 		TxFailCount = TxStaCnt0.field.TxFailCount;
 		TxTotalCnt = TxRetransmit + TxSuccess + TxFailCount;
 
-		AccuTxTotalCnt = pAd->RalinkCounters.OneSecTxNoRetryOkCount + 
+		TxCnt = pAd->RalinkCounters.OneSecTxNoRetryOkCount + 
 							pAd->RalinkCounters.OneSecTxRetryOkCount + 
 							pAd->RalinkCounters.OneSecTxFailCount;
 
@@ -1154,10 +1118,9 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 			Rssi = (pEntry->RssiSample.AvgRssi0 + pEntry->RssiSample.AvgRssi1) >> 1;
 		else
 			Rssi = pEntry->RssiSample.AvgRssi0;
-
-		TxCnt = AccuTxTotalCnt;
 	}
 	else
+#endif
 	{
 		TxRetransmit = pEntry->OneSecTxRetryOkCount;
 		TxSuccess = pEntry->OneSecTxNoRetryOkCount;
@@ -1169,31 +1132,30 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 		if (TxTotalCnt)
 			TxErrorRatio = ((TxRetransmit + TxFailCount) * 100) / TxTotalCnt;
 
-#ifdef FIFO_EXT_SUPPORT
-		if ((pEntry->Aid >= 1) && (pEntry->Aid <= 8))
-		{
-			ULONG 	HwTxCnt, HwErrRatio;
-
-			NicGetMacFifoTxCnt(pAd, pEntry);
-			HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
-			if (HwTxCnt)
-				HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
-			else
-				HwErrRatio = 0;
-			
-			DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s():Aid:%d, MCS:%d, TxErrRation(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n", 
-					__FUNCTION__, pEntry->Aid, pEntry->HTPhyMode.field.MCS, 
-					HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
-
-			TxSuccess = pEntry->fifoTxSucCnt;
-			TxRetransmit = pEntry->fifoTxRtyCnt;
-			TxErrorRatio = HwErrRatio;
-			TxTotalCnt = HwTxCnt;
-			TxCnt = HwTxCnt;
-		}
-#endif /*  FIFO_EXT_SUPPORT */
 	}
 
+#ifdef FIFO_EXT_SUPPORT
+	if (NicGetMacFifoTxCnt(pAd, pEntry))
+	{
+		ULONG HwTxCnt, HwErrRatio = 0;
+
+		HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
+		if (HwTxCnt)
+			HwErrRatio = ((pEntry->fifoTxRtyCnt * 100) / HwTxCnt);
+
+		TxSuccess = pEntry->fifoTxSucCnt;
+		TxRetransmit = pEntry->fifoTxRtyCnt;
+		TxErrorRatio = HwErrRatio;
+		TxTotalCnt = HwTxCnt;
+		TxCnt = HwTxCnt;
+
+		DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s()=>Wcid:%d, MCS:%d, TxErrRation(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n",
+				__FUNCTION__, pEntry->wcid, pEntry->HTPhyMode.field.MCS,
+				HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
+
+		ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
+	}
+#endif /*  FIFO_EXT_SUPPORT */
 #ifdef MFB_SUPPORT
 	if (pEntry->fLastChangeAccordingMfb == TRUE)
 	{
@@ -1214,11 +1176,19 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 #endif /*  TXBF_SUPPORT */
 	pCurrTxRate = PTX_RA_GRP_ENTRY(pTable, CurrRateIdx);
 
-#ifdef DOT11_N_SUPPORT
-	if ((Rssi > -65) && (pCurrTxRate->Mode >= MODE_HTMIX) && pEntry->perThrdAdj == 1)
+#ifdef DOT11_VHT_AC
+	if ((Rssi > -55) && (pCurrTxRate->Mode >= MODE_VHT) && (TxErrorRatio < FASTRATEUPERRTH) && pEntry->perThrdAdj == 1)
 	{
-		TrainUp		= (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> 1));
-		TrainDown	= (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> 1));
+		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> RA_TRAINDIV));
+		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> RA_TRAINDIV));
+	}
+	else
+#endif /*  DOT11_VHT_AC */
+#ifdef DOT11_N_SUPPORT
+	if ((Rssi > -65) && (pCurrTxRate->Mode == MODE_HTMIX) && (TxErrorRatio < FASTRATEUPERRTH) && pEntry->perThrdAdj == 1)
+	{
+		TrainUp		= (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> RA_TRAINDIV));
+		TrainDown	= (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> RA_TRAINDIV));
 	}
 	else
 #endif /*  DOT11_N_SUPPORT */
@@ -1234,22 +1204,14 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 		MlmeRALog(pAd, pEntry, RAL_QUICK_DRS, TxErrorRatio, TxTotalCnt);
 #endif /* DBG_CTRL_SUPPORT */
 
-	if (TxTotalCnt <= 30)
-	{
-		pEntry->ContinuelowTrafficCnt++;
-		if (pEntry->ContinuelowTrafficCnt >= pAd->CommonCfg.lowTrafficThrd)
-		{
-			pEntry->ContinuelowTrafficCnt = 0;
-			pEntry->ContinuelowTraffic = TRUE;
-		}
-	}
-	else
-	{
-		pEntry->ContinuelowTraffic = FALSE;
-	}
-
 	/*  Handle the low traffic case */
-	if (TxCnt <= 15)
+	if ((TxCnt <= 15) &&
+	    (pEntry->HTPhyMode.field.MODE == MODE_HTMIX
+#ifdef DOT11_VHT_AC
+	    || pEntry->HTPhyMode.field.MODE == MODE_VHT
+#endif
+	    )
+	    && (pEntry->HTPhyMode.field.MCS > 1))
 	{
 		/*  Go back to the original rate */
 		MlmeRestoreLastRate(pEntry);
@@ -1277,10 +1239,7 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 	else
 		ratio = (RA_INTERVAL - pAd->ra_fast_interval) / pAd->ra_fast_interval;
 
-	if (pAd->MacTab.Size == 1)
-		OneSecTxNoRetryOKRationCount = (TxSuccess * ratio);
-	else
-		OneSecTxNoRetryOKRationCount = (TxSuccess * ratio) + (TxSuccess >> 1);
+	OneSecTxNoRetryOKRationCount = (TxSuccess * ratio) + ((TxSuccess * ratio) >> 1);
 
 	/* Downgrade TX quality if PER >= Rate-Down threshold */
 	/* the only situation when pEntry->TxQuality[CurrRateIdx] = DRS_TX_QUALITY_WORST_BOUND but no rate change */
@@ -1309,6 +1268,11 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 		else if (pAd->CommonCfg.TrainUpRule==2 && Rssi<=pAd->CommonCfg.TrainUpRuleRSSI)
 		{
 			useOldRate = MlmeRAHybridRule(pAd, pEntry, pCurrTxRate, OneSecTxNoRetryOKRationCount, TxErrorRatio);
+			if ((useOldRate== TRUE) && ((TxErrorRatio < 21) && (TxTotalCnt <= 50)))
+			{
+			    // make low rate raise up easily 
+			    useOldRate = FALSE;
+			}
 		}
 		else if (pAd->CommonCfg.TrainUpRule==3 && Rssi<=pAd->CommonCfg.TrainUpRuleRSSI)
 		{
@@ -1319,8 +1283,8 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 			useOldRate = TxErrorRatio >= TrainDown;
 		if (useOldRate)
 		{
-			/*  If PER>50% or TP<lastTP/2 then double the TxQuality delay */
-			if ((TxErrorRatio > 50) || (OneSecTxNoRetryOKRationCount < pEntry->LastTxOkCount/2))
+			/*  If PER>40% or TP<lastTP/2 then double the TxQuality delay */
+			if ((TxErrorRatio > 40) || (OneSecTxNoRetryOKRationCount < pEntry->LastTxOkCount/2))
 				MlmeSetTxQuality(pEntry, CurrRateIdx, DRS_TX_QUALITY_WORST_BOUND*2);
 			else
 				MlmeSetTxQuality(pEntry, CurrRateIdx, DRS_TX_QUALITY_WORST_BOUND);
@@ -1353,15 +1317,8 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 		}
 		else if ((pEntry->LastTxOkCount + 2) >= OneSecTxNoRetryOKRationCount)
 		{
-			if(TxErrorRatio >= TrainUp)
-			{
-				MlmeRestoreLastRate(pEntry);
-				DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("   QuickDRS: (Down) bad tx ok count (L:%ld, C:%ld)\n", pEntry->LastTxOkCount, OneSecTxNoRetryOKRationCount));
-			}
-			else
-			{
-				DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("   QuickDRS: (Down) direct train down (TxErrorRatio < TrainUp)\n"));
-			}
+			MlmeRestoreLastRate(pEntry);
+			DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("   QuickDRS: (Down) bad tx ok count (L:%ld, C:%ld)\n", pEntry->LastTxOkCount, OneSecTxNoRetryOKRationCount));
 		}
 		else
 		{
@@ -1422,7 +1379,6 @@ VOID APQuickResponeForRateUpExecAdapt(/* actually for both up and down */
 		/*  Clear Old Rate's TxQuality */
 		MlmeSetTxQuality(pEntry, pEntry->CurrTxRateIndex, 0);
 
-		pEntry->TxRateUpPenalty = 0;	/* redundant */
 		pEntry->PER[pEntry->CurrTxRateIndex] = 0;	/* redundant */
 
 		/*  Set new Tx rate */
@@ -1450,7 +1406,7 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 {
 	PUCHAR pTable;
 	UCHAR UpRateIdx, DownRateIdx, CurrRateIdx, TrainUp, TrainDown;
-	ULONG TxTotalCnt, TxSuccess, TxRetransmit, TxFailCount, TxErrorRatio;
+	ULONG TxTotalCnt = 0, TxSuccess = 0, TxRetransmit = 0, TxFailCount = 0, TxErrorRatio = 0;
 	MAC_TABLE_ENTRY *pEntry;
 	RTMP_RA_GRP_TB *pCurrTxRate;
 	CHAR Rssi;
@@ -1458,8 +1414,7 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 
 	pEntry = &pAd->MacTab.Content[i]; /* point to information of the individual station */
 	pTable = pEntry->pTable;
-	TxTotalCnt = TxSuccess = TxRetransmit = TxFailCount = TxErrorRatio = 0;
-
+#ifndef MULTI_CLIENT_SUPPORT
 	if (pAd->MacTab.Size == 1)
 	{
 		TX_STA_CNT1_STRUC StaTx1;
@@ -1477,6 +1432,7 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 			TxErrorRatio = ((TxRetransmit + TxFailCount) * 100) / TxTotalCnt;
 	}
 	else
+#endif
 	{
 		TxRetransmit = pEntry->OneSecTxRetryOkCount;
 		TxSuccess = pEntry->OneSecTxNoRetryOkCount;
@@ -1486,28 +1442,29 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 		if (TxTotalCnt)
 			TxErrorRatio = ((TxRetransmit + TxFailCount) * 100) / TxTotalCnt;
 
-#ifdef FIFO_EXT_SUPPORT
-		if (pEntry->Aid >= 1 && pEntry->Aid <= 8)
-		{
-			ULONG HwTxCnt, HwErrRatio;
-
-			NicGetMacFifoTxCnt(pAd, pEntry);
-			HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
-			if (HwTxCnt)
-				HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
-			else
-				HwErrRatio = 0;
-			DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s():Aid:%d, MCS:%d, TxErrRatio(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n", 
-					__FUNCTION__, pEntry->Aid, pEntry->HTPhyMode.field.MCS, 
-					HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
-
-			TxSuccess = pEntry->fifoTxSucCnt;
-			TxRetransmit = pEntry->fifoTxRtyCnt;
-			TxTotalCnt = HwTxCnt;
-			TxErrorRatio = HwErrRatio;
-		}
-#endif /*  FIFO_EXT_SUPPORT */
 	}
+
+#ifdef FIFO_EXT_SUPPORT
+	if (NicGetMacFifoTxCnt(pAd, pEntry))
+	{
+		ULONG HwTxCnt, HwErrRatio = 0;
+
+		HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
+		if (HwTxCnt)
+			HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
+
+		TxSuccess = pEntry->fifoTxSucCnt;
+		TxRetransmit = pEntry->fifoTxRtyCnt;
+		TxTotalCnt = HwTxCnt;
+		TxErrorRatio = HwErrRatio;
+
+		ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
+
+		DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s()=>Wcid:%d, MCS:%d, TxErrRatio(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n",
+				__FUNCTION__, pEntry->wcid, pEntry->HTPhyMode.field.MCS,
+				HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
+	}
+#endif /*  FIFO_EXT_SUPPORT */
 
 	/*  Save LastTxOkCount, LastTxPER and last MCS action for APQuickResponeForRateUpExec */
 	pEntry->LastTxOkCount = TxSuccess;
@@ -1517,12 +1474,28 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 	/* different calculation in APQuickResponeForRateUpExec() */
 	Rssi = RTMPAvgRssi(pAd, &pEntry->RssiSample);
 
+	if (pEntry->CurrTxRateIndex >= RATE_TABLE_SIZE(pTable))
+		pEntry->CurrTxRateIndex = RATE_TABLE_SIZE(pTable) - 1;
+
 	/*  decide the next upgrade rate and downgrade rate, if any */
 	CurrRateIdx = pEntry->CurrTxRateIndex;
-	pCurrTxRate = PTX_RA_GRP_ENTRY(pTable, CurrRateIdx);
-	UpRateIdx = MlmeSelectUpRate(pAd, pEntry, pCurrTxRate);
-	DownRateIdx = MlmeSelectDownRate(pAd, pEntry, CurrRateIdx);
 
+	pCurrTxRate = PTX_RA_GRP_ENTRY(pTable, CurrRateIdx);
+	pEntry->CurrTxRateIndex = CurrRateIdx;
+
+	/* Up Rate */
+	UpRateIdx = MlmeSelectUpRate(pAd, pEntry, pCurrTxRate);
+
+	/* Down Rate */
+	DownRateIdx = MlmeSelectDownRate(pAd, pEntry, CurrRateIdx);
+#ifdef DOT11_VHT_AC
+	if ((Rssi > -55) && (pCurrTxRate->Mode >= MODE_VHT) && (TxErrorRatio < FASTRATEUPERRTH) && pEntry->perThrdAdj == 1)
+	{
+		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> RA_TRAINDIV));
+		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> RA_TRAINDIV));
+	}
+	else
+#endif /*  DOT11_VHT_AC */
 #ifdef DOT11_N_SUPPORT
 	/*
 		when Rssi > -65, there is a lot of interference usually. therefore, 
@@ -1530,10 +1503,10 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 		By increasing the thresholds, the chosen mcs will be closer to the 
 		optimal mcs
 	*/
-	if ((Rssi > -65) && (pCurrTxRate->Mode >= MODE_HTMIX) && pEntry->perThrdAdj == 1)
+	if ((Rssi > -65) && (pCurrTxRate->Mode == MODE_HTMIX) && (TxErrorRatio < FASTRATEUPERRTH) && pEntry->perThrdAdj == 1)
 	{
-		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> 1));
-		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> 1));
+		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> RA_TRAINDIV));
+		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> RA_TRAINDIV));
 	}
 	else
 #endif /*  DOT11_N_SUPPORT */
@@ -1582,8 +1555,6 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 			CHAR mcs[24];
 			CHAR RssiOffset = 0;
 
-			pEntry->lowTrafficCount = 0;
-
 			/* Check existence and get index of each MCS */
 			MlmeGetSupportedMcsAdapt(pAd, pEntry, GI_400, mcs);
 
@@ -1611,18 +1582,18 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 #endif /* NOISE_TEST_ADJUST */
 			/* Select the Tx rate based on the RSSI */
 			TxRateIdx = MlmeSelectTxRateAdapt(pAd, pEntry, mcs, Rssi, RssiOffset);
-				pEntry->lastRateIdx = pEntry->CurrTxRateIndex;
-				MlmeSetMcsGroup(pAd, pEntry);
+			pEntry->lastRateIdx = pEntry->CurrTxRateIndex;
+			MlmeSetMcsGroup(pAd, pEntry);
 
-				pEntry->CurrTxRateIndex = TxRateIdx;
+			pEntry->CurrTxRateIndex = TxRateIdx;
 #ifdef TXBF_SUPPORT
-				pEntry->phyETxBf = pEntry->phyITxBf = FALSE;
+			pEntry->phyETxBf = pEntry->phyITxBf = FALSE;
 #endif /* TXBF_SUPPORT */
-				MlmeNewTxRate(pAd, pEntry);
-				if (!pEntry->fLastSecAccordingRSSI)
-				{
-					DBGPRINT(RT_DEBUG_INFO,("DRS: TxTotalCnt <= 15, switch to MCS%d according to RSSI (%d), RssiOffset=%d\n", pEntry->HTPhyMode.field.MCS, Rssi, RssiOffset));
-				}
+			MlmeNewTxRate(pAd, pEntry);
+			if (!pEntry->fLastSecAccordingRSSI)
+			{
+				DBGPRINT(RT_DEBUG_INFO,("DRS: TxTotalCnt <= 15, switch to MCS%d according to RSSI (%d), RssiOffset=%d\n", pEntry->HTPhyMode.field.MCS, Rssi, RssiOffset));
+			}
 
 			MlmeClearAllTxQuality(pEntry);	/* clear all history */
 			pEntry->fLastSecAccordingRSSI = TRUE;
@@ -1639,10 +1610,13 @@ VOID APMlmeDynamicTxRateSwitchingAdapt(RTMP_ADAPTER *pAd, ULONG i)
 #endif /* DBG_CTRL_SUPPORT */
 #endif /* TXBF_SUPPORT */
 
+    		pEntry->fLastSecAccordingRSSI = TRUE;
+
 		return;
 	}
 
-	pEntry->lowTrafficCount = 0;
+	if(TxTotalCnt > 100)
+		pEntry->lowTrafficCount = 0;
 
 	/*
 		After pEntry->fLastSecAccordingRSSI = TRUE; the for loop 

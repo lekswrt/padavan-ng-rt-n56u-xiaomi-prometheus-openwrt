@@ -163,6 +163,15 @@ BOOLEAN ApCliCheckHt(
 	IN OUT	ADD_HT_INFO_IE 		*pAddHtInfo);
 #endif /* DOT11_N_SUPPORT */
 
+#ifdef DOT11_VHT_AC
+BOOLEAN ApCliCheckVht(
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR Wcid,
+	IN MAC_TABLE_ENTRY  *pEntry,
+	IN VHT_CAP_IE *vht_cap,
+	IN VHT_OP_IE *vht_op);
+#endif /* DOT11_VHT_AC */
+
 BOOLEAN ApCliLinkUp(
 	IN PRTMP_ADAPTER pAd,
 	IN UCHAR ifIndex);

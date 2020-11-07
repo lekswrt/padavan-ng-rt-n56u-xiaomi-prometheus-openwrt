@@ -148,8 +148,10 @@ INT RTMPCheckRxError(
 						pRxInfo->Mcast | pRxInfo->Bcast, pRxInfo->MyBss, pRxBlk->wcid,
 			pRxBlk->key_idx));
 
+#ifdef DBG
 		dump_rxinfo(pAd, pRxInfo);
 		dump_rxwi(pAd, pRxBlk->pRxWI);
+#endif
 		hex_dump("ErrorPkt",  (UCHAR *)pHeader, pRxBlk->MPDUtotalByteCnt);
 
 		if (pHeader == NULL)
@@ -168,7 +170,7 @@ INT StaAllowToSendPacket(
 	PNDIS_PACKET pPacket,
 	UCHAR *pWcid)
 {
-	BOOLEAN allowToSend;
+	BOOLEAN allowToSend = FALSE;
 	
 	if (!INFRA_ON(pAd) && !ADHOC_ON(pAd))
 	{

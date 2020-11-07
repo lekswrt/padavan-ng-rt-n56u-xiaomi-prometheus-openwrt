@@ -324,29 +324,10 @@ static VOID ApCliTrialConnectRetryTimeout(
 
 static VOID ApCliTrialConnectionBeaconControl(PRTMP_ADAPTER pAd,BOOLEAN	start) 
 {
-#ifdef MT7615//randy
-	struct wifi_dev *wdev;
-	INT IdBss;
-	INT MaxNumBss;
-	
-	MaxNumBss = pAd->ApCfg.BssidNum;
-	for(IdBss=0; IdBss < MaxNumBss; IdBss++)
-	{
-		wdev = &pAd->ApCfg.MBSSID[IdBss].wdev;
-		if (wdev->bss_info_argument.Active == TRUE) {
-			wdev->bcn_buf.bBcnSntReq = start;
-			UpdateBeaconHandler(
-				pAd,
-				wdev,
-				INTERFACE_STATE_CHANGE);
-		}
-	}
-#else
 	if (start)
 		AsicEnableBssSync(pAd, pAd->CommonCfg.BeaconPeriod);
 	else
 		AsicDisableSync(pAd);//disable beacon
-#endif
 	return;
 }
 
@@ -544,7 +525,7 @@ static VOID ApCliTrialConnectRetryTimeoutAction(PRTMP_ADAPTER pAd, MLME_QUEUE_EL
 		pApCliEntry->NewRootApRetryCnt = 0;//cleanup retry count
 		//pApCliEntry->Enable = FALSE;
 		//	sprintf(tempBuf, "%d", pApCliEntry->TrialCh);
-		//	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Follow new rootAP Switch to channel :%s\n", tempBuf));
+		//	DBGPRINT(RT_DEBUG_TRACE, ("Follow new rootAP Switch to channel :%s\n", tempBuf));
 		//	Set_Channel_Proc(pAd, tempBuf);//APStartUp will regenerate beacon.
 		pApCliEntry->TrialCh=0;
 	}
@@ -876,7 +857,7 @@ static VOID ApCliCtrlProbeRspAction(
 		}
 
 #ifdef DOT11_N_SUPPORT
-		if ((pAd->CommonCfg.Channel < 14)
+		if ((pAd->CommonCfg.Channel <= 14)
 #ifdef MAC_REPEATER_SUPPORT
 			&& (CliIdx == 0xFF)
 #endif /* MAC_REPEATER_SUPPORT */
@@ -1174,7 +1155,7 @@ static VOID ApCliCtrlAuth2RspAction(
 	} 
 	else
 	{
-		printk(KERN_WARNING "AP-Client: authentication failed!\n");
+		printk("AP-Client: authentication failed!\n");
 
 		*pCurrState = APCLI_CTRL_DISCONNECTED;
 #ifdef APCLI_AUTO_CONNECT_SUPPORT
@@ -1453,10 +1434,10 @@ static VOID ApCliCtrlDeAssocRspAction(
 	pApCliEntry = &pAd->ApCfg.ApCliTab[ifIndex];
 	if (Status == MLME_SUCCESS)
 	{
-		DBGPRINT(RT_DEBUG_TRACE, ("(%s) Receive DeAssoc Rsp Success.\n", __FUNCTION__));
+		printk("Receive DeAssoc Rsp Success.\n");
 	} else
 	{
-		DBGPRINT(RT_DEBUG_TRACE, ("(%s) Receive DeAssoc Rsp Failure.\n", __FUNCTION__));
+		printk("Receive DeAssoc Rsp Failure.\n");
 	}
 
 #ifdef MAC_REPEATER_SUPPORT
@@ -1589,7 +1570,7 @@ static VOID ApCliCtrlDisconnectReqAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_TRACE, ("(%s) MLME Request disconnect.\n", __FUNCTION__));
+	printk("MLME Request disconnect.\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -1638,7 +1619,7 @@ static VOID ApCliCtrlDisconnectReqAction(
 	else
 #endif /* MAC_REPEATER_SUPPORT */
 	{
-		pApCliEntry->Valid = FALSE;
+	pApCliEntry->Valid = FALSE;
 
 	/* clear MlmeAux.Ssid and Bssid. */
 		NdisZeroMemory(pAd->ApCfg.ApCliTab[ifIndex].MlmeAux.Bssid, MAC_ADDR_LEN);
@@ -1670,7 +1651,7 @@ static VOID ApCliCtrlPeerDeAssocReqAction(
 		UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	printk(KERN_INFO "AP-Client: disconnected by peer\n");
+	printk("AP-Client: disconnected by peer\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -1786,7 +1767,7 @@ static VOID ApCliCtrlDeAssocAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_TRACE, ("(%s) MLME Request Disconnect.\n", __FUNCTION__));
+	printk("MLME Request Disconnect.\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -1873,7 +1854,7 @@ static VOID ApCliCtrlDeAuthAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	DBGPRINT(RT_DEBUG_TRACE, ("(%s) MLME Request Disconnect.\n", __FUNCTION__));
+	printk("MLME Request Disconnect.\n");
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT

@@ -11,7 +11,8 @@
 #define REC_BA_SESSION_IDLE_TIMEOUT	(1000)	/* ms*/
 
 #define REORDERING_PACKET_TIMEOUT		((100 * OS_HZ)/1000)	/* system ticks -- 100 ms*/
-#define MAX_REORDERING_PACKET_TIMEOUT	((3000 * OS_HZ)/1000)	/* system ticks -- 100 ms*/
+#define MULTI_CLIENT_REORDERING_PACKET_TIMEOUT         ((200 * OS_HZ)/1000)    /* system ticks -- 200 ms*/
+#define MAX_REORDERING_PACKET_TIMEOUT	((1500 * OS_HZ)/1000)	/* system ticks -- 100 ms*/
 
 #define RESET_RCV_SEQ		(0xFFFF)
 
@@ -53,46 +54,50 @@ VOID BA_MaxWinSizeReasign(
 	UCHAR MaxSize;
 	UCHAR MaxPeerRxSize;
 
-
 	if (CLIENT_STATUS_TEST_FLAG(pEntryPeer, fCLIENT_STATUS_RALINK_CHIPSET))
 		MaxPeerRxSize = (1 << (pEntryPeer->MaxRAmpduFactor + 3));  /* (2^(13 + exp)) / 2048 bytes */
 	else
 		MaxPeerRxSize = (((1 << (pEntryPeer->MaxRAmpduFactor + 3)) * 10) / 16) -1;
 
+	if(WMODE_CAP_AC(pAd->CommonCfg.PhyMode) && (pAd->CommonCfg.Channel > 14) 
+	&& pEntryPeer->VhtMaxRAmpduFactor != 0)
+	{		
+		MaxPeerRxSize = (((1 << (pEntryPeer->VhtMaxRAmpduFactor + 3)) * 10) / 16) -1;
+	}	
+
 #ifdef RT65xx
-	if (IS_RT65XX(pAd))
-		MaxSize = 31;
-	else
-#endif /* RT65xx */
-	if (pAd->MACVersion >= RALINK_2883_VERSION)
-	{
-		if (pAd->MACVersion >= RALINK_3070_VERSION)
-		{
-			if (pEntryPeer->WepStatus != Ndis802_11EncryptionDisabled)
-				MaxSize = 7; /* for non-open mode */
-			else
-				MaxSize = 13;
-		}
+	if (IS_RT65XX(pAd)) {
+
+		if (IS_MT76x2(pAd))
+			MaxSize = 47;
 		else
 			MaxSize = 31;
-	}
-	else if (pAd->MACVersion >= RALINK_2880E_VERSION) /* 2880e */
-	{
-		if (pEntryPeer->WepStatus != Ndis802_11EncryptionDisabled)
-			MaxSize = 7; /* for non-open mode */
-		else
-			MaxSize = 13;
+
+		if (((pEntryPeer->MaxHTPhyMode.field.MODE == MODE_HTMIX) || 
+			(pEntryPeer->MaxHTPhyMode.field.MODE == MODE_HTGREENFIELD)) &&
+			(pEntryPeer->HTCapability.MCSSet[2] != 0xff)) {
+			MaxSize = 31;
+		}
 	}
 	else
-		MaxSize = 7;
+#endif /* RT65xx */
+#ifdef RT6352
+	if (IS_RT6352(pAd))
+	{
+		MaxSize = 21;
+	}
+	else
+#endif /* RT6352 */
+	if (pAd->Antenna.field.TxPath == 3 &&
+		(pEntryPeer->HTCapability.MCSSet[2] != 0))
+		MaxSize = 31; 		/* for 3x3, MaxSize use ((48KB/1.5KB) -1) = 31 */
+	else
+		MaxSize = 20;			/* for not 3x3, MaxSize use ((32KB/1.5KB) -1) ~= 20 */
 
-#ifdef CONFIG_AP_SUPPORT
-#endif /* CONFIG_AP_SUPPORT */
-
-
-
-	DBGPRINT(RT_DEBUG_TRACE, ("ba>WinSize=%d, MaxSize=%d, MaxPeerRxSize=%d\n", 
-			*pWinSize, MaxSize, MaxPeerRxSize));
+	DBGPRINT(RT_DEBUG_TRACE, ("ba>WinSize=%d, MaxSize=%d, MaxPeerRxSize=%d, \
+	pEntryPeer->MaxRAmpduFactor=%d, pEntryPeer->VhtMaxRAmpduFactor=%d\n", 
+			*pWinSize, MaxSize, MaxPeerRxSize
+			, pEntryPeer->MaxRAmpduFactor, pEntryPeer->VhtMaxRAmpduFactor));
 
 	MaxSize = min(MaxPeerRxSize, MaxSize);
 	if ((*pWinSize) > MaxSize)
@@ -392,6 +397,32 @@ static void ba_indicate_reordering_mpdus_le_seq(
 	NdisReleaseSpinLock(&pBAEntry->RxReRingLock);
 }
 
+#ifdef CONFIG_BA_REORDER_MONITOR
+void ba_timeout_flush(PRTMP_ADAPTER pAd)
+{
+	ULONG now;
+	UINT32 idx0 = 0; 
+	UINT32 idx1 = 0;
+	PBA_REC_ENTRY pBAEntry = NULL;
+
+	NdisGetSystemUpTime(&now);
+
+	for (idx0 = 0; idx0 < 16; idx0++) {
+		idx1 = 0;
+		while ((pAd->BATable.ba_timeout_bitmap[idx0] != 0) && (idx1 < 32)) {
+
+			if (pAd->BATable.ba_timeout_bitmap[idx0] & 0x1) {
+				pBAEntry = &pAd->BATable.BARecEntry[(idx0 << 5) + idx1];
+				ba_flush_reordering_timeout_mpdus(pAd, pBAEntry, now);
+			}
+
+			pAd->BATable.ba_timeout_bitmap[idx0] >>= 1;
+			idx1++;
+		}
+	}
+
+	pAd->BATable.ba_timeout_check = FALSE;
+}
 
 static void ba_refresh_reordering_mpdus(
 									   IN PRTMP_ADAPTER    pAd, 
@@ -417,6 +448,51 @@ static void ba_refresh_reordering_mpdus(
 	NdisReleaseSpinLock(&pBAEntry->RxReRingLock);   
 }
 
+void ba_timeout_monitor(PRTMP_ADAPTER pAd)
+{
+	UINT32 idx = 0;
+	PBA_REC_ENTRY pBAEntry = NULL;
+	ULONG now;
+	POS_COOKIE obj = (POS_COOKIE) pAd->OS_Cookie;
+	BOOLEAN need_check = FALSE;
+	static int NeedFallBack=0;
+
+	if ( pAd->MacTab.Size >= 15 )
+	{
+		pAd->BATable.ba_reordering_packet_timeout = MULTI_CLIENT_REORDERING_PACKET_TIMEOUT;
+		NeedFallBack = 0;
+	}
+	else 
+	{
+		NeedFallBack ++;
+		if (NeedFallBack >= 5) 
+			pAd->BATable.ba_reordering_packet_timeout = REORDERING_PACKET_TIMEOUT;
+	}
+
+	if (!pAd->BATable.ba_timeout_check) {
+		NdisGetSystemUpTime(&now);
+		for (idx = 0; idx < MAX_LEN_OF_BA_REC_TABLE; idx++) {
+			pBAEntry = &pAd->BATable.BARecEntry[idx];
+		
+			if ((pBAEntry->REC_BA_Status == Recipient_Accept) 
+					&& (pBAEntry->list.qlen > 0)) {
+
+				if (RTMP_TIME_AFTER((unsigned long)now, 
+					(unsigned long)(pBAEntry->LastIndSeqAtTimer + pAd->BATable.ba_reordering_packet_timeout))) {
+					need_check = TRUE;	
+					pAd->BATable.ba_timeout_bitmap[(idx >> 5)] |= (1 << (idx % 32));
+				}
+			}
+		}
+
+		if (need_check) {
+			pAd->BATable.ba_timeout_check = need_check;
+			RTMP_OS_TASKLET_SCHE(&obj->rx_done_task);
+		}
+	}	
+}
+#endif
+
 
 /* static */
 void ba_flush_reordering_timeout_mpdus(
@@ -435,7 +511,7 @@ void ba_flush_reordering_timeout_mpdus(
 /*		(RTMP_TIME_AFTER((unsigned long)Now32, (unsigned long)(pBAEntry->LastIndSeqAtTimer+(10*REORDERING_PACKET_TIMEOUT))) &&*/
 /*		 (pBAEntry->list.qlen > (pBAEntry->BAWinSize/8)))*/
 	if (RTMP_TIME_AFTER((unsigned long)Now32, (unsigned long)(pBAEntry->LastIndSeqAtTimer+(MAX_REORDERING_PACKET_TIMEOUT/6))) 
-		 &&(pBAEntry->list.qlen > 1)
+		 &&(pBAEntry->list.qlen > 0)
 		)
 	{
 		DBGPRINT(RT_DEBUG_TRACE,("timeout[%d] (%08lx-%08lx = %d > %d): %x, flush all!\n ", pBAEntry->list.qlen, Now32, (pBAEntry->LastIndSeqAtTimer), 
@@ -445,7 +521,7 @@ void ba_flush_reordering_timeout_mpdus(
 		pBAEntry->LastIndSeqAtTimer = Now32;
 	}
 	else
-	if (RTMP_TIME_AFTER((unsigned long)Now32, (unsigned long)(pBAEntry->LastIndSeqAtTimer+(REORDERING_PACKET_TIMEOUT)))
+	if (RTMP_TIME_AFTER((unsigned long)Now32, (unsigned long)(pBAEntry->LastIndSeqAtTimer+(pAd->BATable.ba_reordering_packet_timeout)))
 		&& (pBAEntry->list.qlen > 0)
 	   )
 		{
@@ -545,15 +621,15 @@ VOID BAOriSessionSetUp(
 #endif
 
 	/* Initialize BA session */
-	pBAEntry->ORI_BA_Status = Originator_WaitRes;       
+	pBAEntry->ORI_BA_Status = Originator_WaitRes;
 	pBAEntry->Wcid = pEntry->Aid;
-	pBAEntry->BAWinSize = pAd->CommonCfg.BACapability.field.RxBAWinLimit;   
+	pBAEntry->BAWinSize = pAd->CommonCfg.BACapability.field.TxBAWinLimit;
 	pBAEntry->Sequence = BA_ORI_INIT_SEQ;
 	pBAEntry->Token = 1;	/* (2008-01-21) Jan Lee recommends it - this token can't be 0*/
 	pBAEntry->TID = TID;
-	pBAEntry->TimeOutValue = TimeOut;   
+	pBAEntry->TimeOutValue = TimeOut;
 	pBAEntry->pAdapter = pAd;
-	
+
 	if (!(pEntry->TXBAbitmap & (1<<TID)))
 	{
 		RTMPInitTimer(pAd, &pBAEntry->ORIBATimer, GET_TIMER_FUNCTION(BAOriSessionSetupTimeout), pBAEntry, FALSE);
@@ -602,9 +678,10 @@ VOID BAOriSessionAdd(
 		BA_MaxWinSizeReasign(pAd, pEntry, &pBAEntry->BAWinSize);
 
 		pBAEntry->TimeOutValue = pFrame->TimeOutValue;
+		pBAEntry->amsdu_cap = pFrame->BaParm.AMSDUSupported;
 		pBAEntry->ORI_BA_Status = Originator_Done;
 		pAd->BATable.numDoneOriginator ++;
-		
+
 		/* reset sequence number */
 		pBAEntry->Sequence = BA_ORI_INIT_SEQ;
 		/* Set Bitmap flag.*/
@@ -697,12 +774,11 @@ BOOLEAN BARecSessionAdd(
 
 	BAWinSize = min(((UCHAR)pFrame->BaParm.BufSize), (UCHAR)pAd->CommonCfg.BACapability.field.RxBAWinLimit);
 
-	/* Intel patch*/
-	if (BAWinSize == 0)
-	{
-		BAWinSize = 64;
+	if (BAWinSize == 0) {
+		BAWinSize = pAd->CommonCfg.BACapability.field.RxBAWinLimit;
 	}
 
+	NdisAcquireSpinLock(&pAd->BATabLock);
 	/* get software BA rec array index, Idx*/
 	Idx = pEntry->BARecWcidArray[TID];
 
@@ -766,6 +842,7 @@ BOOLEAN BARecSessionAdd(
 		DBGPRINT(RT_DEBUG_TRACE,("Can't Accept ADDBA for %02x:%02x:%02x:%02x:%02x:%02x TID = %d\n", 
 				PRINT_MAC(pEntry->Addr), TID));
 	}
+	NdisReleaseSpinLock(&pAd->BATabLock);
 	return(Status);
 }
 
@@ -778,7 +855,7 @@ BA_REC_ENTRY *BATableAllocRecEntry(
 	BA_REC_ENTRY    *pBAEntry = NULL;
 
 
-	NdisAcquireSpinLock(&pAd->BATabLock);
+	//NdisAcquireSpinLock(&pAd->BATabLock);
 
 	if (pAd->BATable.numAsRecipient >= (MAX_LEN_OF_BA_REC_TABLE - 1))
 	{
@@ -802,7 +879,7 @@ BA_REC_ENTRY *BATableAllocRecEntry(
 	}
 
 done:
-	NdisReleaseSpinLock(&pAd->BATabLock);
+	//NdisReleaseSpinLock(&pAd->BATabLock);
 	return pBAEntry;
 }
 
@@ -928,7 +1005,6 @@ VOID BAOriSessionTearDown(
 		return;
 	}
 
-	
 	/* Locate corresponding BA Originator Entry in BA Table with the (pAddr,TID).*/
 	Idx = pAd->MacTab.Content[Wcid].BAOriWcidArray[TID];
 	if ((Idx == 0) || (Idx >= MAX_LEN_OF_BA_ORI_TABLE))
@@ -943,7 +1019,7 @@ VOID BAOriSessionTearDown(
 			{
 				NdisZeroMemory(&DelbaReq, sizeof(DelbaReq));
 				NdisZeroMemory(Elem, sizeof(MLME_QUEUE_ELEM));
-			
+
 				COPY_MAC_ADDR(DelbaReq.Addr, pAd->MacTab.Content[Wcid].Addr);
 				DelbaReq.Wcid = Wcid;
 				DelbaReq.TID = TID;
@@ -1022,10 +1098,13 @@ VOID BARecSessionTearDown(
 		return;
 	}
 
+	NdisAcquireSpinLock(&pAd->BATabLock);
 	/*  Locate corresponding BA Originator Entry in BA Table with the (pAddr,TID).*/
 	Idx = pAd->MacTab.Content[Wcid].BARecWcidArray[TID];
-	if (Idx == 0)
+	if (Idx == 0) {
+		NdisReleaseSpinLock(&pAd->BATabLock);
 		return;
+	}
 
 	DBGPRINT(RT_DEBUG_TRACE,("%s===>Wcid=%d.TID=%d \n", __FUNCTION__, Wcid, TID));
 	
@@ -1066,6 +1145,7 @@ VOID BARecSessionTearDown(
 			else
 			{
 				DBGPRINT(RT_DEBUG_ERROR, ("%s():alloc memory failed!\n", __FUNCTION__));
+				NdisReleaseSpinLock(&pAd->BATabLock);
 				return;
 			}
 		}
@@ -1076,7 +1156,7 @@ VOID BARecSessionTearDown(
 		/* flush all pending reordering mpdus */
 		ba_refresh_reordering_mpdus(pAd, pBAEntry);
 
-		NdisAcquireSpinLock(&pAd->BATabLock);
+		//NdisAcquireSpinLock(&pAd->BATabLock);
 
 		/* Erase Bitmap flag.*/
 		pBAEntry->LastIndSeq = RESET_RCV_SEQ;
@@ -1087,10 +1167,10 @@ VOID BARecSessionTearDown(
 
 		RTMP_DEL_BA_SESSION_FROM_ASIC(pAd, Wcid, TID);
 
-		NdisReleaseSpinLock(&pAd->BATabLock);
+		//NdisReleaseSpinLock(&pAd->BATabLock);
 
 	}
-
+	NdisReleaseSpinLock(&pAd->BATabLock);
 	BATableFreeRecEntry(pAd, Idx);
 }
 
@@ -1276,8 +1356,9 @@ VOID PeerAddBAReqAction(
 		}
 	}
 
-	if (IS_ENTRY_CLIENT(&pAd->MacTab.Content[Elem->Wcid]))
+	if (IS_ENTRY_CLIENT(&pAd->MacTab.Content[Elem->Wcid])) {
 		ASSERT(pAd->MacTab.Content[Elem->Wcid].Sst == SST_ASSOC);
+	}
 
 	pAddreqFrame = (PFRAME_ADDBA_REQ)(&Elem->Msg[0]);
 	/* 2. Always send back ADDBA Response */
@@ -1331,16 +1412,16 @@ VOID PeerAddBAReqAction(
 	ADDframe.StatusCode = Status;
 	ADDframe.BaParm.BAPolicy = IMMED_BA;
 #ifdef DOT11_VHT_AC
-	if (pMacEntry && (pMacEntry->MaxHTPhyMode.field.MODE == MODE_VHT) && (Status == 0))
+	if (pMacEntry && IS_VHT_STA(pMacEntry) && Status == 0 && pAd->CommonCfg.DesiredHtPhy.AmsduEnable)
 		ADDframe.BaParm.AMSDUSupported = pAddreqFrame->BaParm.AMSDUSupported;
 	else
 #endif
-	ADDframe.BaParm.AMSDUSupported = 0;
+		ADDframe.BaParm.AMSDUSupported = 0;
+
 	ADDframe.BaParm.TID = pAddreqFrame->BaParm.TID;
 	ADDframe.BaParm.BufSize = min(((UCHAR)pAddreqFrame->BaParm.BufSize), (UCHAR)pAd->CommonCfg.BACapability.field.RxBAWinLimit);
-	if (ADDframe.BaParm.BufSize == 0)
-	{
-		ADDframe.BaParm.BufSize = 64; 
+	if (ADDframe.BaParm.BufSize == 0) {
+		ADDframe.BaParm.BufSize = pAd->CommonCfg.BACapability.field.RxBAWinLimit;
 	}
 	ADDframe.TimeOutValue = 0; /* pAddreqFrame->TimeOutValue; */
 
@@ -1470,13 +1551,13 @@ BOOLEAN CntlEnqueueForRecv(
 	/*UCHAR	NumRxPkt;*/
 	UCHAR	TID;/*, i;*/
 	UINT32 MaxWcidNum = MAX_LEN_OF_MAC_TABLE;
-	
+	ULONG Now32;
+
 #ifdef MAC_REPEATER_SUPPORT
 	if (pAd->ApCfg.bMACRepeaterEn)
 		MaxWcidNum = MAX_MAC_TABLE_SIZE_WITH_REPEATER;
 #endif /* MAC_REPEATER_SUPPORT */
 
-	
 	TID = (UCHAR)pFrame->BARControl.TID;
 
 	DBGPRINT(RT_DEBUG_TRACE, ("%s(): BAR-Wcid(%ld), Tid (%d)\n", __FUNCTION__, Wcid, TID));
@@ -1515,97 +1596,25 @@ BOOLEAN CntlEnqueueForRecv(
 	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("BAR(%ld) : Tid (%d) - %04x:%04x\n", Wcid, TID, pFrame->BAStartingSeq.field.StartSeq, pBAEntry->LastIndSeq ));
-
+	NdisGetSystemUpTime(&Now32);
 	if (SEQ_SMALLER(pBAEntry->LastIndSeq, pFrame->BAStartingSeq.field.StartSeq, MAXSEQ))
 	{
+		LONG TmpSeq, seq;
 		/*DBGPRINT(RT_DEBUG_TRACE, ("BAR Seq = %x, LastIndSeq = %x\n", pFrame->BAStartingSeq.field.StartSeq, pBAEntry->LastIndSeq));*/
-		ba_indicate_reordering_mpdus_le_seq(pAd, pBAEntry, pFrame->BAStartingSeq.field.StartSeq);
-		pBAEntry->LastIndSeq = (pFrame->BAStartingSeq.field.StartSeq == 0) ? MAXSEQ :(pFrame->BAStartingSeq.field.StartSeq -1);
+		seq = (pFrame->BAStartingSeq.field.StartSeq == 0) ? MAXSEQ :(pFrame->BAStartingSeq.field.StartSeq -1); 
+		ba_indicate_reordering_mpdus_le_seq(pAd, pBAEntry, seq);
+		pBAEntry->LastIndSeq = seq;
+		pBAEntry->LastIndSeqAtTimer = Now32;
+    		TmpSeq = ba_indicate_reordering_mpdus_in_order(pAd, pBAEntry, pBAEntry->LastIndSeq);
+    		
+		if (TmpSeq != RESET_RCV_SEQ) {
+    			pBAEntry->LastIndSeq = TmpSeq;
+			//pBAEntry->LastIndSeqAtTimer = Now32;
+		}
 	}
 	/*ba_refresh_reordering_mpdus(pAd, pBAEntry);*/
 	return TRUE;
 }
-
-/*
-Description : Send PSMP Action frame If PSMP mode switches.
-*/
-VOID SendPSMPAction(
-				   IN PRTMP_ADAPTER		pAd,
-				   IN UCHAR				Wcid,
-				   IN UCHAR				Psmp) 
-{
-	PUCHAR pOutBuffer = NULL;
-	NDIS_STATUS NStatus;
-	FRAME_PSMP_ACTION Frame;
-	ULONG FrameLen;
-#ifdef CONFIG_AP_SUPPORT	
-	UCHAR apidx;
-#endif /* CONFIG_AP_SUPPORT */
-
-	NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);	 /*Get an unused nonpaged memory*/
-	if (NStatus != NDIS_STATUS_SUCCESS)
-	{
-		DBGPRINT(RT_DEBUG_ERROR,("BA - MlmeADDBAAction() allocate memory failed \n"));
-		return;
-	}
-
-#ifdef CONFIG_AP_SUPPORT
-	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-	{
-#ifdef APCLI_SUPPORT
-		if (IS_ENTRY_APCLI(&pAd->MacTab.Content[Wcid]))
-		{
-#ifdef MAC_REPEATER_SUPPORT
-			MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[Wcid];
-#endif /* MAC_REPEATER_SUPPORT */
-
-			apidx = pAd->MacTab.Content[Wcid].MatchAPCLITabIdx;
-#ifdef MAC_REPEATER_SUPPORT
-			if (pEntry && pEntry->bReptCli)
-				ActHeaderInit(pAd, &Frame.Hdr, pAd->MacTab.Content[Wcid].Addr, pAd->ApCfg.ApCliTab[apidx].RepeaterCli[pEntry->MatchReptCliIdx].CurrentAddress, pAd->MacTab.Content[Wcid].Addr);
-			else
-#endif /* MAC_REPEATER_SUPPORT */
-			ActHeaderInit(pAd, &Frame.Hdr, pAd->MacTab.Content[Wcid].Addr, pAd->ApCfg.ApCliTab[apidx].CurrentAddress, pAd->MacTab.Content[Wcid].Addr);		
-		}
-		else
-#endif /* APCLI_SUPPORT */
-#ifdef WDS_SUPPORT
-		if (IS_ENTRY_WDS(&pAd->MacTab.Content[Wcid]))
-		{
-			apidx = pAd->MacTab.Content[Wcid].MatchWDSTabIdx;
-			ActHeaderInit(pAd, &Frame.Hdr, pAd->MacTab.Content[Wcid].Addr, pAd->ApCfg.MBSSID[MAIN_MBSSID].Bssid, pAd->MacTab.Content[Wcid].Addr);
-		}
-		else
-#endif /* WDS_SUPPORT */
-		{
-			apidx = pAd->MacTab.Content[Wcid].apidx;
-			ActHeaderInit(pAd, &Frame.Hdr, pAd->MacTab.Content[Wcid].Addr, pAd->ApCfg.MBSSID[apidx].Bssid, pAd->ApCfg.MBSSID[apidx].Bssid);
-		}
-	}
-#endif /* CONFIG_AP_SUPPORT */
-
-	Frame.Category = CATEGORY_HT;
-	Frame.Action = SMPS_ACTION;
-	switch (Psmp)
-	{
-		case MMPS_ENABLE:
-			Frame.Psmp = 0;
-			break;
-		case MMPS_DYNAMIC:
-			Frame.Psmp = 3;
-			break;
-		case MMPS_STATIC:
-			Frame.Psmp = 1;
-			break;
-	}
-	MakeOutgoingFrame(pOutBuffer,               &FrameLen,
-					  sizeof(FRAME_PSMP_ACTION),      &Frame,
-					  END_OF_ARGS);
-	MiniportMMRequest(pAd, QID_AC_BE, pOutBuffer, FrameLen);
-	MlmeFreeMemory(pAd, pOutBuffer);
-	DBGPRINT(RT_DEBUG_ERROR,("HT - SendPSMPAction( %d )  \n", Frame.Psmp));
-}
-
 
 #define RADIO_MEASUREMENT_REQUEST_ACTION	0
 
@@ -1711,6 +1720,9 @@ void convert_reordering_packet_to_preAMSDU_or_802_3_packet(
 
 
 	ASSERT(pRxBlk->pRxPacket);
+
+	if(pRxBlk->pRxPacket == NULL)
+		return;
 
 	pRxPkt = RTPKT_TO_OSPKT(pRxBlk->pRxPacket);
 
@@ -1957,6 +1969,13 @@ VOID Indicate_AMPDU_Packet(
 	MaxWcidNum = MAX_MAC_TABLE_SIZE_WITH_REPEATER;
 #endif /* MAC_REPEATER_SUPPORT */
 
+	if (!pRxBlk->DataSize) {
+		/* release packet*/
+		/* avoid processing with null paiload packets - QCA61X4A bug */
+		RELEASE_NDIS_PACKET(pAd, pRxBlk->pRxPacket, NDIS_STATUS_FAILURE);
+		return;
+	}
+
 	if (!RX_BLK_TEST_FLAG(pRxBlk, fRX_AMSDU) &&  (pRxBlk->DataSize > MAX_RX_PKT_LEN))
 	{
 		static int err_size;
@@ -2005,7 +2024,7 @@ VOID Indicate_AMPDU_Packet(
 
 
 	ba_flush_reordering_timeout_mpdus(pAd, pBAEntry, Now32);
-	pBAEntry->LastIndSeqAtTimer = Now32;
+	//pBAEntry->LastIndSeqAtTimer = Now32;
 
 	
 	/* Reset Last Indicate Sequence*/
@@ -2043,6 +2062,14 @@ VOID Indicate_AMPDU_Packet(
 		
 		/* drop and release packet*/
 		pBAEntry->nDropPacket++;
+#if 0 /* do not keep dupe packets */
+#ifdef FORCE_ANNOUNCE_CRITICAL_AMPDU
+		if (pRxBlk->CriticalPkt)
+		{
+				INDICATE_LEGACY_OR_AMSDU(pAd, pRxBlk, FromWhichBSSID);
+		}else
+#endif /* FORCE_ANNOUNCE_CRITICAL_AMPDU */
+#endif
 		RELEASE_NDIS_PACKET(pAd, pRxBlk->pRxPacket, NDIS_STATUS_FAILURE);
 	}
 	
@@ -2052,6 +2079,12 @@ VOID Indicate_AMPDU_Packet(
 		
 		/* drop and release packet*/
 		pBAEntry->nDropPacket++;
+#ifdef FORCE_ANNOUNCE_CRITICAL_AMPDU
+		if (pRxBlk->CriticalPkt)
+		{
+				INDICATE_LEGACY_OR_AMSDU(pAd, pRxBlk, FromWhichBSSID);
+		}else
+#endif /* FORCE_ANNOUNCE_CRITICAL_AMPDU */
 		RELEASE_NDIS_PACKET(pAd, pRxBlk->pRxPacket, NDIS_STATUS_FAILURE);
 	}
 	
@@ -2067,14 +2100,15 @@ VOID Indicate_AMPDU_Packet(
 		LONG WinStartSeq, TmpSeq;
 
 
-		TmpSeq = Sequence - (pBAEntry->BAWinSize) -1;
+		TmpSeq = Sequence - (pBAEntry->BAWinSize) +1;
 		if (TmpSeq < 0)
 		{
 			TmpSeq = (MAXSEQ+1) + TmpSeq;
 		}
-		WinStartSeq = (TmpSeq+1) & MAXSEQ;
-		ba_indicate_reordering_mpdus_le_seq(pAd, pBAEntry, WinStartSeq);
-		pBAEntry->LastIndSeq = WinStartSeq; /*TmpSeq;          */
+
+		WinStartSeq = TmpSeq;
+		ba_indicate_reordering_mpdus_le_seq(pAd, pBAEntry, (WinStartSeq - 1));
+		pBAEntry->LastIndSeq = (WinStartSeq - 1) & MAXSEQ; /*TmpSeq;          */
 
 		pBAEntry->LastIndSeqAtTimer = Now32;
 
@@ -2213,14 +2247,14 @@ VOID Indicate_AMPDU_Packet_Hdr_Trns(
 		LONG WinStartSeq, TmpSeq;
 
 
-		TmpSeq = Sequence - (pBAEntry->BAWinSize) -1;
+		TmpSeq = Sequence - (pBAEntry->BAWinSize) + 1;
 		if (TmpSeq < 0)
 		{
 			TmpSeq = (MAXSEQ+1) + TmpSeq;
 		}
-		WinStartSeq = (TmpSeq+1) & MAXSEQ;
-		ba_indicate_reordering_mpdus_le_seq(pAd, pBAEntry, WinStartSeq);
-		pBAEntry->LastIndSeq = WinStartSeq; /*TmpSeq;          */
+		WinStartSeq = TmpSeq;
+		ba_indicate_reordering_mpdus_le_seq(pAd, pBAEntry, (WinStartSeq - 1) & MAXSEQ);
+		pBAEntry->LastIndSeq =  (WinStartSeq - 1) & MAXSEQ; /*TmpSeq;          */
 
 		pBAEntry->LastIndSeqAtTimer = Now32;
 
@@ -2302,23 +2336,29 @@ VOID Peer_DelBA_Tx_Adapt_Enable(
 	
 	if (pEntry)
 	{	
-		USHORT RegId = 0;
-		UINT32 MacReg = 0;
+		UINT32 MacReg = 0, BitLUT;
 		BOOLEAN Cancelled;
 
-		RTMPCancelTimer(&pEntry->DelBA_tx_AdaptTimer, &Cancelled);
 		pEntry->bPeerDelBaTxAdaptEn = 1;
+		RTMPCancelTimer(&pEntry->DelBA_tx_AdaptTimer, &Cancelled);
 
 		/* Enable Tx Mac look up table */
 		RTMP_IO_READ32(pAd, TX_FBK_LIMIT, &MacReg);
-		if ((MacReg & (1 << 18)) == 0) {
+		BitLUT = (MacReg & ((1 << 18)));
+		if (BitLUT)
+		{
+			/* Keep original register setting in this flag */
+			pEntry->bPeerDelBaTxAdaptEn |= BitLUT;
+		}
+		else
+		{
 			MacReg |= (1 << 18);
 			RTMP_IO_WRITE32(pAd, TX_FBK_LIMIT, MacReg);
 		}
 
-		RegId = 0x1C00 + (pEntry->Aid << 3);
-		RTMP_IO_WRITE32(pAd, RegId, 0x2007); /* Legacy OFDM / no STBC / LGI / BW20 / MCS 7 */
-		RTMPSetTimer(&pEntry->DelBA_tx_AdaptTimer, 1000); /* 1000ms */
+		/* OFDM54 / BW20 / LGI / no STBC/ Legacy OFDM */
+		set_lut_phy_rate(pAd, pEntry->Aid, 7, 0, 0, 0, 1);
+		RTMPSetTimer(&pEntry->DelBA_tx_AdaptTimer, 800); /* 800ms */
 		DBGPRINT(RT_DEBUG_TRACE,
 				("%s():MacReg = 0x%08x, bPeerDelBaTxAdaptEn = 0x%x\n",
 				__FUNCTION__, MacReg, pEntry->bPeerDelBaTxAdaptEn));
@@ -2332,6 +2372,11 @@ VOID Peer_DelBA_Tx_Adapt_Disable(
 	IN PMAC_TABLE_ENTRY pEntry)
 {
 #ifdef MCS_LUT_SUPPORT
+	if ((pAd == NULL) || (pEntry == NULL)) {
+		DBGPRINT(RT_DEBUG_WARN, ("%s(): Warning! Null pointer.\n", __FUNCTION__));
+		return;
+	}
+
 	if(!RTMP_TEST_MORE_FLAG(pAd, fASIC_CAP_MCS_LUT) || !(pEntry->wcid < 128))
 	{
 		DBGPRINT(RT_DEBUG_WARN, 
@@ -2339,12 +2384,16 @@ VOID Peer_DelBA_Tx_Adapt_Disable(
 				__FUNCTION__));
 		return;
 	}
-	
+
 	if (pEntry && pEntry->bPeerDelBaTxAdaptEn)
 	{
+		UINT32 BitLUT;
 		BOOLEAN Cancelled;
-			UINT32 MacReg = 0;
 
+		BitLUT = (pEntry->bPeerDelBaTxAdaptEn & (1 << 18));
+		if (!BitLUT)
+		{
+			UINT32 MacReg = 0;
 			/* Disable Tx Mac look up table (Ressume original setting) */
 			RTMP_IO_READ32(pAd, TX_FBK_LIMIT, &MacReg);
 			MacReg &= ~(1 << 18);
@@ -2353,10 +2402,12 @@ VOID Peer_DelBA_Tx_Adapt_Disable(
 					("%s():TX_FBK_LIMIT = 0x%08x\n",
 					__FUNCTION__, MacReg));
 
+		}
 		/* TODO: ressume MSC rate of the MAC look up table? */
 		pEntry->bPeerDelBaTxAdaptEn = 0;
 		RTMPCancelTimer(&pEntry->DelBA_tx_AdaptTimer, &Cancelled);
 		asic_mcs_lut_update(pAd, pEntry);
+		pAd->LastTxRate = (USHORT)(pEntry->HTPhyMode.word);
 
 		DBGPRINT(RT_DEBUG_TRACE,
 				("%s():bPeerDelBaTxAdaptEn = 0x%x\n",

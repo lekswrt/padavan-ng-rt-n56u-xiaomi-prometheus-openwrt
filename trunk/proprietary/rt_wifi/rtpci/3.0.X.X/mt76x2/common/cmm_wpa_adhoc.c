@@ -1505,7 +1505,7 @@ VOID	Adhoc_ConstructEapolKeyData(
 	IN  PFOUR_WAY_HANDSHAKE_PROFILE p4WayProfile,	
 	OUT PEAPOL_PACKET   pMsg)
 {
-	UCHAR		*mpool, *Key_Data, *eGTK;  	  
+	UCHAR		*mpool = NULL, *Key_Data, *eGTK;  	  
 	ULONG		data_offset;
 	BOOLEAN		bWPA2Capable = FALSE;
 	BOOLEAN		GTK_Included = FALSE;

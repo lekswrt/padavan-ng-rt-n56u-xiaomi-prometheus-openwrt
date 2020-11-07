@@ -29,8 +29,10 @@
 
 struct wifi_dev *get_wdev_by_idx(RTMP_ADAPTER *pAd, INT idx)
 {
+#ifdef CONFIG_AP_SUPPORT
 	struct wifi_dev *wdev = NULL;
-	
+#endif /* CONFIG_AP_SUPPORT */
+
 	do
 	{
 

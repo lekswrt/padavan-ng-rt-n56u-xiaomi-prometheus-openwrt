@@ -33,6 +33,7 @@
 #include "rtmp_comm.h"
 #include "rt_os_util.h"
 #include "rt_os_net.h"
+#include <net/pkt_sched.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #ifndef SA_SHIRQ
@@ -40,12 +41,9 @@
 #endif
 #endif
 
-// TODO: shiang-6590, remove it when MP
-#ifdef RTMP_MAC_PCI
 MODULE_LICENSE("GPL");
-#endif /* RTMP_MAC_PCI */
-// TODO: End---
-
+MODULE_AUTHOR("Mediatek");
+MODULE_DESCRIPTION("MT76xx WiFi driver");
 
 #ifdef BTCOEX_CONCURRENT
 int CoexChannel;
@@ -299,7 +297,7 @@ int rt28xx_open(VOID *dev)
 		if (res)
 		{
 			DBGPRINT(RT_DEBUG_ERROR, ("rt28xx_open autopm_resume fail!\n"));
-			return (-1);;
+			return (-1);
 		}			
 	}
 #endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
@@ -439,6 +437,9 @@ PNET_DEV RtmpPhyNetDevInit(VOID *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevHook)
 
 	RTMP_DRIVER_OP_MODE_GET(pAd, &OpMode);
 
+	/* set default txqlen, may be overwriten by ifconfig (see include/net/pkt_sched.h) */
+        net_dev->tx_queue_len = DEFAULT_TX_QUEUE_LEN_WLAN;
+
 	/* put private data structure */
 	RTMP_OS_NETDEV_SET_PRIV(net_dev, pAd);
 
@@ -515,9 +516,6 @@ VOID *RtmpNetEthConvertDevSearch(VOID *net_dev_, UCHAR *pData)
 
 	return (VOID *)pNetDev;
 }
-
-
-
 
 /*
 ========================================================================
@@ -765,7 +763,7 @@ BOOLEAN RtmpPhyNetDevExit(VOID *pAd, PNET_DEV net_dev)
 	/* Unregister network device */
 	if (net_dev != NULL)
 	{
-		DBGPRINT(RT_DEBUG_ERROR, ("RtmpOSNetDevDetach(): RtmpOSNetDeviceDetach(), dev->name=%s!\n", net_dev->name));
+		printk("RtmpOSNetDevDetach(): RtmpOSNetDeviceDetach(), dev->name=%s!\n", net_dev->name);
 		RtmpOSNetDevProtect(1);
 		RtmpOSNetDevDetach(net_dev);
 		RtmpOSNetDevProtect(0);

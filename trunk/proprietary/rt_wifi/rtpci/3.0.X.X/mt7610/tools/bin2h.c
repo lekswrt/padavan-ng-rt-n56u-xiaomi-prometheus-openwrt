@@ -124,7 +124,6 @@ int main(int argc ,char *argv[])
     		strcat(outfname,"/include/firmware.h");
 		}
 
-
      
     	infile = fopen(infname,"r");
 

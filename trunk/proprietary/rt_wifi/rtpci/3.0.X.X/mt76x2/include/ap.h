@@ -84,6 +84,7 @@ NDIS_STATUS APInsertPsQueue(
 	IN PRTMP_ADAPTER pAd,
 	IN PNDIS_PACKET pPacket,
 	IN MAC_TABLE_ENTRY *pMacEntry,
+	IN UCHAR Wcid,
 	IN UCHAR QueIdx);
 
 #ifdef TXBF_SUPPORT
@@ -104,13 +105,8 @@ VOID APRxErrorHandle(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk);
 
 INT APCheckRxError(RTMP_ADAPTER *pAd, RXINFO_STRUC *pRxInfo, RX_BLK *pRxBlk);
 
-BOOLEAN APChkCls2Cls3Err(
-	IN RTMP_ADAPTER *pAd,
-	IN UCHAR Wcid, 
-	IN HEADER_802_11 *pHeader);
-
 VOID RTMPDescriptorEndianChange(UCHAR *pData, ULONG DescriptorType);
-    
+
 VOID RTMPFrameEndianChange(
     IN  RTMP_ADAPTER *pAd,
     IN  UCHAR *pData,
@@ -350,6 +346,11 @@ BOOLEAN DOT1X_EapTriggerAction(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry);
 VOID AP_E2PROM_IOCTL_PostCtrl(RTMP_IOCTL_INPUT_STRUCT *wrq, PSTRING msg);
 
 VOID IAPP_L2_UpdatePostCtrl(RTMP_ADAPTER *pAd, UINT8 *mac, INT bssid);
+
+BOOLEAN IAPP_L2_Update_Frame_Send(
+	IN PRTMP_ADAPTER	pAd,
+    IN UINT8 *mac_p,
+    IN INT  bssid);
 
 #endif  /* __AP_H__ */
 

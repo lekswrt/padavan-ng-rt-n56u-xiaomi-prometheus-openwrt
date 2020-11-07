@@ -50,7 +50,7 @@ char WSC_MSG_SIGNATURE[]={"RAWSCMSG"};
 
 extern UCHAR   WPS_OUI[];
 extern UCHAR	RALINK_OUI[];
-
+extern UCHAR    MTK_OUI[];
 
 #if defined(__ECOS) && defined(BRANCH_ADV)
 extern int CFG_set(int id, void *val);
@@ -8578,8 +8578,6 @@ extern INT	Set_AP_WscGetConf_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PUCHAR			arg);
 #endif /* CONFIG_AP_SUPPORT */
-
-/*#ifdef CONFIG_STA_SUPPORT */
 
 VOID WSC_HDR_BTN_CheckHandler(
 	IN	PRTMP_ADAPTER	pAd)

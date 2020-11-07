@@ -32,10 +32,11 @@
 #define __DOT11AC_VHT_H
 
 #include "rtmp_type.h"
+#include "dot11_base.h"
 
-#ifdef DISANLE_VHT80_256_QAM
+#ifdef CONFIG_DISABLE_VHT80_256_QAM
 #define DISABLE_VHT80_256_QAM		0x1
-#endif /* DISANLE_VHT80_256_QAM */
+#endif /* DISABLE_VHT80_256_QAM */
 
 #define IE_VHT_CAP		191
 #define IE_VHT_OP		192
@@ -45,6 +46,60 @@
 #define IE_CH_SWITCH_WRAPPER		196
 #define IE_AID						197
 #define IE_QUIET_CHANNEL			198
+
+/*
+	IEEE 802.11AC D3.0 sec 8.4.1.50
+	Operating Mode field
+
+	ch_width: Channel width
+		->	0: 20MHz
+			1: 40MHz
+			2: 80MHz
+			3: 160 or 80+80MHz
+			Reserved if Rx Nss subfield is 1
+	rx_nss: Rx Nss
+		If the Rx Nss Type subfield is 0, indicate the max number of SS STA can rx.
+		If the Rx Nss Type subfield is 1, indicate the max number of SS that the STA can receive as a
+			beamformee in a SU PPDU using a beamforming steering matrix derived from a VHT 
+			compressed beamforming report with Feedback Type subfield indicating MU in the VHT
+			Compressed Beamforming frames
+		->	0: Nss=1
+			1: Nss=2
+			...
+			7: Nss=8
+
+	rx_nss_type: 
+		->	0: indicate the rx_nss subfield carries the max number of SS that the STA can receive
+			1: indicate the rx_nss subfield carries the max number of SS that the STA can receive
+				as an SU PPDU using a beamforming steering matrix derived from a VHT compressed
+				Beamforming frame with the Feedback Type subfield indicating MU in the VHT compressed
+				Beamforming frames.
+*/
+typedef struct GNU_PACKED _OPERATING_MODE{
+#ifdef RT_BIG_ENDIAN
+	UCHAR rx_nss_type:1;
+	UCHAR rx_nss:3;
+	UCHAR rsv2:2;
+	UCHAR ch_width:2;
+#else
+	UCHAR ch_width:2;
+	UCHAR rsv2:2;
+	UCHAR rx_nss:3;
+	UCHAR rx_nss_type:1;
+#endif /* RT_BIG_ENDIAN */
+}OPERATING_MODE;
+
+
+/*
+	IEEE 802.11AC D3.0 sec 8.4.2.168
+	Operating Mode Notification element
+
+	Element ID: 199 (IE_OPERATING_MODE_NOTIFY)
+	Length: 1
+*/
+typedef struct GNU_PACKED _OPERATING_MODE_NOTIFICATION{
+	OPERATING_MODE operating_mode;
+}OPERATING_MODE_NOTIFICATION;
 
 
 /*
@@ -280,19 +335,21 @@ typedef struct GNU_PACKED _VHT_MCS_MAP{
 // TODO: shiang-6590, check the layout of this data structure!!!!
 typedef struct GNU_PACKED _VHT_MCS_SET{
 #ifdef RT_BIG_ENDIAN
-	UINT16 rsv2:3;
+	UINT16 rsv2:2;
+	UINT16 ext_nss_bw_capable:1;
 	UINT16 tx_high_rate:13;
 	struct _VHT_MCS_MAP tx_mcs_map;
-	UINT16 rsv:3;
+	UINT16 max_nsts_total:3;
 	UINT16 rx_high_rate:13;
 	struct _VHT_MCS_MAP rx_mcs_map;	
 #else
 	struct _VHT_MCS_MAP rx_mcs_map;	
 	UINT16 rx_high_rate:13;
-	UINT16 rsv:3;
+	UINT16 max_nsts_total:3;
 	struct _VHT_MCS_MAP tx_mcs_map;
 	UINT16 tx_high_rate:13;
-	UINT16 rsv2:3;
+	UINT16 ext_nss_bw_capable:1;
+	UINT16 rsv2:2;
 #endif /* RT_BIG_ENDIAN */
 }VHT_MCS_SET;
 
@@ -389,13 +446,11 @@ typedef struct GNU_PACKED _VHT_OP_IE{
 
 	The definition of upper subfields is the same as "VHT_OP_INFO"
 */
-typedef struct GNU_PACKED _WIDE_BW_CH_SWITCH_IE{
-	UINT8 e_id;
-	UINT len;
+typedef struct GNU_PACKED _WIDE_BW_CH_SWITCH_ELEMENT{
 	UINT8 new_ch_width;
 	UINT8 center_freq_1;
 	UINT8 center_freq_2;
-}WIDE_BW_CH_SWITCH_IE;
+}WIDE_BW_CH_SWITCH_ELEMENT;
 
 
 /*

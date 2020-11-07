@@ -70,7 +70,7 @@ typedef VOID	pregs;
 #ifdef RTMP_MAC_PCI
 #define AP_PROFILE_PATH			"/etc/Wireless/RT2860AP/RT2860AP.dat"
 #define AP_RTMP_FIRMWARE_FILE_NAME "/etc/Wireless/RT2860AP/RT2860AP.bin"
-#define AP_DRIVER_VERSION			"3.0.0.0"
+#define AP_DRIVER_VERSION			"3.0.5.0"
 #ifdef MULTIPLE_CARD_SUPPORT
 #define CARD_INFO_PATH			"/etc/Wireless/RT2860AP/RT2860APCard.dat"
 #endif /* MULTIPLE_CARD_SUPPORT */
@@ -79,7 +79,7 @@ typedef VOID	pregs;
 
 #ifdef RTMP_RBUS_SUPPORT
 /* This used for rbus-based chip, maybe we can integrate it together. */
-#define RTMP_FIRMWARE_FILE_NAME		"/etc_ro/Wireless/RT2860AP/RT2860AP.bin"
+#define RTMP_FIRMWARE_FILE_NAME		"/etc/Wireless/RT2860AP/RT2860AP.bin"
 #define PROFILE_PATH			"/etc/Wireless/RT2860i.dat"
 #define AP_PROFILE_PATH_RBUS		"/etc/Wireless/RT2860/RT2860.dat"
 #define RT2880_AP_DRIVER_VERSION	"1.0.0.0"
@@ -90,7 +90,7 @@ typedef VOID	pregs;
 #ifdef CONFIG_STA_SUPPORT
 #ifdef RTMP_MAC_PCI
 #define STA_PROFILE_PATH			"/etc/Wireless/RT2860STA/RT2860STA.dat"
-#define STA_DRIVER_VERSION			"3.0.0.0"
+#define STA_DRIVER_VERSION			"3.0.1.0"
 #ifdef MULTIPLE_CARD_SUPPORT
 #define CARD_INFO_PATH			"/etc/Wireless/RT2860STA/RT2860STACard.dat"
 #endif /* MULTIPLE_CARD_SUPPORT */
@@ -98,7 +98,7 @@ typedef VOID	pregs;
 
 
 #ifdef RTMP_RBUS_SUPPORT
-#define RTMP_FIRMWARE_FILE_NAME		"/etc_ro/Wireless/RT2860STA/RT2860STA.bin"
+#define RTMP_FIRMWARE_FILE_NAME		"/etc/Wireless/RT2860STA/RT2860STA.bin"
 #define PROFILE_PATH			"/etc/Wireless/RT2860i.dat"
 #define STA_PROFILE_PATH_RBUS	"/etc/Wireless/RT2860/RT2860.dat"
 #define RT2880_STA_DRIVER_VERSION		"1.0.0.0"
@@ -181,23 +181,7 @@ typedef char 				* PNDIS_BUFFER;
 #define NDIS_PACKET_TYPE_PROMISCUOUS	4
 #endif /* CONFIG_STA_SUPPORT */
 
-#ifdef DOT11_VHT_AC
-#ifdef NOISE_TEST_ADJUST
-#define MAX_PACKETS_IN_QUEUE				2048 /*(512)*/
-#else
 #define MAX_PACKETS_IN_QUEUE				1024 /*(512)*/
-#endif /* NOISE_TEST_ADJUST */
-#else
-#define MAX_PACKETS_IN_QUEUE				(512)
-#endif /* DOT11_VHT_AC */
-
-
-#ifdef DATA_QUEUE_RESERVE
-/*
-	This value must small than MAX_PACKETS_IN_QUEUE
-*/
-#define FIFO_RSV_FOR_HIGH_PRIORITY 	64
-#endif /* DATA_QUEUE_RESERVE */
 
 /***********************************************************************************
  *	OS signaling related constant definitions
@@ -441,11 +425,7 @@ do{                                   \
 #define ASSERT(x)
 #endif /* DBG */
 
-#ifdef DBG
 void hex_dump(char *str, unsigned char *pSrcBufVA, unsigned int SrcBufLen);
-#else
-#define hex_dump(x,y,z)
-#endif /* DBG */
 
 
 /*********************************************************************************************************
@@ -459,23 +439,23 @@ void hex_dump(char *str, unsigned char *pSrcBufVA, unsigned int SrcBufLen);
 /*#ifdef RTMP_MAC_PCI*/
 #define size_t						ULONG
 
-ra_dma_addr_t linux_pci_map_single(void *handle, void *ptr, size_t size, int sd_idx, int direction);
-void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, int direction);
+ra_dma_addr_t linux_pci_map_single(struct pci_dev *handle, void *ptr, size_t size, int sd_idx, int direction);
+void linux_pci_unmap_single(struct pci_dev *pPciDev, ra_dma_addr_t radma_addr, size_t size, int direction);
 
 #define pci_enable_msi		RtmpOsPciMsiEnable
 #define pci_disable_msi		RtmpOsPciMsiDisable
 
-#define PCI_MAP_SINGLE_DEV(_handle, _ptr, _size, _sd_idx, _dir)				\
-	linux_pci_map_single(_handle, _ptr, _size, _sd_idx, _dir)
-	
+#define PCI_MAP_SINGLE_DEV(_pci_dev, _ptr, _size, _sd_idx, _dir)				\
+	linux_pci_map_single((struct pci_dev *)_pci_dev, _ptr, _size, _sd_idx, _dir)
+
 #define PCI_UNMAP_SINGLE(_pAd, _ptr, _size, _dir)						\
 	linux_pci_unmap_single(((POS_COOKIE)(_pAd->OS_Cookie))->pci_dev, _ptr, _size, _dir)
 
 #define PCI_ALLOC_CONSISTENT(_pci_dev, _size, _ptr)							\
-	pci_alloc_consistent(_pci_dev, _size, _ptr)
+	dma_zalloc_coherent(_pci_dev == NULL ? NULL : &_pci_dev->dev, _size, _ptr, GFP_ATOMIC)
 
 #define PCI_FREE_CONSISTENT(_pci_dev, _size, _virtual_addr, _physical_addr)	\
-	pci_free_consistent(_pci_dev, _size, _virtual_addr, _physical_addr)
+	dma_free_coherent(_pci_dev == NULL ? NULL : &_pci_dev->dev, _size, _virtual_addr, _physical_addr)
 /*#endif RTMP_MAC_PCI*/
 
 #define DEV_ALLOC_SKB(_pAd, _Pkt, _length)									\
@@ -537,19 +517,19 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 #ifdef RTMP_MAC_PCI
 #if defined(INF_TWINPASS) || defined(INF_DANUBE) || defined(INF_AR9) || defined(IKANOS_VX_1X0)
 #define RTMP_IO_FORCE_READ32(_A, _R, _pV)									\
-{																	\
+do{																	\
 	(*_pV = readl((void *)((_A)->CSRBaseAddress + (_R))));			\
 	(*_pV = SWAP32(*((UINT32 *)(_pV))));                           \
-}
+}while(0)
 
 #define RTMP_IO_READ32(_A, _R, _pV)									\
-{																	\
+do{																	\
     if ((_A)->bPCIclkOff == FALSE)                                      \
     {                                                                   \
 	(*_pV = readl((void *)((_A)->CSRBaseAddress + (_R))));			\
 	(*_pV = SWAP32(*((UINT32 *)(_pV))));                           \
     }                                                                   \
-}
+}while(0)
 
 #define RTMP_IO_READ8(_A, _R, _pV)									\
 {																	\
@@ -557,14 +537,13 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 }
 
 #define RTMP_IO_WRITE32(_A, _R, _V)									\
-{																	\
+do{ \
     if ((_A)->bPCIclkOff == FALSE)                                      \
     {                                                                   \
-	UINT32	_Val;													\
-	_Val = SWAP32(_V);												\
+		UINT32 _Val = SWAP32(_V);\
 	writel(_Val, (void *)((_A)->CSRBaseAddress + (_R)));			\
     }                                                                   \
-}
+}while(0)
 
 #ifdef INF_VR9
 #define RTMP_IO_WRITE8(_A, _R, _V)            \
@@ -598,14 +577,14 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 }
 
 #define RTMP_IO_READ32(_A, _R, _pV)								\
-{																\
+do{																\
     if ((_A)->bPCIclkOff == FALSE)                                  \
     {                                                               \
 		(*_pV = readl((void *)((_A)->CSRBaseAddress + (_R))));			\
     }                                                               \
     else															\
 		*_pV = 0;													\
-}
+}while(0)
 
 #define RTMP_IO_FORCE_READ32(_A, _R, _pV)							\
 {																	\
@@ -621,7 +600,6 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 {																				\
     if ((_A)->bPCIclkOff == FALSE)                                  \
     {                                                               \
-    	/*if ((_R) != 0x404)*/ /* TODO:shiang-6590, depends on sw porting guide, don't acccess it now */\
 	writel((_V), (void *)((_A)->CSRBaseAddress + (_R)));								\
     }                                                               \
 }

@@ -506,7 +506,7 @@ VOID InitRfPaModeTable(
 VOID AsicGetTxPowerOffset(RTMP_ADAPTER *pAd, ULONG *TxPwr)
 {
 	CONFIGURATION_OF_TX_POWER_CONTROL_OVER_MAC CfgOfTxPwrCtrlOverMAC;
-	DBGPRINT(RT_DEBUG_INFO, ("-->AsicGetTxPowerOffset\n"));
+	DBGPRINT(RT_DEBUG_LOUD, ("-->AsicGetTxPowerOffset\n"));
 
 	NdisZeroMemory(&CfgOfTxPwrCtrlOverMAC, sizeof(CfgOfTxPwrCtrlOverMAC));
 
@@ -590,7 +590,7 @@ VOID AsicGetTxPowerOffset(RTMP_ADAPTER *pAd, ULONG *TxPwr)
 
 	NdisCopyMemory(TxPwr, (UCHAR *)&CfgOfTxPwrCtrlOverMAC, sizeof(CfgOfTxPwrCtrlOverMAC));
 
-	DBGPRINT(RT_DEBUG_INFO, ("<--AsicGetTxPowerOffset\n"));
+	DBGPRINT(RT_DEBUG_LOUD, ("<--AsicGetTxPowerOffset\n"));
 }
 
 
@@ -619,8 +619,8 @@ VOID AsicGetAutoAgcOffsetForExternalTxAlc(
 			/* bg channel */
 			bAutoTxAgc = pAd->bAutoTxAgcG;
 			TssiRef = pAd->TssiRefG;
-			pTssiMinusBoundary = (UCHAR *)&pAd->TssiMinusBoundaryG[0];
-			pTssiPlusBoundary = (UCHAR *)&pAd->TssiPlusBoundaryG[0];
+			pTssiMinusBoundary = &pAd->TssiMinusBoundaryG[0];
+			pTssiPlusBoundary = &pAd->TssiPlusBoundaryG[0];
 			TxAgcStep = pAd->TxAgcStepG;
 			pTxAgcCompensate = &pAd->TxAgcCompensateG;
 		}
@@ -629,8 +629,8 @@ VOID AsicGetAutoAgcOffsetForExternalTxAlc(
 			/* a channel */
 			bAutoTxAgc = pAd->bAutoTxAgcA;
 			TssiRef = pAd->TssiRefA;
-			pTssiMinusBoundary = (UCHAR *)&pAd->TssiMinusBoundaryA[0];
-			pTssiPlusBoundary = (UCHAR *)&pAd->TssiPlusBoundaryA[0];
+			pTssiMinusBoundary = &pAd->TssiMinusBoundaryA[0][0];
+			pTssiPlusBoundary = &pAd->TssiPlusBoundaryA[0][0];
 			TxAgcStep = pAd->TxAgcStepA;
 			pTxAgcCompensate = &pAd->TxAgcCompensateA;
 		}
@@ -770,8 +770,6 @@ VOID AsicExtraPowerOverMAC(RTMP_ADAPTER *pAd)
  */
 VOID AsicAdjustTxPower(RTMP_ADAPTER *pAd) 
 {
-	INT i, j;
-	CHAR Value;
 	CHAR Rssi = -127;
 	CHAR DeltaPwr = 0;
 	CHAR TxAgcCompensate = 0;
@@ -1081,8 +1079,6 @@ VOID AsicPercentageDeltaPower(
 			{
 				*pDeltaPwr -= 6;
 			}
-			else
-				;
 		}
 #endif /* CONFIG_STA_SUPPORT */
 	}

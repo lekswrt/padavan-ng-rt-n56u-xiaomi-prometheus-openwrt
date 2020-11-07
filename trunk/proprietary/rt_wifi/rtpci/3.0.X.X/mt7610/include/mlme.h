@@ -35,6 +35,11 @@
 #include "wpa_cmm.h"
 
 
+#ifdef DOT11R_FT_SUPPORT
+#include "link_list.h"
+#include "ft_cmm.h"
+#endif /* DOT11R_FT_SUPPORT */
+
 /* maximum supported capability information - */
 /* ESS, IBSS, Privacy, Short Preamble, Spectrum mgmt, Short Slot */
 #define SUPPORTED_CAPABILITY_INFO   0x0533
@@ -50,6 +55,7 @@
 
 #define MLME_TASK_EXEC_MULTIPLE       10  /*5*/       /* MLME_TASK_EXEC_MULTIPLE * MLME_TASK_EXEC_INTV = 1 sec */
 #define REORDER_EXEC_INTV         	100       /* 0.1 sec */
+#define STA_KEEP_ALIVE_NOTIFY_L2        60
 /*#define TBTT_PRELOAD_TIME         384        // usec. LomgPreamble + 24-byte at 1Mbps */
 
 /* The definition of Radar detection duration region */
@@ -68,7 +74,7 @@
 #define JOIN_TIMEOUT                2000        /* unit: msec */
 #define SHORT_CHANNEL_TIME          90        /* unit: msec */
 #define MIN_CHANNEL_TIME            110        /* unit: msec, for dual band scan */
-#define MAX_CHANNEL_TIME            140       /* unit: msec, for single band scan */
+#define MAX_CHANNEL_TIME            200       /* 140 */ /* unit: msec, for single band scan */
 #define	FAST_ACTIVE_SCAN_TIME	    30 		  /* Active scan waiting for probe response time */
 #define CW_MIN_IN_BITS              4         /* actual CwMin = 2^CW_MIN_IN_BITS - 1 */
 #define AUTO_CHANNEL_SEL_TIMEOUT		400		/* uint: msec */
@@ -116,15 +122,8 @@ extern UINT32 CW_MAX_IN_BITS;
 #define BSS_NOT_FOUND                    0xFFFFFFFF
 
 #ifdef CONFIG_AP_SUPPORT
-#ifdef NOISE_TEST_ADJUST
-#define MAX_LEN_OF_MLME_QUEUE            40 /*10 */
-#else
-#define MAX_LEN_OF_MLME_QUEUE            20 /*10 */
-#endif /* NOISE_TEST_ADJUST */
+#define MAX_LEN_OF_MLME_QUEUE            64 /*20*/ /*10 */
 #endif /* CONFIG_AP_SUPPORT */
-
-#undef MAX_LEN_OF_MLME_QUEUE
-#define MAX_LEN_OF_MLME_QUEUE 64
 
 enum SCAN_MODE{
 	/* Active scan, send probe request, and wait beacon and probe response */
@@ -238,249 +237,6 @@ if (((__pEntry)) != NULL) \
 /*
 	802.11 frame formats
 */
-/*  HT Capability INFO field in HT Cap IE . */
-typedef struct GNU_PACKED{
-#ifdef RT_BIG_ENDIAN
-	USHORT	LSIGTxopProSup:1;
-	USHORT	Forty_Mhz_Intolerant:1;
-	USHORT	PSMP:1;
-	USHORT	CCKmodein40:1;
-	USHORT	AMsduSize:1;
-	USHORT	DelayedBA:1;
-	USHORT	RxSTBC:2;
-	USHORT	TxSTBC:1;
-	USHORT	ShortGIfor40:1;
-	USHORT	ShortGIfor20:1;
-	USHORT	GF:1;
-	USHORT	MimoPs:2;
-	USHORT	ChannelWidth:1;
-	USHORT	AdvCoding:1;
-#else
-	USHORT	AdvCoding:1;
-	USHORT	ChannelWidth:1;
-	USHORT	MimoPs:2;		/* mimo power safe */
-	USHORT	GF:1;			/* green field */
-	USHORT	ShortGIfor20:1;
-	USHORT	ShortGIfor40:1;	/* for40MHz */
-	USHORT	TxSTBC:1;		/* 0:not supported,  1:if supported */
-	USHORT	RxSTBC:2;
-	USHORT	DelayedBA:1;
-	USHORT	AMsduSize:1;	/* only support as zero */
-	USHORT	CCKmodein40:1;
-	USHORT	PSMP:1;
-	USHORT	Forty_Mhz_Intolerant:1;
-	USHORT	LSIGTxopProSup:1;
-#endif /* RT_BIG_ENDIAN */
-} HT_CAP_INFO, *PHT_CAP_INFO;
-
-
-/*  HT Capability INFO field in HT Cap IE . */
-typedef struct GNU_PACKED _HT_CAP_PARM{
-#ifdef RT_BIG_ENDIAN
-	UCHAR	rsv:3;/*momi power safe */
-	UCHAR	MpduDensity:3;
-	UCHAR	MaxRAmpduFactor:2;
-#else
-	UCHAR	MaxRAmpduFactor:2;
-	UCHAR	MpduDensity:3;
-	UCHAR	rsv:3;/*momi power safe */
-#endif /* RT_BIG_ENDIAN */
-} HT_CAP_PARM, *PHT_CAP_PARM;
-
-
-typedef struct GNU_PACKED _HT_MCS_SET_TX_SUBFIELD{
-#ifdef RT_BIG_ENDIAN
-	UCHAR	TxMCSSetDefined:1; 
-	UCHAR	TxRxNotEqual:1;
-	UCHAR	TxMaxStream:2;
-	UCHAR	TxUnqualModulation:1;
-	UCHAR	rsv:3;
-#else
-	UCHAR	rsv:3;
-	UCHAR	TxUnqualModulation:1;
-	UCHAR	TxMaxStream:2;
-	UCHAR	TxRxNotEqual:1;
-	UCHAR	TxMCSSetDefined:1;
-#endif /* RT_BIG_ENDIAN */
-}HT_MCS_SET_TX_SUBFIELD, *PHT_MCS_SET_TX_SUBFIELD;
-
-
-/*  HT Capability INFO field in HT Cap IE . */
-typedef struct GNU_PACKED _HT_MCS_SET{
-	UCHAR	MCSSet[10];
-	UCHAR	SupRate[2];  /* unit : 1Mbps */
-#ifdef RT_BIG_ENDIAN
-	UCHAR	rsv:3;
-	UCHAR	MpduDensity:1;
-	UCHAR	TxStream:2;
-	UCHAR	TxRxNotEqual:1;
-	UCHAR	TxMCSSetDefined:1; 
-#else
-	UCHAR	TxMCSSetDefined:1; 
-	UCHAR	TxRxNotEqual:1;
-	UCHAR	TxStream:2;
-	UCHAR	MpduDensity:1;
-	UCHAR	rsv:3;
-#endif /* RT_BIG_ENDIAN */
-	UCHAR	rsv3[3];  
-} HT_MCS_SET, *PHT_MCS_SET;
-
-/*  HT Capability INFO field in HT Cap IE . */
-typedef struct GNU_PACKED _EXT_HT_CAP_INFO{
-#ifdef RT_BIG_ENDIAN 
-	USHORT	rsv2:4;
-	USHORT	RDGSupport:1;	/*reverse Direction Grant  support */
-	USHORT	PlusHTC:1;	/*+HTC control field support */
-	USHORT	MCSFeedback:2;	/*0:no MCS feedback, 2:unsolicited MCS feedback, 3:Full MCS feedback,  1:rsv. */
-	USHORT	rsv:5;/*momi power safe */
-	USHORT	TranTime:2;
-	USHORT	Pco:1;
-#else
-	USHORT	Pco:1;
-	USHORT	TranTime:2;
-	USHORT	rsv:5;/*momi power safe */
-	USHORT	MCSFeedback:2;	/*0:no MCS feedback, 2:unsolicited MCS feedback, 3:Full MCS feedback,  1:rsv. */
-	USHORT	PlusHTC:1;	/*+HTC control field support */
-	USHORT	RDGSupport:1;	/*reverse Direction Grant  support */
-	USHORT	rsv2:4;
-#endif /* RT_BIG_ENDIAN */
-} EXT_HT_CAP_INFO, *PEXT_HT_CAP_INFO;
-
-/* HT Explicit Beamforming Feedback Capable */
-#define HT_ExBF_FB_CAP_NONE			0
-#define HT_ExBF_FB_CAP_DELAYED		1
-#define HT_ExBF_FB_CAP_IMMEDIATE		2
-#define HT_ExBF_FB_CAP_BOTH			3
-
-/* HT Beamforming field in HT Cap IE */
-typedef struct GNU_PACKED _HT_BF_CAP{
-#ifdef RT_BIG_ENDIAN
-	ULONG	rsv:3;
-	ULONG	ChanEstimation:2;
-	ULONG	CSIRowBFSup:2;
-	ULONG	ComSteerBFAntSup:2;
-	ULONG	NoComSteerBFAntSup:2;
-	ULONG	CSIBFAntSup:2;
-	ULONG	MinGrouping:2;
-	ULONG	ExpComBF:2;	
-	ULONG	ExpNoComBF:2;
-	ULONG	ExpCSIFbk:2;
-	ULONG	ExpComSteerCapable:1;
-	ULONG	ExpNoComSteerCapable:1;
-	ULONG	ExpCSICapable:1;
-	ULONG	Calibration:2;
-	ULONG	ImpTxBFCapable:1;
-	ULONG	TxNDPCapable:1;	
-	ULONG	RxNDPCapable:1;	
-	ULONG	TxSoundCapable:1;
-	ULONG	RxSoundCapable:1;
-	ULONG	TxBFRecCapable:1;
-#else
-	ULONG	TxBFRecCapable:1;
-	ULONG	RxSoundCapable:1;
-	ULONG	TxSoundCapable:1;
-	ULONG	RxNDPCapable:1;	
-	ULONG	TxNDPCapable:1;	
-	ULONG	ImpTxBFCapable:1;	
-	ULONG	Calibration:2;
-	ULONG	ExpCSICapable:1;
-	ULONG	ExpNoComSteerCapable:1;
-	ULONG	ExpComSteerCapable:1;
-	ULONG	ExpCSIFbk:2;	
-	ULONG	ExpNoComBF:2;	
-	ULONG	ExpComBF:2;	
-	ULONG	MinGrouping:2;
-	ULONG	CSIBFAntSup:2;
-	ULONG	NoComSteerBFAntSup:2;
-	ULONG	ComSteerBFAntSup:2;
-	ULONG	CSIRowBFSup:2;
-	ULONG	ChanEstimation:2;
-	ULONG	rsv:3;
-#endif /* RT_BIG_ENDIAN */
-} HT_BF_CAP, *PHT_BF_CAP;
-
-/*  HT antenna selection field in HT Cap IE . */
-typedef struct GNU_PACKED _HT_AS_CAP{
-#ifdef RT_BIG_ENDIAN
-	UCHAR	rsv:1;
-	UCHAR	TxSoundPPDU:1;
-	UCHAR	RxASel:1;
-	UCHAR	AntIndFbk:1;
-	UCHAR	ExpCSIFbk:1;
-	UCHAR	AntIndFbkTxASEL:1;
-	UCHAR	ExpCSIFbkTxASEL:1;
-	UCHAR	AntSelect:1; 
-#else
-	UCHAR	AntSelect:1; 
-	UCHAR	ExpCSIFbkTxASEL:1;
-	UCHAR	AntIndFbkTxASEL:1;
-	UCHAR	ExpCSIFbk:1;
-	UCHAR	AntIndFbk:1;
-	UCHAR	RxASel:1;
-	UCHAR	TxSoundPPDU:1;
-	UCHAR	rsv:1;
-#endif /* RT_BIG_ENDIAN */
-} HT_AS_CAP, *PHT_AS_CAP;
-
-/* Draft 1.0 set IE length 26, but is extensible.. */
-#define SIZE_HT_CAP_IE		26
-/* The structure for HT Capability IE. */
-typedef struct GNU_PACKED _HT_CAPABILITY_IE{
-	HT_CAP_INFO		HtCapInfo;
-	HT_CAP_PARM		HtCapParm;
-/*	HT_MCS_SET		HtMCSSet; */
-	UCHAR			MCSSet[16];
-	EXT_HT_CAP_INFO	ExtHtCapInfo;
-	HT_BF_CAP		TxBFCap;	/* beamforming cap. rt2860c not support beamforming. */
-	HT_AS_CAP		ASCap;	/*antenna selection. */
-} HT_CAPABILITY_IE, *PHT_CAPABILITY_IE;
-
-
-/* 802.11n draft3 related structure definitions. */
-/* 7.3.2.60 */
-#define dot11OBSSScanPassiveDwell							20	/* in TU. min amount of time that the STA continously scans each channel when performing an active OBSS scan. */
-#define dot11OBSSScanActiveDwell							10	/* in TU.min amount of time that the STA continously scans each channel when performing an passive OBSS scan. */
-#define dot11BSSWidthTriggerScanInterval					300  /* in sec. max interval between scan operations to be performed to detect BSS channel width trigger events. */
-#define dot11OBSSScanPassiveTotalPerChannel					200	/* in TU. min total amount of time that the STA scans each channel when performing a passive OBSS scan. */
-#define dot11OBSSScanActiveTotalPerChannel					20	/*in TU. min total amount of time that the STA scans each channel when performing a active OBSS scan */
-#define dot11BSSWidthChannelTransactionDelayFactor			5	/* min ratio between the delay time in performing a switch from 20MHz BSS to 20/40 BSS operation and the maximum */
-																/*	interval between overlapping BSS scan operations. */
-#define dot11BSSScanActivityThreshold						25	/* in %%, max total time that a STA may be active on the medium during a period of */
-																/*	(dot11BSSWidthChannelTransactionDelayFactor * dot11BSSWidthTriggerScanInterval) seconds without */
-																/*	being obligated to perform OBSS Scan operations. default is 25(== 0.25%) */
-
-typedef struct GNU_PACKED _OVERLAP_BSS_SCAN_IE{
-	USHORT		ScanPassiveDwell;
-	USHORT		ScanActiveDwell;
-	USHORT		TriggerScanInt;				/* Trigger scan interval */
-	USHORT		PassiveTalPerChannel;		/* passive total per channel */
-	USHORT		ActiveTalPerChannel;		/* active total per channel */
-	USHORT		DelayFactor;				/* BSS width channel transition delay factor */
-	USHORT		ScanActThre;				/* Scan Activity threshold */
-}OVERLAP_BSS_SCAN_IE, *POVERLAP_BSS_SCAN_IE;
-
-
-/*  7.3.2.56. 20/40 Coexistence element used in  Element ID = 72 = IE_2040_BSS_COEXIST */
-typedef union GNU_PACKED _BSS_2040_COEXIST_IE{
- struct GNU_PACKED {
- #ifdef RT_BIG_ENDIAN
-	UCHAR	rsv:3;
- 	UCHAR	ObssScanExempGrant:1;
-	UCHAR	ObssScanExempReq:1;
-	UCHAR	BSS20WidthReq:1;
-	UCHAR	Intolerant40:1;	
-	UCHAR	InfoReq:1; 
- #else
-	UCHAR	InfoReq:1;
-	UCHAR	Intolerant40:1;			/* Inter-BSS. set 1 when prohibits a receiving BSS from operating as a 20/40 Mhz BSS. */
-	UCHAR	BSS20WidthReq:1;		/* Intra-BSS set 1 when prohibits a receiving AP from operating its BSS as a 20/40MHz BSS. */
-	UCHAR	ObssScanExempReq:1;
-	UCHAR	ObssScanExempGrant:1;
-	UCHAR	rsv:3;
-#endif /* RT_BIG_ENDIAN */
-    } field;
- UCHAR   word;
-} BSS_2040_COEXIST_IE, *PBSS_2040_COEXIST_IE;
 
 
 typedef struct  _TRIGGER_EVENTA{
@@ -501,50 +257,143 @@ typedef struct  _TRIGGER_EVENT_TAB{
 } TRIGGER_EVENT_TAB, *PTRIGGER_EVENT_TAB;
 
 
-/* 7.3.27 20/40 Bss Coexistence Mgmt capability used in extended capabilities information IE( ID = 127 = IE_EXT_CAPABILITY). */
-/*	This is the first octet and was defined in 802.11n D3.03 and 802.11yD9.0 */
+/*
+	Extended capabilities information IE( ID = 127 = IE_EXT_CAPABILITY)
+	
+*/
 typedef struct GNU_PACKED _EXT_CAP_INFO_ELEMENT{
 #ifdef RT_BIG_ENDIAN
-	// TODO: shiang-6590, check the data structure format if this IE
-	UINT32	rsv7:1;
+	UINT32 interworking:1;
 	UINT32	TDLSChSwitchSupport:1; /* bit30: TDLS Channel Switching */
 	UINT32	TDLSPeerPSMSupport:1; /* bit29: TDLS Peer PSM Support */
 	UINT32	UAPSDBufSTASupport:1; /* bit28: Peer U-APSD Buffer STA Support */
-	UINT32	rsv6:1;
+	UINT32 utc_tsf_offset:1;
 	UINT32	DMSSupport:1;
-	UINT32	rsv5:6;
+	UINT32 ssid_list:1;
+	UINT32 channel_usage:1;
+	UINT32 timing_measurement:1;
+	UINT32 mbssid:1;
+	UINT32 ac_sta_cnt:1;
+	UINT32 qos_traffic_cap:1;
 	UINT32	BssTransitionManmt:1;
-	UINT32	rsv4:1;
+	UINT32 tim_bcast:1;
 	UINT32	WNMSleepSupport:1;/*bit 17*/
 	UINT32	TFSSupport:1;/*bit 16*/
-	UINT32	rsv3:4;
+	UINT32 geospatial_location:1;
+	UINT32 civic_location:1;
+	UINT32 collocated_interference_report:1;
+	UINT32 proxy_arp:1;
 	UINT32	FMSSupport:1;/*bit 11*/
-	UINT32	rsv2:8;
+	UINT32 location_tracking:1;
+	UINT32 mcast_diagnostics:1;
+	UINT32 diagnostics:1;
+	UINT32 event:1;
+	UINT32 s_psmp_support:1;
+	UINT32 rsv5:1;
+	UINT32 psmp_cap:1;
+	UINT32 rsv3:1;
 	UINT32	ExtendChannelSwitch:1;
-	UINT32	rsv:1;
+	UINT32 rsv1:1;
 	UINT32	BssCoexistMgmtSupport:1;
 #else
 	UINT32	BssCoexistMgmtSupport:1;
-	UINT32	rsv:1;
+	UINT32 rsv1:1;
 	UINT32	ExtendChannelSwitch:1;
-	UINT32	rsv2:8;
+	UINT32 rsv3:1;
+	UINT32 psmp_cap:1;
+	UINT32 rsv5:1;
+	UINT32 s_psmp_support:1;
+	UINT32 event:1;
+	UINT32 diagnostics:1;
+	UINT32 mcast_diagnostics:1;
+	UINT32 location_tracking:1;	
 	UINT32	FMSSupport:1;/*bit 11*/
-	UINT32	rsv3:4;
+	UINT32 proxy_arp:1;
+	UINT32 collocated_interference_report:1;
+	UINT32 civic_location:1;
+	UINT32 geospatial_location:1;
 	UINT32	TFSSupport:1;/*bit 16*/
 	UINT32	WNMSleepSupport:1;/*bit 17*/
-	UINT32	rsv4:1;
+	UINT32 tim_bcast:1;
 	UINT32	BssTransitionManmt:1;
-	UINT32	rsv5:6;
+	UINT32 qos_traffic_cap:1;
+	UINT32 ac_sta_cnt:1;
+	UINT32 mbssid:1;
+	UINT32 timing_measurement:1;
+	UINT32 channel_usage:1;
+	UINT32 ssid_list:1;
 	UINT32	DMSSupport:1;
-	UINT32	rsv6:1;
+	UINT32 utc_tsf_offset:1;
 	UINT32	UAPSDBufSTASupport:1; /* bit28: Peer U-APSD Buffer STA Support */
 	UINT32	TDLSPeerPSMSupport:1; /* bit29: TDLS Peer PSM Support */
 	UINT32	TDLSChSwitchSupport:1; /* bit30: TDLS Channel Switching */
-	UINT32	rsv7:1;
+	UINT32 interworking:1;
 #endif /* RT_BIG_ENDIAN */
 
+#ifdef RT_BIG_ENDIAN
+	UINT32 rsv63:1;
+	UINT32 operating_mode_notification:1;
+	UINT32 tdls_wider_bw:1;
+	UINT32 rsv49:12;
+	UINT32 utf8_ssid:1;
+	UINT32 rsv47:1;
+	UINT32 wnm_notification:1;
+	UINT32 uapsd_coex:1;
+	UINT32 id_location:1;
+	UINT32 service_interval_granularity:3;
+	UINT32 reject_unadmitted_frame:1;
+	UINT32 TDLSChSwitchProhibited:1; /* bit39: TDLS Channel Switching Prohibited */
+	UINT32 TDLSProhibited:1; /* bit38: TDLS Prohibited */
+	UINT32 TDLSSupport:1; /* bit37: TDLS Support */
+	UINT32 msgcf_cap:1;
+	UINT32 rsv35:1;
+	UINT32 sspn_inf:1;
+	UINT32 ebr:1;
+	UINT32 qosmap:1;
+#else
+	UINT32 qosmap:1;
+	UINT32 ebr:1;
+	UINT32 sspn_inf:1;
+	UINT32 rsv35:1;
+	UINT32 msgcf_cap:1;
+	UINT32 TDLSSupport:1; /* bit37: TDLS Support */
+	UINT32 TDLSProhibited:1; /* bit38: TDLS Prohibited */
+	UINT32 TDLSChSwitchProhibited:1; /* bit39: TDLS Channel Switching Prohibited */
+	UINT32 reject_unadmitted_frame:1;
+	UINT32 service_interval_granularity:3;
+	UINT32 id_location:1;
+	UINT32 uapsd_coex:1;
+	UINT32 wnm_notification:1;
+	UINT32 rsv47:1;
+	UINT32 utf8_ssid:1;
+	UINT32 rsv49:12;
+	UINT32 tdls_wider_bw:1;
+	UINT32 operating_mode_notification:1;
+	UINT32 rsv63:1;
+#endif // RT_BIG_ENDIAN //
+
+#ifdef RT_BIG_ENDIAN
+	UINT8 ftm_init:1;	/* bit71: FTM Initiator in 802.11mc D4.0*/
+	UINT8 ftm_resp:1;	/* bit70: FTM responder */
+	UINT8 rsv69:1;
+	UINT8 rsv68:1;
+	UINT8 rsv67:1;
+	UINT8 rsv66:1;
+	UINT8 rsv65:1;
+	UINT8 rsv64:1;
+#else
+	UINT8 rsv64:1;
+	UINT8 rsv65:1;
+	UINT8 rsv66:1;
+	UINT8 rsv67:1;
+	UINT8 rsv68:1;
+	UINT8 rsv69:1;
+	UINT8 ftm_resp:1;	/* bit70: FTM responder */
+	UINT8 ftm_init:1;	/* bit71: FTM Initiator in 802.11mc D4.0*/
+#endif // RT_BIG_ENDIAN //
 }EXT_CAP_INFO_ELEMENT, *PEXT_CAP_INFO_ELEMENT;
 
+#define EXT_CAP_MIN_SAFE_LENGTH         8
 
 /* 802.11n 7.3.2.61 */
 typedef struct GNU_PACKED _BSS_2040_COEXIST_ELEMENT{
@@ -566,8 +415,8 @@ typedef struct GNU_PACKED _BSS_2040_INTOLERANT_CH_REPORT{
 /* The structure for channel switch annoucement IE. This is in 802.11n D3.03 */
 typedef struct GNU_PACKED _CHA_SWITCH_ANNOUNCE_IE{
 	UCHAR			SwitchMode;	/*channel switch mode */
-	UCHAR			NewChannel;	/* */
-	UCHAR			SwitchCount;	/* */
+	UCHAR			NewChannel;
+	UCHAR			SwitchCount;
 } CHA_SWITCH_ANNOUNCE_IE, *PCHA_SWITCH_ANNOUNCE_IE;
 
 
@@ -671,73 +520,6 @@ typedef struct {
 	UCHAR	BSSCoexist2040;	
 } RT_HT_CAPABILITY, *PRT_HT_CAPABILITY;
 
-
-/*   field in Addtional HT Information IE . */
-typedef struct GNU_PACKED _ADD_HTINFO{
-#ifdef RT_BIG_ENDIAN
-	UCHAR	SerInterGranu:3;
-	UCHAR	S_PSMPSup:1;
-	UCHAR	RifsMode:1; 
-	UCHAR	RecomWidth:1;	
-	UCHAR	ExtChanOffset:2;
-#else
-	UCHAR	ExtChanOffset:2;
-	UCHAR	RecomWidth:1;
-	UCHAR	RifsMode:1; 
-	UCHAR	S_PSMPSup:1;	 /*Indicate support for scheduled PSMP */
-	UCHAR	SerInterGranu:3;	 /*service interval granularity */
-#endif
-} ADD_HTINFO, *PADD_HTINFO;
-
-
-typedef struct GNU_PACKED _ADD_HTINFO2{
-#ifdef RT_BIG_ENDIAN
-	USHORT	rsv2:11; 
-	USHORT	OBSS_NonHTExist:1;
-	USHORT	rsv:1;
-	USHORT	NonGfPresent:1;
-	USHORT	OperaionMode:2;	
-#else
-	USHORT	OperaionMode:2;
-	USHORT	NonGfPresent:1;
-	USHORT	rsv:1; 
-	USHORT	OBSS_NonHTExist:1;
-	USHORT	rsv2:11; 
-#endif
-} ADD_HTINFO2, *PADD_HTINFO2;
-
-
-/* TODO: Need sync with spec about the definition of StbcMcs. In Draft 3.03, it's reserved. */
-typedef struct GNU_PACKED _ADD_HTINFO3{
-#ifdef RT_BIG_ENDIAN
-	USHORT	rsv:4;
-	USHORT	PcoPhase:1;
-	USHORT	PcoActive:1;
-	USHORT	LsigTxopProt:1;
-	USHORT	STBCBeacon:1;
-	USHORT	DualCTSProtect:1;
-	USHORT	DualBeacon:1;
-	USHORT	StbcMcs:6;
-#else
-	USHORT	StbcMcs:6;
-	USHORT	DualBeacon:1;
-	USHORT	DualCTSProtect:1; 
-	USHORT	STBCBeacon:1;
-	USHORT	LsigTxopProt:1;	/* L-SIG TXOP protection full support */
-	USHORT	PcoActive:1; 
-	USHORT	PcoPhase:1; 
-	USHORT	rsv:4; 
-#endif /* RT_BIG_ENDIAN */
-} ADD_HTINFO3, *PADD_HTINFO3;
-
-#define SIZE_ADD_HT_INFO_IE		22
-typedef struct  GNU_PACKED _ADD_HT_INFO_IE{
-	UCHAR				ControlChan;
-	ADD_HTINFO			AddHtInfo;
-	ADD_HTINFO2			AddHtInfo2;	 
-	ADD_HTINFO3			AddHtInfo3;	 
-	UCHAR				MCSSet[16];		/* Basic MCS set */
-} ADD_HT_INFO_IE, *PADD_HT_INFO_IE;
 
 typedef struct  GNU_PACKED _NEW_EXT_CHAN_IE{
 	UCHAR				NewExtChanOffset;
@@ -904,12 +686,12 @@ typedef struct GNU_PACKED _FRAME_MTBA {
 	UCHAR		BitMap[8];
 }   FRAME_MTBA, *PFRAME_MTBA;
 
-typedef struct GNU_PACKED _FRAME_PSMP_ACTION {
+typedef struct GNU_PACKED _FRAME_SMPS_ACTION {
 	HEADER_802_11   Hdr;
 	UCHAR	Category;
 	UCHAR	Action;
-	UCHAR	Psmp;	/* 7.3.1.25 */
-}   FRAME_PSMP_ACTION, *PFRAME_PSMP_ACTION;
+	UCHAR	smps;	/* 7.3.1.22 */
+}   FRAME_SMPS_ACTION;
 
 typedef struct GNU_PACKED _FRAME_ACTION_HDR {
 	HEADER_802_11   Hdr;
@@ -1024,9 +806,9 @@ typedef struct GNU_PACKED _HT_EXT_CHANNEL_SWITCH_ANNOUNCEMENT_IE{
 #define SEQ_WITHIN_WIN(_SEQ1, _SEQ2, _WIN, _Limit) (SEQ_LARGER(_SEQ1, _SEQ2, _Limit) &&  \
 												SEQ_SMALLER(_SEQ1, ((_SEQ2+_WIN+1)&_Limit), _Limit))
 
-/* */
-/* Contention-free parameter (without ID and Length) */
-/* */
+/*
+	Contention-free parameter (without ID and Length)
+*/
 typedef struct GNU_PACKED _CF_PARM{
     BOOLEAN     bValid;         /* 1: variable contains valid value */
     UCHAR       CfpCount;
@@ -1123,8 +905,6 @@ typedef struct {
     UCHAR       EdcaUpdateCount;
 } QOS_CAPABILITY_PARM, *PQOS_CAPABILITY_PARM;
 
-
-
 typedef struct {
     UCHAR   Bssid[MAC_ADDR_LEN];
     UCHAR   Channel;
@@ -1137,6 +917,7 @@ typedef struct {
     UCHAR   SupRateLen;
     UCHAR   ExtRate[MAX_LEN_OF_SUPPORTED_RATES];
     UCHAR   ExtRateLen;
+	UCHAR Erp;
 	HT_CAPABILITY_IE HtCapability;
 	UCHAR			HtCapabilityLen;
 	ADD_HT_INFO_IE AddHtInfo;	/* AP might use this additional ht info IE */
@@ -1157,6 +938,7 @@ typedef struct {
     UCHAR   Privacy;			/* Indicate security function ON/OFF. Don't mess up with auth mode. */
 	UCHAR	Hidden;
 
+    BOOLEAN FromBcnReport; //source from beacon report
     USHORT  DtimPeriod;
     USHORT  CapabilityInfo;
 
@@ -1211,6 +993,18 @@ typedef struct {
 
 	UCHAR   MacAddr[MAC_ADDR_LEN];
 	ULONG ClientStatusFlags;
+
+#if defined(DOT11R_FT_SUPPORT) || defined(DOT11K_RRM_SUPPORT)
+	BOOLEAN	 bHasMDIE;
+	FT_MDIE FT_MDIE;
+#endif /* (DOT11R_FT_SUPPORT) || defined(DOT11K_RRM_SUPPORT) */
+
+#ifdef DOT11K_RRM_SUPPORT
+	UINT8 RegulatoryClass;
+	UINT8 CondensedPhyType;
+	UINT8 RSNI;
+#endif /* DOT11K_RRM_SUPPORT */
+
 } BSS_ENTRY, *PBSS_ENTRY;
 
 typedef struct {
@@ -1311,6 +1105,7 @@ typedef struct _MLME_AUX {
 	UCHAR vht_op_len;
 	VHT_CAP_IE vht_cap;
 	VHT_OP_IE vht_op;
+	//UCHAR vht_cent_ch;
 	UCHAR vht_max_mcs_cap;
 #endif /* DOT11_VHT_AC */
 
@@ -1424,13 +1219,13 @@ typedef struct GNU_PACKED _EID_STRUCT{
 /*#define TX_WEIGHTING                     40 */
 /*#define RX_WEIGHTING                     60 */
 
-#define MAC_TABLE_AGEOUT_TIME			300			/* unit: sec */
-#define MAC_TABLE_MIN_AGEOUT_TIME		60			/* unit: sec */
+#define MAC_TABLE_AGEOUT_TIME			480			/* unit: sec */
+#define MAC_TABLE_MIN_AGEOUT_TIME		120			/* unit: sec */
 #define MAC_TABLE_ASSOC_TIMEOUT			5			/* unit: sec */
 #define MAC_TABLE_FULL(Tab)				((Tab).size == MAX_LEN_OF_MAC_TABLE)
 
 /* AP shall drop the sta if contine Tx fail count reach it. */
-#define MAC_ENTRY_LIFE_CHECK_CNT		512			/* packet cnt. */
+#define MAC_ENTRY_LIFE_CHECK_CNT		1024			/* packet cnt. */
 
 /* Value domain of pMacEntry->Sst */
 typedef enum _Sst {
@@ -1464,7 +1259,14 @@ typedef struct _IE_lists {
 	BOOLEAN bWscCapable;
 #endif /* WSC_AP_SUPPORT */
 	ULONG RalinkIe;
+	ULONG MediatekIe;
 	EXT_CAP_INFO_ELEMENT ExtCapInfo;
+#ifdef DOT11R_FT_SUPPORT
+	FT_INFO FtInfo;
+#endif /* DOT11R_FT_SUPPORT */
+#ifdef DOT11K_RRM_SUPPORT
+	RRM_EN_CAP_IE RrmEnCap;
+#endif /* DOT11K_RRM_SUPPORT */
 	UCHAR ht_cap_len;
 	HT_CAPABILITY_IE HTCapability;
 #ifdef DOT11_VHT_AC
@@ -1472,6 +1274,8 @@ typedef struct _IE_lists {
 	VHT_OP_IE vht_op;
 	UCHAR vht_cap_len;
 	UCHAR vht_op_len;
+	UCHAR operating_mode_len;
+	OPERATING_MODE operating_mode;
 #endif /* DOT11_VHT_AC */
 }IE_LISTS;
 
@@ -1505,6 +1309,7 @@ typedef struct _bcn_ie_list {
 	QBSS_LOAD_PARM QbssLoad;
 	QOS_CAPABILITY_PARM QosCapability;
 	ULONG RalinkIe;
+	ULONG MediatekIe;
 	EXT_CAP_INFO_ELEMENT ExtCapInfo;
 	UCHAR HtCapabilityLen;
 	UCHAR PreNHtCapabilityLen;
@@ -1517,7 +1322,10 @@ typedef struct _bcn_ie_list {
 	VHT_OP_IE vht_op_ie;
 	UCHAR vht_cap_len;
 	UCHAR vht_op_len;
+	OPERATING_MODE operating_mode;
+	UCHAR vht_op_mode_len;
 #endif /* DOT11_VHT_AC */
+	BOOLEAN  FromBcnReport;
 }BCN_IE_LIST;
 
 #endif	/* MLME_H__ */

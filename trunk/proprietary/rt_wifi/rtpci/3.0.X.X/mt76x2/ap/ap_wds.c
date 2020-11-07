@@ -339,18 +339,21 @@ MAC_TABLE_ENTRY *MacTableInsertWDSEntry(
 		{
 			NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
 		}
-			pEntry->force_op_mode = FALSE;
+		pEntry->force_op_mode = FALSE;
 #endif /* DOT11_VHT_AC */
 
 
 
 
 			}
-#endif /* DOT11_N_SUPPORT */
 			else
 			{
 				NdisZeroMemory(&pEntry->HTCapability, sizeof(HT_CAPABILITY_IE));
+#ifdef DOT11_VHT_AC
+				NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
+#endif /* DOT11_VHT_AC */
 			}
+#endif /* DOT11_N_SUPPORT */
 
 			// for now, we set this by default!
 			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_RALINK_CHIPSET);
@@ -372,9 +375,10 @@ MAC_TABLE_ENTRY *MacTableInsertWDSEntry(
 			pEntry->wdev_idx = WdsTabIdx;
 			pEntry->wdev = wdev;
 			COPY_MAC_ADDR(&wdev->bssid[0], &pEntry->Addr[0]);
-						
+
+			AsicUpdateRxWCIDTable(pAd, pEntry->wcid, pAddr);
 			AsicUpdateWdsEncryption(pAd, pEntry->wcid);
-			
+
 			DBGPRINT(RT_DEBUG_OFF, ("%s() - allocate entry #%d(link to WCID %d), Total= %d\n",
 						__FUNCTION__, WdsTabIdx, wds_entry->MacTabMatchWCID, pAd->WdsTab.Size));
 			break;
@@ -537,8 +541,8 @@ VOID WdsTableMaintenance(RTMP_ADAPTER *pAd)
 		/* delete those MAC entry that has been idle for a long time */
 		if (pEntry->NoDataIdleCount >= MAC_TABLE_AGEOUT_TIME)
 		{
-			DBGPRINT(RT_DEBUG_TRACE, ("ageout %02x:%02x:%02x:%02x:%02x:%02x from WDS #%d after %d-sec silence\n",
-					PRINT_MAC(pEntry->Addr), idx, MAC_TABLE_AGEOUT_TIME));
+			printk("ageout %02x:%02x:%02x:%02x:%02x:%02x from WDS #%d after %d-sec silence\n",
+					PRINT_MAC(pEntry->Addr), idx, MAC_TABLE_AGEOUT_TIME);
 			WdsEntryDel(pAd, pEntry->Addr);
 			MacTableDeleteWDSEntry(pAd, pEntry->wcid, pEntry->Addr);
 		}
@@ -714,10 +718,10 @@ VOID WdsPeerBeaconProc(
 {
 	UCHAR MaxSupportedRate = RATE_11;
 
-	MaxSupportedRate = dot11_2_ra_rate(MaxSupportedRateIn500Kbps);
-
 	if (pEntry && IS_ENTRY_WDS(pEntry))
 	{
+		MaxSupportedRate = dot11_2_ra_rate(MaxSupportedRateIn500Kbps);
+
 		pEntry->MaxSupportedRate = min(pAd->CommonCfg.MaxTxRate, MaxSupportedRate);
 		pEntry->RateLen = MaxSupportedRateLen;
 
@@ -899,7 +903,7 @@ VOID WdsPeerBeaconProc(
 
 			pEntry->MaxHTPhyMode.field.BW = BW_20;
 			pEntry->MinHTPhyMode.field.BW = BW_20;
-#ifdef DOT11_N_SUPPORT
+
 			pEntry->HTCapability.MCSSet[0] = 0;
 			pEntry->HTCapability.MCSSet[1] = 0;
 			NdisZeroMemory(&pEntry->HTCapability, sizeof(HT_CAPABILITY_IE));
@@ -908,9 +912,6 @@ VOID WdsPeerBeaconProc(
 #ifdef DOT11_VHT_AC 
 			NdisZeroMemory(&pEntry->vht_cap_ie, sizeof(VHT_CAP_IE));
 #endif /* DOT11_VHT_AC */
-
-#endif /* DOT11_N_SUPPORT */
-
 		}
 #endif /* DOT11_N_SUPPORT */
 
@@ -1016,48 +1017,48 @@ INT Show_WdsTable_Proc(RTMP_ADAPTER *pAd, PSTRING arg)
 							pAd->RxRing[0].RxCpuIdx,
 							pAd->RxRing[0].RxDmaIdx));
 #endif /* RTMP_MAC_PCI */
-	
-	DBGPRINT(RT_DEBUG_OFF, ("\n%-19s%-4s%-4s%-4s%-7s%-7s%-7s%-10s%-6s%-6s%-6s%-6s\n",
-				"MAC", "IDX", "AID", "PSM", "RSSI0", "RSSI1", "RSSI2", "PhMd", "BW", "MCS", "SGI", "STBC"));
-	
+
+	printk("\n%-19s%-4s%-4s%-4s%-7s%-7s%-7s%-10s%-6s%-6s%-6s%-6s\n",
+				"MAC", "IDX", "AID", "PSM", "RSSI0", "RSSI1", "RSSI2", "PhMd", "BW", "MCS", "SGI", "STBC");
+
 	for (i=0; i<MAX_LEN_OF_MAC_TABLE; i++)
 	{
 		PMAC_TABLE_ENTRY pEntry = &pAd->MacTab.Content[i];
 		if (IS_ENTRY_WDS(pEntry))
 		{
-			DBGPRINT(RT_DEBUG_OFF, ("%02X:%02X:%02X:%02X:%02X:%02X  ", PRINT_MAC(pEntry->Addr)));
-			DBGPRINT(RT_DEBUG_OFF,("%-4d", (int)pEntry->wdev_idx));
-			DBGPRINT(RT_DEBUG_OFF, ("%-4d", (int)pEntry->Aid));
-			DBGPRINT(RT_DEBUG_OFF, ("%-4d", (int)pEntry->PsMode));
-			DBGPRINT(RT_DEBUG_OFF, ("%-7d", pEntry->RssiSample.AvgRssi0));
-			DBGPRINT(RT_DEBUG_OFF, ("%-7d", pEntry->RssiSample.AvgRssi1));
-			DBGPRINT(RT_DEBUG_OFF, ("%-7d", pEntry->RssiSample.AvgRssi2));
-			DBGPRINT(RT_DEBUG_OFF, ("%-10s", get_phymode_str(pEntry->HTPhyMode.field.MODE)));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6s", get_bw_str(pEntry->HTPhyMode.field.BW)));
+			printk("%02X:%02X:%02X:%02X:%02X:%02X  ", PRINT_MAC(pEntry->Addr));
+			printk("%-4d", (int)pEntry->wdev_idx);
+			printk("%-4d", (int)pEntry->Aid);
+			printk("%-4d", (int)pEntry->PsMode);
+			printk("%-7d", pEntry->RssiSample.AvgRssi0);
+			printk("%-7d", pEntry->RssiSample.AvgRssi1);
+			printk("%-7d", pEntry->RssiSample.AvgRssi2);
+			printk("%-10s", get_phymode_str(pEntry->HTPhyMode.field.MODE));
+			printk("%-6s", get_bw_str(pEntry->HTPhyMode.field.BW));
 
 #ifdef DOT11_VHT_AC
 			if (pEntry->HTPhyMode.field.MODE == MODE_VHT)
-				DBGPRINT(RT_DEBUG_OFF, ("%dS-M%-2d", ((pEntry->HTPhyMode.field.MCS>>4) + 1), (pEntry->HTPhyMode.field.MCS & 0xf)));
-			else
-#endif /* DOT11_VHT_AC */			
-				DBGPRINT(RT_DEBUG_OFF, ("%-6d", pEntry->HTPhyMode.field.MCS));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d", pEntry->HTPhyMode.field.ShortGI));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d\n", pEntry->HTPhyMode.field.STBC));
-
-//+++Add by shiang for debug
-			DBGPRINT(RT_DEBUG_OFF, (" MaxCap:%-10s", get_phymode_str(pEntry->MaxHTPhyMode.field.MODE)));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6s", get_bw_str(pEntry->MaxHTPhyMode.field.BW)));
-#ifdef DOT11_VHT_AC
-			if (pEntry->MaxHTPhyMode.field.MODE == MODE_VHT)
-				DBGPRINT(RT_DEBUG_OFF, ("%dS-M%d", ((pEntry->MaxHTPhyMode.field.MCS>>4) + 1), (pEntry->MaxHTPhyMode.field.MCS & 0xf)));
+				printk("%dS-M%-2d", ((pEntry->HTPhyMode.field.MCS>>4) + 1), (pEntry->HTPhyMode.field.MCS & 0xf));
 			else
 #endif /* DOT11_VHT_AC */
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d", pEntry->MaxHTPhyMode.field.MCS));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d", pEntry->MaxHTPhyMode.field.ShortGI));
-			DBGPRINT(RT_DEBUG_OFF, ("%-6d\n", pEntry->MaxHTPhyMode.field.STBC));
+			printk("%-6d", pEntry->HTPhyMode.field.MCS);
+			printk("%-6d", pEntry->HTPhyMode.field.ShortGI);
+			printk("%-6d\n", pEntry->HTPhyMode.field.STBC);
+
+//+++Add by shiang for debug
+			printk(" MaxCap:%-10s", get_phymode_str(pEntry->MaxHTPhyMode.field.MODE));
+			printk("%-6s", get_bw_str(pEntry->MaxHTPhyMode.field.BW));
+#ifdef DOT11_VHT_AC
+			if (pEntry->MaxHTPhyMode.field.MODE == MODE_VHT)
+				printk("%dS-M%d", ((pEntry->MaxHTPhyMode.field.MCS>>4) + 1), (pEntry->MaxHTPhyMode.field.MCS & 0xf));
+			else
+#endif /* DOT11_VHT_AC */
+			printk("%-6d", pEntry->MaxHTPhyMode.field.MCS);
+			printk("%-6d", pEntry->MaxHTPhyMode.field.ShortGI);
+			printk("%-6d\n", pEntry->MaxHTPhyMode.field.STBC);
 //---Add by shiang for debug
 		}
-	} 
+	}
 
 	return TRUE;
 }

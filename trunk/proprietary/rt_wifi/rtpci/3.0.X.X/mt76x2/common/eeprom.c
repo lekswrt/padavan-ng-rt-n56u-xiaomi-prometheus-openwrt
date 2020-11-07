@@ -38,14 +38,10 @@ struct chip_map RTMP_CHIP_E2P_FILE_TABLE[] = {
 	{0x7612, "MT7612E_EEPROM.bin"},
 #endif
 #ifdef RT6352
-	{0x7620, "MT7620_AP_2T2R-4L_V15.BIN"},
+	{0x7620,	"MT7620_AP_2T2R-4L_V15.BIN"},
 #endif
 	{0, NULL}
 };
-
-#ifdef RTMP_FLASH_SUPPORT
-extern USHORT EE_FLASH_ID_LIST[];
-#endif /* RTMP_FLASH_SUPPORT */
 
 UCHAR RtmpEepromGetDefault(
 	IN RTMP_ADAPTER 	*pAd)
@@ -61,7 +57,7 @@ UCHAR RtmpEepromGetDefault(
 			e2p_default = E2P_EEPROM_MODE;
 		if ( RTMPEqualMemory("flash", CONFIG_RT_FIRST_CARD_EEPROM, 5) )
 			e2p_default = E2P_FLASH_MODE;
-		goto out;
+		goto out;	
 	}
 
 	if ( pAd->dev_idx == 1 )
@@ -72,7 +68,7 @@ UCHAR RtmpEepromGetDefault(
 			e2p_default = E2P_EEPROM_MODE;
 		if ( RTMPEqualMemory("flash", CONFIG_RT_SECOND_CARD_EEPROM, 5) )
 			e2p_default = E2P_FLASH_MODE;
-		goto out;
+		goto out;	
 	}
 out:
 #endif
@@ -80,6 +76,9 @@ out:
 	return e2p_default;
 }
 
+#ifdef RTMP_FLASH_SUPPORT
+extern USHORT EE_FLASH_ID_LIST[];
+#endif /* RTMP_FLASH_SUPPORT */
 
 #if defined(RTMP_EFUSE_SUPPORT) && defined(RTMP_FLASH_SUPPORT)
 static VOID RtmpEepromTypeAdjust(RTMP_ADAPTER *pAd, UCHAR *pE2pType)
@@ -99,7 +98,7 @@ static VOID RtmpEepromTypeAdjust(RTMP_ADAPTER *pAd, UCHAR *pE2pType)
 		USHORT eeFlashId = 0;
 		int listIdx, num_flash_id;
 		BOOLEAN bFound = FALSE;
-		
+
 		num_flash_id = rtmp_get_flash_id_num();
 
 		rtmp_ee_efuse_read16(pAd, 0, &eeFlashId);
@@ -129,14 +128,15 @@ INT RtmpChipOpsEepromHook(
 {
 	RTMP_CHIP_OP *pChipOps = &pAd->chipOps;
 	UCHAR e2p_type;
+#ifdef RTMP_PCI_SUPPORT
 	UINT32 val;
-
+#endif
 #ifdef TXBF_SUPPORT
 	if (pAd->chipCap.FlgITxBfBinWrite)
 		pAd->E2pAccessMode = E2P_BIN_MODE;
 #endif		
 
-/* We can't open file here beacuse it could get file open error. */
+	/* We can't open file here beacuse it could get file open error. */
 
 	e2p_type = pAd->E2pAccessMode;
 
@@ -265,7 +265,7 @@ BOOLEAN rtmp_get_default_bin_file_by_chip(
 		{
 			ChipVersion = 0x7620;
 		}
-#endif
+#endif /* RT6352 */
 		if (RTMP_CHIP_E2P_FILE_TABLE[i].ChipVersion == ChipVersion)
 		{
 			*pBinFileName = RTMP_CHIP_E2P_FILE_TABLE[i].name;
@@ -320,8 +320,8 @@ INT rtmp_ee_load_from_bin(
 	RTMP_OS_FD srcf;
 	RTMP_OS_FS_INFO osFSInfo;
 
-#ifdef RT_SOC_SUPPORT
 #ifdef MULTIPLE_CARD_SUPPORT
+#ifdef RT_SOC_SUPPORT
 	STRING bin_file_path[128];
 	PSTRING bin_file_name = NULL;
 	UINT32 chip_ver = (pAd->MACVersion >> 16);
@@ -336,8 +336,8 @@ INT rtmp_ee_load_from_bin(
 		src = bin_file_path;
 	}
 	else
-#endif /* MULTIPLE_CARD_SUPPORT */
 #endif /* RT_SOC_SUPPORT */
+#endif /* MULTIPLE_CARD_SUPPORT */
 		src = BIN_FILE_PATH;
 	
 	DBGPRINT(RT_DEBUG_TRACE, ("%s::FileName=%s\n", __FUNCTION__, src));
@@ -387,8 +387,8 @@ INT rtmp_ee_write_to_bin(
 	RTMP_OS_FD srcf;
 	RTMP_OS_FS_INFO osFSInfo;
 
-#ifdef RT_SOC_SUPPORT
 #ifdef MULTIPLE_CARD_SUPPORT
+#ifdef RT_SOC_SUPPORT
 	STRING bin_file_path[128];
 	PSTRING bin_file_name = NULL;
 	UINT32 chip_ver = (pAd->MACVersion >> 16);
@@ -403,8 +403,8 @@ INT rtmp_ee_write_to_bin(
 		src = bin_file_path;
 	}
 	else
-#endif /* MULTIPLE_CARD_SUPPORT */
 #endif /* RT_SOC_SUPPORT */
+#endif /* MULTIPLE_CARD_SUPPORT */
 		src = BIN_FILE_PATH;
 
 	DBGPRINT(RT_DEBUG_TRACE, ("%s::FileName=%s\n", __FUNCTION__, src));
@@ -447,7 +447,7 @@ INT Set_LoadEepromBufferFromBin_Proc(
 	INT result;
 
 #ifdef CAL_FREE_IC_SUPPORT
-		BOOLEAN bCalFree=0;
+	BOOLEAN bCalFree=0;
 #endif /* CAL_FREE_IC_SUPPORT */
 
 	if (bEnable < 0)

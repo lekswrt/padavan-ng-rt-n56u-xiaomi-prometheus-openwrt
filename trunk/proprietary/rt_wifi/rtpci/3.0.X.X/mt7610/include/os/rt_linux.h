@@ -122,18 +122,18 @@ typedef struct usb_ctrlrequest devctrlrequest;
 #ifdef CONFIG_AP_SUPPORT
 #ifdef RTMP_MAC_PCI
 #if defined (RT_IFNAME_1ST)
- #define AP_RTMP_FIRMWARE_FILE_NAME	"/etc_ro/Wireless/RT2860AP.bin"
- #define AP_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860AP.dat"
+ #define AP_RTMP_FIRMWARE_FILE_NAME	"/etc/Wireless/RT2860AP.bin"
+ #define AP_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860.dat"
  #define SINGLE_SKU_TABLE_FILE_NAME	"/etc/Wireless/RT2860/SingleSKU.dat"
  #define CARD_INFO_PATH			"/etc/Wireless/RT2860/RT2860APCard.dat"
 #else
- #define AP_RTMP_FIRMWARE_FILE_NAME	"/etc_ro/Wireless/iNIC_ap.bin"
+ #define AP_RTMP_FIRMWARE_FILE_NAME	"/etc/Wireless/iNIC_ap.bin"
  #define AP_PROFILE_PATH		"/etc/Wireless/iNIC/iNIC_ap.dat"
  #define SINGLE_SKU_TABLE_FILE_NAME	"/etc/Wireless/iNIC/SingleSKU.dat"
  #define CARD_INFO_PATH			"/etc/Wireless/iNIC/RT2860APCard.dat"
 #endif
 #define AP_NIC_DEVICE_NAME		"MT7610_AP"
-#define AP_DRIVER_VERSION		"3.0.0.9"
+#define AP_DRIVER_VERSION		"3.0.0.9.P55"
 #endif /* RTMP_MAC_PCI */
 #endif /* CONFIG_AP_SUPPORT */
 
@@ -269,8 +269,8 @@ typedef struct file* RTMP_OS_FD;
 
 typedef struct _OS_FS_INFO_
 {
-	uid_t		fsuid;
-	gid_t		fsgid;
+	uid_t				fsuid;
+	gid_t				fsgid;
 	mm_segment_t	fs;
 } OS_FS_INFO;
 
@@ -315,7 +315,9 @@ typedef spinlock_t			OS_NDIS_SPIN_LOCK;
 
 #define OS_IRQ_LOCK(__lock, __irqflags)			\
 {													\
+    if (__irqflags);                            \
 	__irqflags = 0;									\
+	typecheck(unsigned long, __irqflags);                           \
 	spin_lock_irqsave((spinlock_t *)(__lock), __irqflags);			\
 }
 
@@ -326,7 +328,9 @@ typedef spinlock_t			OS_NDIS_SPIN_LOCK;
 #else
 #define OS_IRQ_LOCK(__lock, __irqflags)			\
 {												\
+    if (__irqflags);                            \
 	__irqflags = 0;								\
+	typecheck(unsigned long, __irqflags);                           \
 	spin_lock_bh((spinlock_t *)(__lock));		\
 }
 
@@ -705,7 +709,7 @@ do{                                   \
 {                                                                               \
     if (!(x))                                                                   \
     {                                                                           \
-        printk(KERN_WARNING __FILE__ ":%d assert " #x "failed\n", __LINE__);    \
+        printk(KERN_WARNING __FILE__ ":%d assert " #x " failed\n", __LINE__);    \
     }                                                                           \
 }
 #else
@@ -723,20 +727,20 @@ void hex_dump(char *str, unsigned char *pSrcBufVA, unsigned int SrcBufLen);
 /***********************************************************************************
  * Device DMA Access related definitions and data structures.
  **********************************************************************************/
-ra_dma_addr_t linux_pci_map_single(void *handle, void *ptr, size_t size, int sd_idx, int direction);
-void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, int direction);
+ra_dma_addr_t linux_pci_map_single(struct pci_dev *pPciDev, void *ptr, size_t size, int sd_idx, int direction);
+void linux_pci_unmap_single(struct pci_dev *pPciDev, ra_dma_addr_t radma_addr, size_t size, int direction);
 
-#define PCI_MAP_SINGLE_DEV(_handle, _ptr, _size, _sd_idx, _dir)				\
-	linux_pci_map_single(_handle, _ptr, _size, _sd_idx, _dir)
-	
+#define PCI_MAP_SINGLE_DEV(_pci_dev, _ptr, _size, _sd_idx, _dir)				\
+	linux_pci_map_single((struct pci_dev *)_pci_dev, _ptr, _size, _sd_idx, _dir)
+
 #define PCI_UNMAP_SINGLE(_pAd, _ptr, _size, _dir)						\
 	linux_pci_unmap_single(((POS_COOKIE)(_pAd->OS_Cookie))->pci_dev, _ptr, _size, _dir)
 
-#define PCI_ALLOC_CONSISTENT(_pci_dev, _size, _ptr) \
-	pci_alloc_consistent(_pci_dev, _size, _ptr)
+#define PCI_ALLOC_CONSISTENT(_pci_dev, _size, _ptr)							\
+	dma_zalloc_coherent(_pci_dev == NULL ? NULL : &_pci_dev->dev, _size, _ptr, GFP_ATOMIC)
 
-#define PCI_FREE_CONSISTENT(_pci_dev, _size, _virtual_addr, _physical_addr) \
-	pci_free_consistent(_pci_dev, _size, _virtual_addr, _physical_addr)
+#define PCI_FREE_CONSISTENT(_pci_dev, _size, _virtual_addr, _physical_addr)	\
+	dma_free_coherent(_pci_dev == NULL ? NULL : &_pci_dev->dev, _size, _virtual_addr, _physical_addr)
 
 #ifdef VENDOR_FEATURE2_SUPPORT
 #define DEV_ALLOC_SKB(_pAd, _Pkt, _length)	\
@@ -793,19 +797,19 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 #ifdef RTMP_MAC_PCI
 #if defined(INF_TWINPASS) || defined(INF_DANUBE) || defined(INF_AR9) || defined(IKANOS_VX_1X0)
 #define RTMP_IO_FORCE_READ32(_A, _R, _pV)									\
-{																	\
+do{																	\
 	(*(_pV) = readl((void *)((_A)->CSRBaseAddress + (_R))));			\
 	(*(_pV) = SWAP32(*((UINT32 *)(_pV))));                           \
-}
+}while(0)
 
 #define RTMP_IO_READ32(_A, _R, _pV)									\
-{																	\
+do{																	\
     if ((_A)->bPCIclkOff == FALSE)                                      \
     {                                                                   \
 	(*(_pV) = readl((void *)((_A)->CSRBaseAddress + (_R))));			\
 	(*(_pV) = SWAP32(*((UINT32 *)(_pV))));                           \
     }                                                                   \
-}
+}while(0)
 
 #define RTMP_IO_READ8(_A, _R, _pV)									\
 {																	\
@@ -813,18 +817,18 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 }
 
 #define _RTMP_IO_WRITE32(_A, _R, _V)									\
-{																	\
+do{																	\
     if ((_A)->bPCIclkOff == FALSE)                                      \
     {                                                                   \
 	UINT32	_Val;													\
 	_Val = SWAP32(_V);												\
 	writel(_Val, (void *)((_A)->CSRBaseAddress + (_R)));			\
     }                                                                   \
-}
+}while(0)
 
 #ifdef INF_VR9
 #define RTMP_IO_WRITE8(_A, _R, _V)            \
-{                    \
+do{                    \
         ULONG Val;                \
         UCHAR _i;                \
 	UINT32 _Val;		\
@@ -835,7 +839,7 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
         Val = Val | ((ULONG)(_V) << ((_i)*8));         \
 	Val = SWAP32(Val);				\
         writel((Val), (void *)((_A)->CSRBaseAddress + ((_R) - _i)));    \
-}
+}while(0)
 #else
 #define RTMP_IO_WRITE8(_A, _R, _V)									\
 {																	\
@@ -849,14 +853,14 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 }
 #else
 #define RTMP_IO_READ32(_A, _R, _pV)								\
-{																\
+do{																\
     if ((_A)->bPCIclkOff == FALSE)                                  \
     {                                                               \
 		(*(_pV) = readl((void *)((_A)->CSRBaseAddress + (_R))));			\
     }                                                               \
     else															\
 		*(_pV) = 0;													\
-}
+}while(0)
 
 #define RTMP_IO_FORCE_READ32(_A, _R, _pV)							\
 {																	\
@@ -865,14 +869,14 @@ void linux_pci_unmap_single(void *handle, ra_dma_addr_t dma_addr, size_t size, i
 
 #if defined(BRCM_6358) || defined(RALINK_2880) || defined(RALINK_3052) || defined(RALINK_2883) || defined(RTMP_RBUS_SUPPORT)
 #define RTMP_IO_READ8(_A, _R, _V)            \
-{                    \
+do{                    \
 	ULONG Val;                \
 	UCHAR _i;                \
 	_i = ((_R) & 0x3);             \
 	Val = readl((void *)((_A)->CSRBaseAddress + ((_R) - _i)));   \
 	Val = (Val >> ((_i)*8)) & (0x000000ff);         \
 	*((PUCHAR)_V) = (UCHAR) Val;				\
-}
+}while(0)
 #else
 #define RTMP_IO_READ8(_A, _R, _pV)								\
 {																\
@@ -906,7 +910,7 @@ do{ \
 
 #if defined(BRCM_6358) || defined(RALINK_2880) || defined(RALINK_3052) || defined(RALINK_2883) || defined(RTMP_RBUS_SUPPORT) || defined(BB_PCIE_ADDR_SWAP)
 #define RTMP_IO_WRITE8(_A, _R, _V)            \
-{                    \
+do{                    \
 	ULONG Val;                \
 	UCHAR _i;                \
 	_i = ((_R) & 0x3);             \
@@ -914,7 +918,7 @@ do{ \
 	Val = Val & (~(0x000000ff << ((_i)*8)));         \
 	Val = Val | ((ULONG)(_V) << ((_i)*8));         \
 	writel((Val), (void *)((_A)->CSRBaseAddress + ((_R) - _i)));    \
-}
+}while(0)
 #else
 #define RTMP_IO_WRITE8(_A, _R, _V)							\
 {															\
@@ -1005,15 +1009,16 @@ do{ \
 		(RTPKT_TO_OSPKT(_pkt)->len) = (_len)
 		
 #define GET_OS_PKT_DATATAIL(_pkt) \
-		(RTPKT_TO_OSPKT(_pkt)->tail)
+		skb_tail_pointer(RTPKT_TO_OSPKT(_pkt))
 #define SET_OS_PKT_DATATAIL(_pkt, _start, _len)	\
-		((RTPKT_TO_OSPKT(_pkt))->tail) = (PUCHAR)((_start) + (_len))
+		(skb_set_tail_pointer(RTPKT_TO_OSPKT(_pkt), \
+		(_len)-(int)(GET_OS_PKT_DATAPTR(_pkt)-(_start))))
 		
 #define GET_OS_PKT_HEAD(_pkt) \
 		(RTPKT_TO_OSPKT(_pkt)->head)
 
 #define GET_OS_PKT_END(_pkt) \
-		(RTPKT_TO_OSPKT(_pkt)->end)
+		skb_end_pointer(RTPKT_TO_OSPKT(_pkt))
 
 #define GET_OS_PKT_NETDEV(_pkt) \
 		(RTPKT_TO_OSPKT(_pkt)->dev)
@@ -1230,19 +1235,7 @@ do{ \
 #define RTMP_GET_PACKET_CLEAR_EAP_FRAME(_p)         (RTPKT_TO_OSPKT(_p)->cb[CB_OFF+12])
 
 
-#ifdef DOT11_VHT_AC
-#ifdef WFA_VHT_PF
-#define MAX_PACKETS_IN_QUEUE				2048 /*(512)*/
-#else
-#ifdef NOISE_TEST_ADJUST
-#define MAX_PACKETS_IN_QUEUE				2048 /*(512)*/
-#else
 #define MAX_PACKETS_IN_QUEUE				1024 /*(512)*/
-#endif /* NOISE_TEST_ADJUST */
-#endif /* WFA_VHT_PF */
-#else
-#define MAX_PACKETS_IN_QUEUE				(512)
-#endif /* DOT11_VHT_AC */
 
 
 /* use bit3 of cb[CB_OFF+16] */
@@ -1256,6 +1249,12 @@ do{ \
         RTPKT_TO_OSPKT(_p)->cb[CB_OFF+20] = (RTPKT_TO_OSPKT(_p)->cb[CB_OFF+20] & 0xFE) | (_flg & 0x01);
 #define RTMP_GET_PACKET_MGMT_PKT_DATA_QUE(_p)		\
 		(RTPKT_TO_OSPKT(_p)->cb[CB_OFF+20] & 0x01)
+
+/* [CB_OFF+21]  */
+#ifdef DATA_QUEUE_RESERVE
+#define RTMP_SET_PACKET_ICMP(_p, _flg)   (RTPKT_TO_OSPKT(_p)->cb[CB_OFF+21] = _flg)
+#define RTMP_GET_PACKET_ICMP(_p)         (RTPKT_TO_OSPKT(_p)->cb[CB_OFF+21])
+#endif /* DATA_QUEUE_RESERVE */
 
 #define RTMP_SET_PACKET_5VT(_p, _flg)   (RTPKT_TO_OSPKT(_p)->cb[CB_OFF+22] = _flg)
 #define RTMP_GET_PACKET_5VT(_p)         (RTPKT_TO_OSPKT(_p)->cb[CB_OFF+22])
@@ -1273,6 +1272,11 @@ do{ \
 /* [CB_OFF+28], 1B, Iverson patch for WMM A5-T07 ,WirelessStaToWirelessSta do not bulk out aggregate */
 #define RTMP_SET_PACKET_NOBULKOUT(_p, _morebit)			(RTPKT_TO_OSPKT(_p)->cb[CB_OFF+28] = _morebit)
 #define RTMP_GET_PACKET_NOBULKOUT(_p)				(RTPKT_TO_OSPKT(_p)->cb[CB_OFF+28])
+#else
+#ifdef FORCE_ANNOUNCE_CRITICAL_AMPDU
+#define RTMP_SET_PACKET_ETHTYPE(_p, _morebit)			(PACKET_CB(_p, 28) = _morebit)
+#define RTMP_GET_PACKET_ETHTYPE(_p)						(PACKET_CB(_p, 28))
+#endif
 #endif /* INF_AMAZON_SE */
 
 

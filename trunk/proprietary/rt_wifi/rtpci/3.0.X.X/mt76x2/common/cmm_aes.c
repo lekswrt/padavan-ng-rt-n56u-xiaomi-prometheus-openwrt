@@ -1023,7 +1023,6 @@ BOOLEAN RTMPSoftDecryptCCMP(
 	return TRUE;
 }
 
-#ifdef DBG
 /*
 	========================================================================
 	
@@ -1144,6 +1143,7 @@ VOID CCMP_test_vector(
 	}	
 	
 	printk("== CCMP test vector == \n");
-}
-#endif
+
+	}
+
 

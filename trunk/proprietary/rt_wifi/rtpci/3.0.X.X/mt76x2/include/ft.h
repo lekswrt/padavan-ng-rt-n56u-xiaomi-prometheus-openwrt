@@ -20,6 +20,8 @@
 
 #ifdef DOT11R_FT_SUPPORT
 
+#define TYPE_FUNC
+#define FT_FUNC_SIMULATION
 
 #ifndef __FT_H
 #define __FT_H

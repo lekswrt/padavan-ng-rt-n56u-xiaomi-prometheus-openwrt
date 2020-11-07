@@ -229,6 +229,7 @@ VOID RTMPSetSupportMCS(
 	IN UCHAR HtCapabilityLen);
 
 #ifdef NEW_RATE_ADAPT_SUPPORT
+#ifdef NEW_RATE_ADAPT_QUICK_DOWN
 VOID TriggerQuickInitMCSRate(
     IN struct _RTMP_ADAPTER *pAd,
     IN struct _MAC_TABLE_ENTRY	*pEntry,
@@ -239,7 +240,7 @@ BOOLEAN QuickInitMCSRate(
     IN struct _MAC_TABLE_ENTRY	*pEntry,
     IN UINT16 PacketSucc,
 	IN UINT16 PacketErro);
-
+#endif
 VOID MlmeSetMcsGroup(struct _RTMP_ADAPTER *pAd, struct _MAC_TABLE_ENTRY *pEnt);
 
 UCHAR MlmeSelectUpRate(

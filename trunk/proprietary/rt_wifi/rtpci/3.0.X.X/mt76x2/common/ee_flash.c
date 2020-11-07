@@ -139,8 +139,8 @@ static NDIS_STATUS rtmp_ee_flash_reset(RTMP_ADAPTER *pAd, UCHAR *start)
 	PSTRING file_name = NULL;
 	UINT32 chip_id = (pAd->ChipID >> 16);
 
-#ifdef RT_SOC_SUPPORT
 #ifdef MULTIPLE_CARD_SUPPORT
+#ifdef RT_SOC_SUPPORT
 	STRING	BinFilePath[128];
 	PSTRING	pBinFileName = NULL;
 	UINT32	ChipVerion = (pAd->MACVersion >> 16);
@@ -156,8 +156,8 @@ static NDIS_STATUS rtmp_ee_flash_reset(RTMP_ADAPTER *pAd, UCHAR *start)
 		DBGPRINT(RT_DEBUG_TRACE, ("%s(): src = %s\n", __FUNCTION__, src));
 	}
 	else
-#endif /* MULTIPLE_CARD_SUPPORT */
 #endif /* RT_SOC_SUPPORT */
+#endif /* MULTIPLE_CARD_SUPPORT */
 	if (rtmp_get_default_bin_file_by_chip(pAd, chip_id, &file_name) == TRUE) {
 		sprintf(file_path, "%s%s", EEPROM_FILE_DIR, file_name);
 		src = file_path;
@@ -295,7 +295,7 @@ static BOOLEAN  validFlashEepromID(RTMP_ADAPTER *pAd)
 	int listIdx, num_flash_id;
 
 	num_flash_id = rtmp_get_flash_id_num();
-
+	
 	rtmp_ee_flash_read(pAd, 0, &eeFlashId);
 	for(listIdx =0 ; listIdx < num_flash_id; listIdx++)
 	{
@@ -397,7 +397,6 @@ NDIS_STATUS rtmp_nv_init(RTMP_ADAPTER *pAd)
 INT Set_LoadEepromBufferFromFlash_Proc(RTMP_ADAPTER *pAd, PSTRING arg)
 {
 	UINT bEnable = simple_strtol(arg, 0, 10);
-	UINT free_blk = 0;
 
 	if (bEnable < 0)
 		return FALSE;

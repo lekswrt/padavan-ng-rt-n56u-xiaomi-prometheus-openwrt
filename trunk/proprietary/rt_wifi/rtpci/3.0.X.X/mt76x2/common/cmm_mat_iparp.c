@@ -472,7 +472,7 @@ static PUCHAR MATProto_ARP_Tx(
 	BOOLEAN isUcastMac, isGoodIP;
 	NET_PRO_ARP_HDR *arpHdr;
 	PNDIS_PACKET newSkb = NULL;
-	
+
 	arpHdr = (NET_PRO_ARP_HDR *)pLayerHdr;
 
 	/*

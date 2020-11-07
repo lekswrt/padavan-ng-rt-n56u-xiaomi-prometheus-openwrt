@@ -30,26 +30,13 @@ static inline INT GetABandChOffset(
 	IN INT Channel)
 {
 #ifdef A_BAND_SUPPORT
-	UCHAR region = GetCountryRegionFromCountryCode(pAd);
-	if((region==CE || region==JAP) && Channel >= 140)
-		return 0;
-	if(region==FCC && Channel >= 116 && Channel <= 128)
-		return 0;
-	if ((Channel == 36) || (Channel == 44)
-			|| (Channel == 52) || (Channel == 60)
-			|| (Channel == 100) || (Channel == 108)
-			|| (Channel == 116) || (Channel == 124)
-			|| (Channel == 132) || (Channel == 149)
-			|| (Channel == 157))
+	if ((Channel == 36) || (Channel == 44) || (Channel == 52) || (Channel == 60) || (Channel == 100) || (Channel == 108) ||
+	    (Channel == 116) || (Channel == 124) || (Channel == 132) || (Channel == 149) || (Channel == 157))
 	{
 		return 1;
 	}
-	else if ((Channel == 40) || (Channel == 48)
-			|| (Channel == 56) || (Channel == 64)
-			|| (Channel == 104) || (Channel == 112)
-			|| (Channel == 120) || (Channel == 128)
-			|| (Channel == 136) || (Channel == 153)
-			|| (Channel == 161))
+	else if ((Channel == 40) || (Channel == 48) || (Channel == 56) || (Channel == 64) || (Channel == 104) || (Channel == 112) ||
+			(Channel == 120) || (Channel == 128) || (Channel == 136) || (Channel == 153) || (Channel == 161))
 	{
 		return -1;
 	}
@@ -98,7 +85,7 @@ static inline VOID AutoChBssEntrySet(
 	IN CHAR Rssi)
 {
 	COPY_MAC_ADDR(pBss->Bssid, pBssid);
-	if (SsidLen > 0)
+	if (SsidLen > 0 && SsidLen <= MAX_LEN_OF_SSID)
 	{
 		/* 
 			For hidden SSID AP, it might send beacon with SSID len equal to 0,
@@ -266,15 +253,19 @@ static inline UCHAR SelectClearChannelRandom(
 
 #ifdef DOT11_N_SUPPORT
 			/* Check N-group of BW40 */
-			if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40 &&
-				(pAd->CommonCfg.vht_bw == VHT_BW_2040)) &&
+			if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40 
+#ifdef DOT11_VHT_AC
+				&&(pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+				) &&
 				!(pAd->ChannelList[i].Flags & CHANNEL_40M_CAP))
 				continue;
 
 #ifdef DOT11_VHT_AC
 			/* Check VHT-group of BW80 */
 			if (pAd->CommonCfg.vht_bw == VHT_BW_80 &&
-				!AC_ChannelGroupCheck(pAd, ch))
+				!(pAd->ChannelList[i].Flags & CHANNEL_80M_CAP) &&
+				!AC_ChannelGroupCheck(pAd, pAd->ChannelList[i].Channel))
 				continue;
 #endif /* DOT11_VHT_AC */
 #endif /* DOT11_N_SUPPORT */
@@ -301,7 +292,7 @@ static inline UCHAR SelectClearChannelRandom(
 		if (ch == 0)
 			ch = FirstChannel(pAd);
 	}
-	printk("%s(): Select Channel %d\n", __FUNCTION__, ch);
+	printk("Select Channel %d\n", ch);
 	return ch;
 
 }
@@ -353,12 +344,12 @@ static inline UCHAR SelectClearChannelCCA(
 			continue;
 
 
-		if (pBss->Rssi >= RSSI_TO_DBM_OFFSET-50)
+		if (pBss->Rssi >= -50)
 		{
 			/* high signal >= -50 dbm */
 			pChannelInfo->dirtyness[channel_idx] += 50;
 		}
-		else if (pBss->Rssi <= RSSI_TO_DBM_OFFSET-80)
+		else if (pBss->Rssi <= -80)
 		{
 			/* low signal <= -80 dbm */
 			pChannelInfo->dirtyness[channel_idx] += 30;
@@ -408,7 +399,7 @@ static inline UCHAR SelectClearChannelCCA(
 			/* check neighbor channel */
 			for (loop=(channel_idx-1); loop >= (channel_idx-BelowBound); loop--)
 			{
-				if (loop < 0)
+				if (loop < 0 || loop >= MAX_NUM_OF_CHANNELS)
 					break;
 
 				if (pAd->ChannelList[loop+1].Channel - pAd->ChannelList[loop].Channel > 4)
@@ -432,7 +423,11 @@ static inline UCHAR SelectClearChannelCCA(
 					pAd->ChannelList[channel_idx].Channel,
 					pChannelInfo->dirtyness[channel_idx],
 					pChannelInfo->FalseCCA[channel_idx],
+#ifdef AP_QLOAD_SUPPORT
 					pChannelInfo->chanbusytime[channel_idx],
+#else
+					0,
+#endif /* AP_QLOAD_SUPPORT */
 					(pChannelInfo->SkipList[channel_idx] == TRUE) ? "TRUE" : "FALSE");
 	}
 	printk("=====================================================\n");
@@ -473,8 +468,11 @@ static inline UCHAR SelectClearChannelCCA(
 				In the case, ignor all channel
 				doesn't support 40MHz Bandwidth.
 			*/
-			if (((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && 
-				(pAd->CommonCfg.vht_bw == VHT_BW_2040))
+			if (((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) 
+#ifdef DOT11_VHT_AC
+				&& (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+				)
 				&& (pChannelInfo->IsABand && (GetABandChOffset(pAd,ch) == 0))) {
 				continue;
 			}
@@ -494,13 +492,20 @@ static inline UCHAR SelectClearChannelCCA(
 			if (pAd->pChannelInfo->IsABand)
 					{
 				/* 5G Hz */
-				if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && 
-				(pAd->CommonCfg.vht_bw == VHT_BW_2040))
+				if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) 
+#ifdef DOT11_VHT_AC
+				&& (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+				)
 				{
 					if (((channel_idx + GetABandChOffset(pAd,ch)) >=0)
 							&& ((channel_idx + GetABandChOffset(pAd,ch)) < pAd->ChannelListNum))
 					{
 						INT ChOffsetIdx = channel_idx + GetABandChOffset(pAd,ch);
+
+						if (pChannelInfo->FalseCCA[ChOffsetIdx] > CCA_THRESHOLD)
+							continue;
+						
 						dirtyness += pChannelInfo->dirtyness[ChOffsetIdx];
 					}
 				}
@@ -508,7 +513,13 @@ static inline UCHAR SelectClearChannelCCA(
 				else if (pAd->CommonCfg.vht_bw == VHT_BW_80) {
 					/* the same dirtyness with neighbor */
 					INT	vht_ch_idx = get_vht_neighbor_index(ch);
-
+					
+					if ((pChannelInfo->FalseCCA[vht_ch_idx+channel_idx] > CCA_THRESHOLD) ||
+						(pChannelInfo->FalseCCA[vht_ch_idx+(channel_idx+1)] > CCA_THRESHOLD) ||
+						(pChannelInfo->FalseCCA[vht_ch_idx+(channel_idx+2)] > CCA_THRESHOLD) ||
+						(pChannelInfo->FalseCCA[vht_ch_idx+(channel_idx+3)] > CCA_THRESHOLD))
+						continue;
+					
 					if (vht_ch_idx != (MAX_NUM_OF_CHANNELS+1))
 					{
 						dirtyness = pChannelInfo->dirtyness[vht_ch_idx+channel_idx] +
@@ -561,11 +572,15 @@ static inline UCHAR SelectClearChannelCCA(
 		printk("Min Dirty = %u\n", min_dirty);
 		printk("ExChannel = %d , %d\n", candidate_ExChannel[0], candidate_ExChannel[1]);
 		if (pAd->CommonCfg.RegTransmitSetting.field.BW == BW_20)
-			DBGPRINT(RT_DEBUG_TRACE, ("BW        = %s\n", "20"));
-		else if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && (pAd->CommonCfg.vht_bw == VHT_BW_2040))
-			DBGPRINT(RT_DEBUG_TRACE, ("BW        = %s\n", "40"));
+			printk("BW        = %s\n", "20");
+		else if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40)
+#ifdef DOT11_VHT_AC
+		&& (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+		)
+			printk("BW        = %s\n", "40");
 		else
-			DBGPRINT(RT_DEBUG_TRACE, ("BW        = %s\n", "80"));
+			printk("BW        = %s\n", "80");
 		return ch;
 	}
 
@@ -585,8 +600,11 @@ static inline UCHAR SelectClearChannelCCA(
 			ch = pAd->ChannelList[channel_idx].Channel;
 
 #ifdef DOT11_N_SUPPORT
-			if (((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && 
-				(pAd->CommonCfg.vht_bw == VHT_BW_2040))
+			if (((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) 
+#ifdef DOT11_VHT_AC
+				&&(pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+				)
 				&& (pChannelInfo->IsABand && (GetABandChOffset(pAd,ch) == 0))) {
 				continue;
 			}
@@ -600,8 +618,12 @@ static inline UCHAR SelectClearChannelCCA(
 			}
 #endif /* DOT11_VHT_AC */
 
-			if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && 
-				(pAd->CommonCfg.vht_bw == VHT_BW_2040))
+			if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) 
+#ifdef DOT11_VHT_AC
+				&& (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+			)
+
 			{
 				if ((GetABandChOffset(pAd,ch) != 0)
 						&& ((channel_idx + GetABandChOffset(pAd,ch)) >=0)
@@ -666,20 +688,17 @@ static inline UCHAR SelectClearChannelCCA(
 		if (AutoChannelSkipListCheck(pAd, ch))
 			continue;
 		
-#ifdef A_BAND_SUPPORT
 		if ((pAd->ApCfg.bAvoidDfsChannel == TRUE)
 			&& (pChannelInfo->IsABand == TRUE)
 			&& RadarChannelCheck(pAd, ch))
 			continue;
-#endif
-
 #ifdef DOT11_VHT_AC
 		if (pAd->CommonCfg.vht_bw == VHT_BW_80) {
-			if (!AC_ChannelGroupCheck(pAd, ch)) { 
-				/* not in the BW_80 channel group */
-				continue;
+				if (!AC_ChannelGroupCheck(pAd, ch)) { 
+					/* not in the BW_80 channel group */
+					continue;
+				}
 			}
-		}
 #endif /* DOT11_VHT_AC */
 
 		break;
@@ -733,8 +752,11 @@ static inline UCHAR SelectClearChannelApCnt(
 				int Channel = pAd->ChannelList[channel_index].Channel;
 
 				/*Make secondary channel dirty */
-				if((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) &&
-				    (pAd->CommonCfg.vht_bw == VHT_BW_2040))
+			    if((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40)
+#ifdef DOT11_VHT_AC
+				 && (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+				)
 				{
 					if (Channel > 14)
 					{
@@ -763,8 +785,7 @@ static inline UCHAR SelectClearChannelApCnt(
 					}
 				}
 #ifdef DOT11_VHT_AC
-				else if(pAd->CommonCfg.vht_bw == VHT_BW_80) 
-				{
+				else if(pAd->CommonCfg.vht_bw == VHT_BW_80) {
 					INT	vht_ch_idx = get_vht_neighbor_index(pAd->ChannelList[channel_index].Channel);
 
 					if (vht_ch_idx != (MAX_NUM_OF_CHANNELS+1))
@@ -822,7 +843,7 @@ static inline UCHAR SelectClearChannelApCnt(
 
 				for (ll = channel_index - 1; ll > (channel_index - ChanOffset - 1); ll--)
 				{
-					if (ll >= 0)
+					if (ll >= 0 && ll < MAX_NUM_OF_CHANNELS+1)
 						pChannelInfo->dirtyness[ll]++;
 				}
 			}
@@ -838,7 +859,11 @@ static inline UCHAR SelectClearChannelApCnt(
 					pAd->ChannelList[channel_index].Channel,
 					pChannelInfo->dirtyness[channel_index], 
 					pChannelInfo->ApCnt[channel_index],
+#ifdef AP_QLOAD_SUPPORT
 					pChannelInfo->chanbusytime[channel_index],
+#else
+				0,
+#endif /* AP_QLOAD_SUPPORT */
 					(pChannelInfo->SkipList[channel_index] == TRUE) ? "TRUE" : "FALSE");
 	printk("=====================================================\n");
 
@@ -850,12 +875,12 @@ static inline UCHAR SelectClearChannelApCnt(
 	{
 		if (pChannelInfo->SkipList[channel_index] == TRUE)
 			continue;
-#ifdef A_BAND_SUPPORT
+		
 		if ((pAd->ApCfg.bAvoidDfsChannel == TRUE)
 				&&(pChannelInfo->IsABand == TRUE)
 				&& RadarChannelCheck(pAd, pAd->ChannelList[channel_index].Channel))
 			continue;
-#endif
+
 #ifdef AP_QLOAD_SUPPORT
 		/* QLOAD ALARM */
 		if (QBSS_LoadIsBusyTimeAccepted(pAd,
@@ -932,8 +957,11 @@ static inline UCHAR SelectClearChannelApCnt(
 				if (candidate[channel_index] && (pChannelInfo->ApCnt[channel_index] < min_ApCnt))
 				{
 
-					if(((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && 
-						(pAd->CommonCfg.vht_bw == VHT_BW_2040))
+					if(((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) 
+#ifdef DOT11_VHT_AC
+						&& (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+						)
 						&& (BW40_ChannelCheck(pAd->ChannelList[channel_index].Channel) == FALSE)) {
 						continue;
 					} 
@@ -946,12 +974,10 @@ static inline UCHAR SelectClearChannelApCnt(
 					}
 #endif /* DOT11_VHT_AC */
 
-#ifdef A_BAND_SUPPORT
 					if ((pAd->ApCfg.bAvoidDfsChannel == TRUE)
 							&&(pChannelInfo->IsABand == TRUE)
 							&& RadarChannelCheck(pAd, pAd->ChannelList[channel_index].Channel))
 						continue;
-#endif
 
 					final_channel = pAd->ChannelList[channel_index].Channel;
 					min_ApCnt = pChannelInfo->ApCnt[channel_index];
@@ -975,7 +1001,11 @@ static inline UCHAR SelectClearChannelApCnt(
 		if (AutoChannelSkipListCheck(pAd, final_channel))
 			continue;
 		
-		if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) && (pAd->CommonCfg.vht_bw == VHT_BW_2040))
+		if ((pAd->CommonCfg.RegTransmitSetting.field.BW == BW_40) 
+#ifdef DOT11_VHT_AC
+		&& (pAd->CommonCfg.vht_bw == VHT_BW_2040)
+#endif
+		)
 		{
 			if (!N_ChannelGroupCheck(pAd, pAd->ChannelList[channel_index].Channel)) 
 			{
@@ -992,12 +1022,10 @@ static inline UCHAR SelectClearChannelApCnt(
 		}
 #endif /* DOT11_VHT_AC */
 
-#ifdef A_BAND_SUPPORT
 		if ((pAd->ApCfg.bAvoidDfsChannel == TRUE)
 			&&(pChannelInfo->IsABand == TRUE)
 			&& RadarChannelCheck(pAd, final_channel))
 			continue;
-#endif
 		
 		break;
 	}
@@ -1031,13 +1059,13 @@ ULONG AutoChBssInsertEntry(
 		if (pBssInfoTab->BssNr >= MAX_LEN_OF_BSS_TABLE)
 			return BSS_NOT_FOUND;
 		Idx = pBssInfoTab->BssNr;
-		AutoChBssEntrySet(&pBssInfoTab->BssEntry[Idx], pBssid, Ssid, SsidLen,
+		AutoChBssEntrySet(&pBssInfoTab->BssEntry[Idx % MAX_LEN_OF_BSS_TABLE], pBssid, Ssid, SsidLen,
 							ChannelNo, ExtChOffset, Rssi);
 		pBssInfoTab->BssNr++;
 	} 
 	else
 	{
-		AutoChBssEntrySet(&pBssInfoTab->BssEntry[Idx], pBssid, Ssid, SsidLen,
+		AutoChBssEntrySet(&pBssInfoTab->BssEntry[Idx % MAX_LEN_OF_BSS_TABLE], pBssid, Ssid, SsidLen,
 							ChannelNo, ExtChOffset, Rssi);
 	}
 
@@ -1118,12 +1146,7 @@ UCHAR SelectBestChannel(RTMP_ADAPTER *pAd, ChannelSel_Alg Alg)
 
 	/* init pAd->pChannelInfo->IsABand */
 	CheckPhyModeIsABand(pAd);
-    
-#ifdef MICROWAVE_OVEN_SUPPORT
-	if (Alg == ChannelAlgCCA)
-		pAd->CommonCfg.MO_Cfg.bEnable = TRUE;
-#endif /* MICROWAVE_OVEN_SUPPORT */
-    
+
 	switch ( Alg )
 	{
 		case ChannelAlgRandom:
@@ -1144,7 +1167,7 @@ UCHAR SelectBestChannel(RTMP_ADAPTER *pAd, ChannelSel_Alg Alg)
 
 }
 
-VOID APAutoChannelInit(IN PRTMP_ADAPTER pAd)
+VOID APAutoChannelInit(RTMP_ADAPTER *pAd)
 {
 	UINT32 BusyTime;
 
@@ -1181,9 +1204,7 @@ VOID APAutoChannelInit(IN PRTMP_ADAPTER pAd)
                    Ues the False CCA count and Rssi to choose
 	==========================================================================
  */
-UCHAR APAutoSelectChannel(
-	IN PRTMP_ADAPTER pAd,
-	IN ChannelSel_Alg Alg)
+UCHAR APAutoSelectChannel(RTMP_ADAPTER *pAd, ChannelSel_Alg Alg)
 {
 	UCHAR ch = 0, i;
 
@@ -1203,12 +1224,6 @@ UCHAR APAutoSelectChannel(
 	}
 	else
 	{
-
-#ifdef MICROWAVE_OVEN_SUPPORT
-		pAd->CommonCfg.MO_Cfg.bEnable = FALSE;
-		AsicMeasureFalseCCA(pAd);
-#endif /* MICROWAVE_OVEN_SUPPORT */
-
 		/*find RSSI in each channel */
 		for (i=0; i<pAd->ChannelListNum; i++)
 		{
@@ -1235,4 +1250,48 @@ UCHAR APAutoSelectChannel(
 		
 	return ch;
 }
+
+
+#ifdef AP_SCAN_SUPPORT
+/*
+   ==========================================================================
+   Description:
+       trigger Auto Channel Selection every period of ACSCheckTime.
+
+   NOTE:
+       This function is called in a 1-sec mlme periodic check.
+   ==========================================================================
+ */
+VOID AutoChannelSelCheck(RTMP_ADAPTER *pAd)
+{
+   /* Do nothing if ACSCheckTime is not configured or AP is doing site survey */
+   if (pAd->ApCfg.ACSCheckTime == 0 || ApScanRunning(pAd))
+       return;
+   else
+       pAd->ApCfg.ACSCheckCount++;
+
+   if (pAd->ApCfg.ACSCheckCount >= pAd->ApCfg.ACSCheckTime)
+   {
+       /* Reset Counter */
+       pAd->ApCfg.ACSCheckCount = 0;
+
+       /* Do Auto Channel Selection only when no client is associated */
+       if (pAd->MacTab.Size != 0)
+       {
+           DBGPRINT(RT_DEBUG_TRACE,
+                   ("%s(): ignore Channel Selection checking because has %u associated clients\n",
+                   __FUNCTION__, pAd->MacTab.Size));
+           return;
+       }
+       else
+       {
+           /* Do Auto Channel Selection */
+           DBGPRINT(RT_DEBUG_TRACE,
+                   ("%s(): Scanning channels for channel selection.\n", __FUNCTION__));
+           ApSiteSurvey(pAd, NULL, SCAN_PASSIVE, TRUE);
+       }
+   }
+
+}
+#endif /* AP_SCAN_SUPPORT */
 

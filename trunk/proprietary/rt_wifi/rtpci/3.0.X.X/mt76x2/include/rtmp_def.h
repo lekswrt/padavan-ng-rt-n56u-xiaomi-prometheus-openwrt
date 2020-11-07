@@ -112,8 +112,6 @@
 #define MAX_NUM_OF_TUPLE_CACHE  2
 #define MAX_MCAST_LIST_SIZE     32
 #define MAX_LEN_OF_VENDOR_DESC  64
-/*#define MAX_SIZE_OF_MCAST_PSQ   (NUM_OF_LOCAL_TXBUF >> 2) // AP won't spend more than 1/4 of total buffers on M/BCAST PSQ */
-#define MAX_SIZE_OF_MCAST_PSQ               32
 
 #define MAX_RX_PROCESS_CNT	(RX_RING_SIZE)
 
@@ -141,11 +139,11 @@
 */
 
 #ifdef NOISE_TEST_ADJUST
-#define MAX_PACKETS_IN_MCAST_PS_QUEUE	128 /*64*/
-#define MAX_PACKETS_IN_PS_QUEUE			256 /*32 */
+#define MAX_PACKETS_IN_MCAST_PS_QUEUE       128 /*64*/
+#define MAX_PACKETS_IN_PS_QUEUE             256 /*32 */
 #else
-#define MAX_PACKETS_IN_MCAST_PS_QUEUE		32
-#define MAX_PACKETS_IN_PS_QUEUE				128	/*32 */
+#define MAX_PACKETS_IN_MCAST_PS_QUEUE       32
+#define MAX_PACKETS_IN_PS_QUEUE             128	/*32 */
 #endif /* NOISE_TEST_ADJUST */
 #define WMM_NUM_OF_AC                       4	/* AC0, AC1, AC2, and AC3 */
 
@@ -1676,7 +1674,7 @@ enum WIFI_MODE{
 #define REGION_4_A_BAND                   4	/* 149, 153, 157, 161, 165 */
 #define REGION_5_A_BAND                   5	/* 149, 153, 157, 161 */
 #define REGION_6_A_BAND                   6	/* 36, 40, 44, 48 */
-#define REGION_7_A_BAND                   7	/* 36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 149, 153, 157, 161, 165, 169, 173 */
+#define REGION_7_A_BAND                   7	/* 36, 40, 44, 48, 52, 56, 60, 64, 149, 153, 157, 161, 165 */
 #define REGION_8_A_BAND                   8	/* 52, 56, 60, 64 */
 #define REGION_9_A_BAND                   9	/* 36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 132, 136, 140, 149, 153, 157, 161, 165 */
 #define REGION_10_A_BAND                  10	/* 36, 40, 44, 48, 149, 153, 157, 161, 165 */
@@ -1717,16 +1715,20 @@ enum WIFI_MODE{
 #define PAIRWISE_KEY                1
 #define GROUP_KEY                   2
 
-
+#ifdef OPTIMISTIC_TRAINUP
+#define RA_TRAINDIV 1
+#else
+#define RA_TRAINDIV 2
+#endif /* OPTIMISTIC_TRAINUP */
 
 /* Rate Adaptation timing */
 #define RA_RATE		5					/* RA every fifth 100msec period */
 #define RA_INTERVAL		(RA_RATE*100)	/* RA Interval in msec */
 
 /* Rate Adaptation simpling interval setting */
-#define DEF_QUICK_RA_TIME_INTERVAL	100
-
-#define DEF_RA_TIME_INTRVAL			500
+#define DEF_QUICK_RA_TIME_INTERVAL		80 /* Quick RA 80 msec after rate change */
+#define DEF_RA_TIME_INTRVAL			400
+#define FASTRATEUPERRTH				20 /* < 20% errors to allow fast up rate */
 
 /*definition of DRS */
 #define MAX_TX_RATE_INDEX			50		/* Maximum Tx Rate Table Index value */
@@ -1748,8 +1750,8 @@ enum WIFI_MODE{
 #define I_ORIGINATOR                   FALSE
 
 #define DEFAULT_BBP_TX_POWER        0
-#define DEFAULT_RF_TX_POWER         5
-#define DEFAULT_BBP_TX_FINE_POWER_CTRL 0
+#define DEFAULT_RF_TX_POWER         8
+#define DEFAULT_MAX_TX_POWER        20
 
 #define MAX_INI_BUFFER_SIZE		10000 	/* 4096 */
 #define MAX_PARAM_BUFFER_SIZE		(2048)	/* enough for ACL (18*64) */
@@ -2061,7 +2063,7 @@ enum {
 #define	WPA_SUPPLICANT_ENABLE_WITH_WEB_UI	0x02
 #define	WPA_SUPPLICANT_ENABLE_WPS			0x80
 
-#ifdef MICROWAVE_OVEN_SUPPORT
+#if defined(MICROWAVE_OVEN_SUPPORT) || defined(DYNAMIC_VGA_SUPPORT)
 /* definition for mitigating microwave interference */
 #define MO_FALSE_CCA_TH	600
 #define MO_MEAS_PERIOD	0	/* 0 ~ 100 ms */

@@ -64,7 +64,7 @@ struct iw_priv_args ap_privtab[] = {
 { RTPRIV_IOCTL_E2P,
   IW_PRIV_TYPE_CHAR | 1024, IW_PRIV_TYPE_CHAR | 1024,
   "e2p"},
-#if defined(DBG) || defined(RALINK_ATE)
+#if defined(DBG) || (defined(BB_SOC) && defined(RALINK_ATE))
 { RTPRIV_IOCTL_BBP,
   IW_PRIV_TYPE_CHAR | 1024, IW_PRIV_TYPE_CHAR | 1024,
   "bbp"},
@@ -401,7 +401,7 @@ INT rt28xx_ap_ioctl(struct net_device *net_dev, struct ifreq *rq, int cmd)
 			RTMP_AP_IoctlHandle(pAd, wrq, CMD_RTPRIV_IOCTL_E2P, 0, NULL, 0);
 			break;
 
-#if defined(DBG) || defined(RALINK_ATE)
+#if defined(DBG) || (defined(BB_SOC) && defined(RALINK_ATE))
 		case RTPRIV_IOCTL_BBP:
 			RTMP_AP_IoctlHandle(pAd, wrq, CMD_RTPRIV_IOCTL_BBP, 0, NULL, 0);
 			break;

@@ -321,7 +321,7 @@ INT rtmp_bbp_get_agc(struct _RTMP_ADAPTER *pAd, CHAR *agc, RX_CHAIN_IDX chain)
 	UINT32 bbp_val, bbp_reg = AGC1_R8;
 
 
-	if (((pAd->MACVersion & 0xffff0000) < 0x28830000) || 
+	if (((pAd->MACVersion & 0xffff0000) <= 0x30900000) || 
 		(pAd->Antenna.field.RxPath == 1))
 	{
 		chain = RX_CHAIN_0;
@@ -355,7 +355,7 @@ INT rtmp_bbp_set_agc(struct _RTMP_ADAPTER *pAd, UCHAR agc, RX_CHAIN_IDX chain)
 	UCHAR idx = 0;
 	UINT32 bbp_val, bbp_reg = AGC1_R8;
 	
-	if (((pAd->MACVersion & 0xf0000000) < 0x28830000) || 
+	if (((pAd->MACVersion & 0xf0000000) <= 0x30900000) || 
 		(pAd->Antenna.field.RxPath == 1))
 	{
 		chain = RX_CHAIN_0;

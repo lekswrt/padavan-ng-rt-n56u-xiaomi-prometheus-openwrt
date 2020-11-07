@@ -291,9 +291,9 @@ static VOID ApCliMlmeAssocReqAction(
 	apcli_entry = &pAd->ApCfg.ApCliTab[ifIndex];
 	wdev = &apcli_entry->wdev;
 #ifdef APCLI_AUTO_BW_SUPPORT
-        PhyMode = wdev->PhyMode;
+	PhyMode = wdev->PhyMode;
 #endif /* APCLI_AUTO_BW_SUPPORT */
-		
+
 	/* Block all authentication request durning WPA block period */
 	if (apcli_entry->bBlockAssoc == TRUE)
 	{
@@ -360,6 +360,21 @@ static VOID ApCliMlmeAssocReqAction(
 		}
 
 #ifdef DOT11_N_SUPPORT
+		/*	
+			WFA recommend to restrict the encryption type in 11n-HT mode.
+			So, the WEP and TKIP are not allowed in HT rate.
+		*/
+		if (pAd->CommonCfg.HT_DisallowTKIP &&
+			IS_INVALID_HT_SECURITY(wdev->WepStatus))
+		{
+			/* Force to None-HT mode due to WiFi 11n policy */
+			apcli_entry->MlmeAux.HtCapabilityLen = 0;
+#ifdef DOT11_VHT_AC
+			apcli_entry->MlmeAux.vht_cap_len = 0;
+#endif /* DOT11_VHT_AC */
+			DBGPRINT(RT_DEBUG_TRACE, ("%s : Force AP-client as Non-HT mode\n", __FUNCTION__));
+		}
+
 		/* HT */
 		if ((apcli_entry->MlmeAux.HtCapabilityLen > 0) && 
 			WMODE_CAP_N(PhyMode))
@@ -389,7 +404,12 @@ static VOID ApCliMlmeAssocReqAction(
 				(pAd->CommonCfg.Channel > 14) &&
 				(apcli_entry->MlmeAux.vht_cap_len))
 			{
-                FrameLen += build_vht_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen), SUBTYPE_ASSOC_REQ);
+            		    FrameLen += build_vht_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen), SUBTYPE_ASSOC_REQ);
+
+            		    /* For VHT40 ApClient, Add the OP Noitfy IE to notify rootAP the STA current BW */
+            		    if ((apcli_entry->MlmeAux.HtCapability.HtCapInfo.ChannelWidth == BW_40) &&
+				    (pAd->CommonCfg.vht_bw == VHT_BW_2040))
+				FrameLen += build_vht_op_mode_ies(pAd, (UCHAR *)(pOutBuffer + FrameLen));
 			}
 #endif /* DOT11_VHT_AC */
 		}
@@ -618,15 +638,15 @@ static VOID ApCliMlmeAssocReqAction(
 #endif /* SMART_MESH_HIDDEN_WPS */
         if(bHasWscIe)
         {
-            os_alloc_mem(pAd, (UCHAR **) & pWscBuf, 512);
-    		if (pWscBuf != NULL) {
-    			NdisZeroMemory(pWscBuf, 512);
-    			WscBuildAssocReqIE(&pAd->ApCfg.ApCliTab[ifIndex].WscControl, pWscBuf, &WscIeLen);
+			os_alloc_mem(pAd, (UCHAR **) & pWscBuf, 512);
+			if (pWscBuf != NULL) {
+				NdisZeroMemory(pWscBuf, 512);
+				WscBuildAssocReqIE(&pAd->ApCfg.ApCliTab[ifIndex].WscControl, pWscBuf, &WscIeLen);
 
-    			MakeOutgoingFrame(pOutBuffer + FrameLen,
+				MakeOutgoingFrame(pOutBuffer + FrameLen,
     					           &WscTmpLen, WscIeLen, pWscBuf,END_OF_ARGS);
-    			FrameLen += WscTmpLen;
-    			os_free_mem(NULL, pWscBuf);
+				FrameLen += WscTmpLen;
+				os_free_mem(NULL, pWscBuf);
     		} 
     		else
     			DBGPRINT(RT_DEBUG_WARN,("%s:: WscBuf Allocate failed!\n",__FUNCTION__));
@@ -808,7 +828,9 @@ static VOID ApCliPeerAssocRspAction(
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
 	IE_LISTS *ie_list = NULL;
-	UCHAR   PhyMode = pAd->CommonCfg.PhyMode;
+#if defined(DOT11_VHT_AC) || defined(APCLI_AUTO_BW_SUPPORT)
+        UCHAR   PhyMode = pAd->CommonCfg.PhyMode;
+#endif
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -871,11 +893,9 @@ static VOID ApCliPeerAssocRspAction(
 				if (CliIdx == 0xFF)
 #endif /* MAC_REPEATER_SUPPORT */
 				{
-					ApCliAssocPostProc(pAd, Addr2, CapabilityInfo, ifIndex, SupRate, SupRateLen,
-						ExtRate, ExtRateLen, &EdcaParm, &HtCapability, HtCapabilityLen, &AddHtInfo);  	
-                    pAd->ApCfg.ApCliTab[0].MlmeAux.Aid = Aid;
-                    
-#ifdef DOT11_VHT_AC 
+					ApCliAssocPostProc(pAd, Addr2, CapabilityInfo, ifIndex, SupRate, SupRateLen, ExtRate, ExtRateLen, &EdcaParm, &HtCapability, HtCapabilityLen, &AddHtInfo);
+                			pAd->ApCfg.ApCliTab[0].MlmeAux.Aid = Aid;
+#ifdef DOT11_VHT_AC
 					RTMPZeroMemory(&pApCliEntry->MlmeAux.vht_cap, sizeof(VHT_CAP_IE));
 					RTMPZeroMemory(&pApCliEntry->MlmeAux.vht_op, sizeof(VHT_OP_IE));
 					pApCliEntry->MlmeAux.vht_cap_len = 0;
@@ -887,8 +907,8 @@ static VOID ApCliPeerAssocRspAction(
 						pApCliEntry->MlmeAux.vht_cap_len = ie_list->vht_cap_len;
 						NdisMoveMemory(&pApCliEntry->MlmeAux.vht_op, &(ie_list->vht_op), ie_list->vht_op_len);
 						pApCliEntry->MlmeAux.vht_op_len = ie_list->vht_op_len; 
-					}	
-#endif /* DOT11_VHT_AC */						
+					}
+#endif /* DOT11_VHT_AC */
 				}
 
 				ApCliCtrlMsg.Status = MLME_SUCCESS;
@@ -903,6 +923,9 @@ static VOID ApCliPeerAssocRspAction(
 			}
 			else
 			{
+				if(Status == MLME_ASSOC_REJ_DATA_RATE)
+					printk("APCLI_ASSOC - receive ASSOC_RSP reject - AP not support reqested rates or modes\n");
+
 				ApCliCtrlMsg.Status = Status;
 				MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_ASSOC_RSP,
 							sizeof(APCLI_CTRL_MSG_STRUCT), &ApCliCtrlMsg, ifIndex);

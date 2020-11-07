@@ -15,7 +15,7 @@
 VOID AsicGetTxPowerOffset(RTMP_ADAPTER *pAd, ULONG *TxPwr)
 {
 	CONFIGURATION_OF_TX_POWER_CONTROL_OVER_MAC CfgOfTxPwrCtrlOverMAC;
-	DBGPRINT(RT_DEBUG_INFO, ("-->AsicGetTxPowerOffset\n"));
+	DBGPRINT(RT_DEBUG_LOUD, ("-->AsicGetTxPowerOffset\n"));
 
 	NdisZeroMemory(&CfgOfTxPwrCtrlOverMAC, sizeof(CfgOfTxPwrCtrlOverMAC));
 
@@ -99,7 +99,7 @@ VOID AsicGetTxPowerOffset(RTMP_ADAPTER *pAd, ULONG *TxPwr)
 
 	NdisCopyMemory(TxPwr, (UCHAR *)&CfgOfTxPwrCtrlOverMAC, sizeof(CfgOfTxPwrCtrlOverMAC));
 
-	DBGPRINT(RT_DEBUG_INFO, ("<--AsicGetTxPowerOffset\n"));
+	DBGPRINT(RT_DEBUG_LOUD, ("<--AsicGetTxPowerOffset\n"));
 }
 
 

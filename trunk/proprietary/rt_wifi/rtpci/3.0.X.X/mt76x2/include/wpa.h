@@ -83,8 +83,8 @@
  	So, the WEP and TKIP shall not be allowed to use HT rate. 
  */
 #define IS_INVALID_HT_SECURITY(_mode)		\
-	(((_mode) == Ndis802_11Encryption1Enabled) || \
-	 ((_mode) == Ndis802_11Encryption2Enabled))
+	(((_mode) == Ndis802_11WEPEnabled) || \
+	 ((_mode) == Ndis802_11TKIPEnable))
 
 #define MIX_CIPHER_WPA_TKIP_ON(x)       (((x) & 0x08) != 0)
 #define MIX_CIPHER_WPA_AES_ON(x)        (((x) & 0x04) != 0)

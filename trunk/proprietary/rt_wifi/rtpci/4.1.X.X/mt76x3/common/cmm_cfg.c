@@ -217,7 +217,7 @@ UCHAR *wmode_2_str(UCHAR wmode)
 
 RT_802_11_PHY_MODE wmode_2_cfgmode(UCHAR wmode)
 {
-	INT i, mode_cnt = sizeof(CFG_WMODE_MAP) / sizeof(UCHAR);
+	INT i, mode_cnt = sizeof(CFG_WMODE_MAP) / (sizeof(UCHAR) * 2);
 
 	for (i = 1; i < mode_cnt; i+=2)
 	{	
@@ -1066,6 +1066,9 @@ INT RTMP_COM_IoctlHandle(
 					extern VOID  APUpdateAllBeaconFrame(IN PRTMP_ADAPTER pAd);
 					APMakeAllBssBeacon(pAd);
 					APUpdateAllBeaconFrame(pAd);
+
+					if (pAd->Dot11_H.RDMode == RD_NORMAL_MODE)
+						AsicEnableBssSync(pAd, pAd->CommonCfg.BeaconPeriod);
 				}
 #endif /* CONFIG_AP_SUPPORT */
 			}
@@ -2596,21 +2599,20 @@ INT	Set_RadioOn_Proc(
 	pAd->iwpriv_command = FALSE;
 #ifdef MT_MAC
 	if (pAd->chipCap.hif_type == HIF_MT) {
-		pAd->iwpriv_command = TRUE;		
+	    pAd->iwpriv_command = TRUE;
 	}
 #endif /* MT_MAC */
-
 	if (radio)
 	{
-		MlmeRadioOn(pAd);
-		DBGPRINT(RT_DEBUG_OFF, ("==>Set_RadioOn_Proc (ON)\n"));
+	    MlmeRadioOn(pAd);
+	    DBGPRINT(RT_DEBUG_OFF, ("==>Set_RadioOn_Proc (ON)\n"));
 	}
 	else
 	{
-		MlmeRadioOff(pAd);
-		DBGPRINT(RT_DEBUG_OFF, ("==>Set_RadioOn_Proc (OFF)\n"));
+	    MacTableReset(pAd, 1);
+	    RtmpusecDelay(3000);
+	    MlmeRadioOff(pAd);
+	    DBGPRINT(RT_DEBUG_OFF, ("==>Set_RadioOn_Proc (OFF)\n"));
 	}
-
 	return TRUE;
 }
-

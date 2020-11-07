@@ -59,7 +59,6 @@ static INT desc_ring_free(RTMP_ADAPTER *pAd, RTMP_DMABUF *pDescRing)
 	return TRUE;
 }
 
-
 #ifdef RESOURCE_PRE_ALLOC
 VOID RTMPResetTxRxRingMemory(RTMP_ADAPTER *pAd)
 {
@@ -72,7 +71,7 @@ VOID RTMPResetTxRxRingMemory(RTMP_ADAPTER *pAd)
 	UCHAR tx_hw_info[TXD_SIZE];
 #endif /* RT_BIG_ENDIAN */
 	PNDIS_PACKET pPacket;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 
 	RTMP_IRQ_LOCK(&pAd->irq_lock, IrqFlags);
 
@@ -531,7 +530,7 @@ NDIS_STATUS RTMPInitTxRxRingMemory(RTMP_ADAPTER *pAd)
 	pAd->PrivateInfo.TxRingFullCnt = 0;
 	/* Init timer to flush completed packets from TX queues */
 	RTMPInitTimer(pAd, &pAd->TxDoneCleanupTimer, GET_TIMER_FUNCTION(TxDoneCleanupExec), pAd, FALSE);
-
+		
 	return Status;
 
 }
@@ -1119,7 +1118,7 @@ VOID RTMPFreeTxRxRingMemory(RTMP_ADAPTER *pAd)
 	UCHAR tx_hw_info[TXD_SIZE];
 #endif /* RT_BIG_ENDIAN */
 	PNDIS_PACKET pPacket;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 	RTMP_DMACB *dma_cb;
 
 	DBGPRINT(RT_DEBUG_TRACE, ("--> RTMPFreeTxRxRingMemory\n"));
@@ -1412,7 +1411,7 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 	QUEUE_ENTRY *pEntry;
 	PNDIS_PACKET pPacket;
 	RTMP_TX_RING *pTxRing;
-	ULONG IrqFlags;
+	ULONG IrqFlags = 0;
 	int i, ring_id;
 
 	/*
@@ -1426,9 +1425,14 @@ VOID RTMPRingCleanUp(RTMP_ADAPTER *pAd, UCHAR RingType)
 		case QID_AC_VI:
 		case QID_AC_VO:
 		case QID_HCCA:
-			
+
+			if (NUM_OF_TX_RING <= RingType)
+			{
+				break;
+			}
+
 			pTxRing = &pAd->TxRing[RingType];
-			
+
 			RTMP_IRQ_LOCK(&pAd->irq_lock, IrqFlags);
 			for (i=0; i<TX_RING_SIZE; i++) /* We have to scan all TX ring*/
 			{
@@ -1829,9 +1833,8 @@ VOID RT28xx_UpdateBeaconToAsic(
 			RTMP_CHIP_UPDATE_BEACON(pAd, pAd->BeaconOffset[bcn_idx] + i, longptr, 4);
 			ptr += 4;
 		}
-
-		/* Update CapabilityInfo in Beacon*/
 #ifdef RT6352
+		/* Update CapabilityInfo in Beacon*/
 		if (IS_RT6352(pAd))
 		{
 			/* Update CapabilityInfo in Beacon*/
@@ -1851,7 +1854,7 @@ VOID RT28xx_UpdateBeaconToAsic(
 			}
 		}
 		else
-#endif
+#endif /* RT6352 */
 		{
 			if (wr_bytes > 1)
 				CapInfoPos = (CapInfoPos & (~(wr_bytes - 1)));
@@ -1942,11 +1945,11 @@ VOID RT28xxPciStaAsicForceWakeup(RTMP_ADAPTER *pAd, BOOLEAN bFromTx)
     else
 #endif /* PCIE_PS_SUPPORT */
     {
-    	BOOLEAN	Canceled;
-	
-        /* PCI, 2860-PCIe*/
-         DBGPRINT(RT_DEBUG_TRACE, ("<==RT28xxPciStaAsicForceWakeup::Original PCI Power Saving\n"));
 #ifdef MT76x2
+    		BOOLEAN	Canceled;
+
+    		/* PCI, 2860-PCIe*/
+        	DBGPRINT(RT_DEBUG_TRACE, ("<==RT28xxPciStaAsicForceWakeup::Original PCI Power Saving\n"));
 		if (IS_MT76x2(pAd))
 		{
 			RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_MCU_SEND_IN_BAND_CMD);
@@ -2079,21 +2082,20 @@ VOID PsPollWakeExec(
 	IN PVOID SystemSpecific2, 
 	IN PVOID SystemSpecific3) 
 {
+#ifdef PCIE_PS_SUPPORT
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)FunctionContext;
 	unsigned long flags;
 
     DBGPRINT(RT_DEBUG_TRACE,("-->PsPollWakeExec \n"));
 
 	RTMP_INT_LOCK(&pAd->irq_lock, flags);
-#ifdef PCIE_PS_SUPPORT
     if (pAd->Mlme.bPsPollTimerRunning)
     {
 	    RTMPPCIeLinkCtrlValueRestore(pAd, RESTORE_WAKEUP);
 		pAd->Mlme.bPsPollTimerRunning = FALSE;
     }
-#endif /* PCIE_PS_SUPPORT */
 	RTMP_INT_UNLOCK(&pAd->irq_lock, flags);
-
+#endif /* PCIE_PS_SUPPORT */
 #ifdef MT76x2
 	if (IS_MT76x2(pAd))
 		AsicForceWakeup(pAd,FALSE);
@@ -2339,27 +2341,24 @@ BOOLEAN RT28xxPciAsicRadioOn(RTMP_ADAPTER *pAd, UCHAR Level)
  */
 BOOLEAN RT28xxPciAsicRadioOff(
 	IN RTMP_ADAPTER *pAd,
-	IN UCHAR Level, 
-	IN USHORT TbttNumToNextWakeUp) 
+	IN UCHAR Level,
+	IN USHORT TbttNumToNextWakeUp)
 {
 #ifdef CONFIG_STA_SUPPORT
-#ifdef RTMP_BBP
-	UCHAR tempBBP_R3 = 0;
-#endif /* RTMP_BBP */
+	UCHAR		tempBBP_R3 = 0;
 #ifdef PCIE_PS_SUPPORT
-	UCHAR		i;
-    ULONG		BeaconPeriodTime;
+	ULONG		BeaconPeriodTime;
 	UINT32		PsPollTime = 0/*, MACValue*/;
 	UINT32		TbTTTime = 0;
 	BOOLEAN		Cancelled;
-#endif /* PCIE_PS_SUPPORT */	
-#endif /* CONFIG_STA_SUPPORT */
-#if (defined(CONFIG_STA_SUPPORT) && defined(PCIE_PS_SUPPORT)) || defined(RT2860)
+#if defined(CONFIG_STA_SUPPORT) || defined(RT2860)
 	BOOLEAN		brc = FALSE;
-#endif /*(defined(CONFIG_STA_SUPPORT) && defined(PCIE_PS_SUPPORT)) || defined(RT2860) */
+#endif /* defined(CONFIG_STA_SUPPORT) || defined(RT2860) */
+#endif /* PCIE_PS_SUPPORT */
+#endif /* CONFIG_STA_SUPPORT */
 
 
-    UINT32 RxDmaIdx, RxCpuIdx;
+	UINT32 RxDmaIdx, RxCpuIdx;
 	DBGPRINT(RT_DEBUG_TRACE, ("%s ===> Lv= %d, TxCpuIdx = %d, TxDmaIdx = %d. RxCpuIdx = %d, RxDmaIdx = %d.\n", 
 								__FUNCTION__, Level,pAd->TxRing[0].TxCpuIdx, pAd->TxRing[0].TxDmaIdx, 
 								pAd->RxRing[0].RxCpuIdx, pAd->RxRing[0].RxDmaIdx));
@@ -2734,7 +2733,7 @@ VOID RT28xxPciMlmeRadioOFF(RTMP_ADAPTER *pAd)
 #ifdef AP_SCAN_SUPPORT
 	{
 		BOOLEAN Cancelled;
-		RTMPCancelTimer(&pAd->MlmeAux.APScanTimer, &Cancelled);
+		RTMPReleaseTimer(&pAd->MlmeAux.APScanTimer, &Cancelled);
 	}
 #endif /* AP_SCAN_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
@@ -2878,12 +2877,12 @@ int read_reg(RTMP_ADAPTER *ad, UINT32 base, UINT16 offset, UINT32 *value)
 
 INT rtmp_irq_init(RTMP_ADAPTER *pAd)
 {
-	unsigned long _irqFlags;
 	UINT32 reg_mask = 0;
+	unsigned long _irqFlags = 0;
 
 #ifdef RLT_MAC
 	if (pAd->chipCap.hif_type == HIF_RLT) {
-		if(IS_MT76x2(pAd))
+		if (IS_MT76x2(pAd))
 			reg_mask = (RLT_DELAYINTMASK) |(RLT_RxINT|RLT_76x2TxDataInt|RLT_TxMgmtInt);
 		else
 			reg_mask = (RLT_DELAYINTMASK) |(RLT_RxINT|RLT_TxDataInt|RLT_TxMgmtInt);
@@ -2903,6 +2902,5 @@ INT rtmp_irq_init(RTMP_ADAPTER *pAd)
 
 	return 0;
 }
-
 #endif /* RTMP_MAC_PCI */
 

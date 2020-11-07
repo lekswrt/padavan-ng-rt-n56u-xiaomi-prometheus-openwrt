@@ -215,8 +215,10 @@ int andes_pci_erasefw(RTMP_ADAPTER *ad)
 	int ret = NDIS_STATUS_SUCCESS;
 	u32 ilm_len, dlm_len;
 	u16 fw_ver, build_ver;
-	u32 loop = 0, idx = 0/*, val = 0*/;
-	u32 mac_value;
+#ifdef DBG
+	u32 loop = 0;
+#endif
+	u32 idx = 0, mac_value;
 	u32 start_offset, end_offset;
 	RTMP_CHIP_CAP *cap = &ad->chipCap;
 	
@@ -484,21 +486,21 @@ loadfw_protect:
 
 		if (e2p_type == E2P_FLASH_MODE)
 		{
-			USHORT ee_val = 0;
-			
-			rtmp_nv_init(ad);
-			rtmp_ee_flash_read(ad, EEPROM_NIC3_OFFSET, &ee_val);
-			ad->NicConfig3.word = ee_val;
-			if (ad->NicConfig3.field.XtalOption == 0x1)
-			{
-				/*
-					MAC 730 bit [30] = 1: Co-Clock Enable
-				*/
-				RTMP_IO_READ32(ad, COM_REG0, &mac_value);
-				mac_value |= (1 << 30);
-				RTMP_IO_WRITE32(ad, COM_REG0, mac_value);
-			}
+		USHORT ee_val = 0;
+		
+		rtmp_nv_init(ad);
+		rtmp_ee_flash_read(ad, EEPROM_NIC3_OFFSET, &ee_val);
+		ad->NicConfig3.word = ee_val;
+		if (ad->NicConfig3.field.XtalOption == 0x1)
+		{
+			/*
+				MAC 730 bit [30] = 1: Co-Clock Enable
+			*/
+			RTMP_IO_READ32(ad, COM_REG0, &mac_value);
+			mac_value |= (1 << 30);
+			RTMP_IO_WRITE32(ad, COM_REG0, mac_value);
 		}
+	}
 	}
 #endif /* MT76x2 */
 #endif /* RTMP_FLASH_SUPPORT */
@@ -790,7 +792,6 @@ static u32 andes_queue_len(struct MCU_CTRL *ctl, DL_LIST *list)
 
 	return qlen;
 }
-
 
 static void andes_queue_init(struct MCU_CTRL *ctl, DL_LIST *list)
 {
@@ -1452,7 +1453,7 @@ retransmit:
 #ifdef RTMP_PCI_SUPPORT
 	RTMP_SPIN_UNLOCK(&ad->mcu_atomic);
 	RtmpOsMsDelay(10);
-#endif
+#endif 
 	
 	return ret;
 }
@@ -1910,7 +1911,7 @@ int andes_random_write(RTMP_ADAPTER *ad, RTMP_REG_PAIR *reg_pair, u32 num)
 			/* UpdateData */
 			value = cpu2le32(reg_pair[i + cur_index].Value);
 			andes_append_cmd_msg(msg, (char *)&value, 4);
-		};
+		}
 
 		ret = andes_send_cmd_msg(ad, msg);
 
@@ -2420,10 +2421,10 @@ int andes_dynamic_vga(RTMP_ADAPTER *ad, UINT8 channel, BOOLEAN mode, BOOLEAN ext
 
 	if (ext == TRUE)
 		value |= 0x40000000;
-
+#ifdef ED_MONITOR
 	if (ad->ed_chk == TRUE)
 		value |= 0x20000000;
-		
+#endif
 	value |= channel;
 	value = cpu2le32(value);
 	andes_append_cmd_msg(msg, (char *)&value, 4);

@@ -40,7 +40,7 @@ struct _RTMP_ADAPTER;
 #ifdef RTMP_FLASH_SUPPORT
 #ifdef RTMP_MAC_PCI
 
-#define EEPROM_DEFAULT_FILE_PATH			"/etc_ro/Wireless/MT7610E-V10-FEM.bin"
+#define EEPROM_DEFAULT_FILE_PATH			"/etc/Wireless/MT7610E-V10-FEM.bin"
 
 #endif /* RTMP_MAC_PCI */
 
@@ -306,9 +306,14 @@ VOID MT76x0_TemperatureCompensation(
 VOID MT76x0_Read_TSSI_From_EEPROM( 
 	IN struct _RTMP_ADAPTER *pAd);
 
+
+VOID MT76x0Check_RXIQ_Result(
+    IN struct _RTMP_ADAPTER *pAd);
+
 #define MT7610_TS_STATE_NORMAL 0x00
 #define MT7610_TS_STATE_HIGH   0x01
 #define MT7610_TS_STATE_LOW    0x02
 
-#endif /* __MT76x0_H__ */
+void percentage_delta_pwr(struct _RTMP_ADAPTER *ad);
 
+#endif /* __MT76x0_H__ */

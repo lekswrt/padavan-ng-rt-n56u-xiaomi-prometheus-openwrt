@@ -259,6 +259,7 @@ RTMP_DECLARE_DRV_OPS_FUNCTION(pci);
 #define RTMP_IRQ_LOCK(__lock, __irqflags)			\
 {													\
 	__irqflags = 0;									\
+	typecheck(unsigned long, __irqflags);						\
 	spin_lock_irqsave((spinlock_t *)(__lock), __irqflags);			\
 }
 
@@ -270,6 +271,7 @@ RTMP_DECLARE_DRV_OPS_FUNCTION(pci);
 #define RTMP_IRQ_LOCK(__lock, __irqflags)		\
 {												\
 	__irqflags = 0;								\
+	typecheck(unsigned long, __irqflags);				\
 	RtmpOsSpinLockBh(__lock);					\
 }
 
@@ -397,23 +399,18 @@ extern RTMP_USB_CONFIG *pRtmpUsbConfig;
 #define APCLI_IF_UP_CHECK(pAd, ifidx) (RtmpOSNetDevIsUp((pAd)->ApCfg.ApCliTab[(ifidx)].dev) == TRUE)
 
 #ifdef RTMP_MAC_PCI
-#ifdef MEMORY_OPTIMIZATION
-#define TX_RING_SIZE            64
-#define MGMT_RING_SIZE          32
-#define RX_RING_SIZE            64
-#else /* MEMORY_OPTIMIZATION */
-#ifdef DOT11_VHT_AC
-#define TX_RING_SIZE            128 /* 64 */ /*64 */
-#define RX_RING_SIZE            128 /*64 */
+#define TX_RING_SIZE            256
+/* for MT_MAC RX ring size must me = Tx ring size */
+#ifdef MT_MAC
+#define RX_RING_SIZE            TX_RING_SIZE
 #else
-#define TX_RING_SIZE            128 /*64 */
-#define RX_RING_SIZE            128 /*64 */
-#endif /* DOT11_VHT_AC */
+#define RX_RING_SIZE            128
+#endif
+
 #define MGMT_RING_SIZE          128
-#endif /* !MEMORY_OPTIMIZATION */
-#define MAX_TX_PROCESS          TX_RING_SIZE /*8 */
+#define MAX_TX_PROCESS          TX_RING_SIZE
 #define MAX_DMA_DONE_PROCESS    TX_RING_SIZE
-#define MAX_TX_DONE_PROCESS     TX_RING_SIZE /*8 */
+#define MAX_TX_DONE_PROCESS     TX_RING_SIZE
 #endif /* RTMP_MAC_PCI */
 
 #define RTMP_OS_NETDEV_SET_PRIV		RtmpOsSetNetDevPriv

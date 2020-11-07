@@ -189,7 +189,7 @@ INT Show_AGS_Proc(
     IN  PRTMP_ADAPTER	pAd, 
     IN  PSTRING arg)
 {
-	MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[1];
+	MAC_TABLE_ENTRY __maybe_unused *pEntry = &pAd->MacTab.Content[1];
 	UINT32 IdQuality;
 
 
@@ -465,7 +465,7 @@ VOID MlmeDynamicTxRateSwitchingAGS(
 				UpRateIdx, DownRateIdx));
 
 #ifdef DOT11_N_SUPPORT
-	if ((pAGSStatisticsInfo->RSSI > -65) && (pCurrTxRate->Mode >= MODE_HTMIX))
+	if ((pAGSStatisticsInfo->RSSI > -65) && (pCurrTxRate->Mode == MODE_HTMIX))
 	{
 		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> 1));
 		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> 1));
@@ -645,9 +645,9 @@ VOID MlmeDynamicTxRateSwitchingAGS(
 		BOOLEAN	bTrainUpDown = FALSE;
 
 		DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA,
-					("%s: AGS: TxQuality[CurrRateIdx(%d)] = %d, UpPenalty:%d\n",
+					("%s: AGS: TxQuality[CurrRateIdx(%d)] = %d\n",
 					__FUNCTION__, CurrRateIdx,
-					pEntry->TxQuality[CurrRateIdx], pEntry->TxRateUpPenalty));
+					pEntry->TxQuality[CurrRateIdx]));
 			
 		if (pAGSStatisticsInfo->TxErrorRatio >= TrainDown) /* Poor quality */
 		{
@@ -663,27 +663,21 @@ VOID MlmeDynamicTxRateSwitchingAGS(
 			bUpgradeQuality = TRUE;
 
 			DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA,
-				("%s: AGS: (UP) pEntry->TxQuality[CurrRateIdx] = %d, pEntry->TxRateUpPenalty = %d\n",
+				("%s: AGS: (UP) pEntry->TxQuality[CurrRateIdx] = %d\n",
 				__FUNCTION__, 
-				pEntry->TxQuality[CurrRateIdx], 
-				pEntry->TxRateUpPenalty));
+				pEntry->TxQuality[CurrRateIdx]));
 			
 			if (pEntry->TxQuality[CurrRateIdx])
 				pEntry->TxQuality[CurrRateIdx]--;	/* Good quality in the current Tx rate */
 
-			if (pEntry->TxRateUpPenalty) 
-				pEntry->TxRateUpPenalty--;	/* no use for the parameter */
-			else
-			{
-				if (pEntry->TxQuality[pCurrTxRate->upMcs3] && (pCurrTxRate->upMcs3 != CurrRateIdx))
-					pEntry->TxQuality[pCurrTxRate->upMcs3]--;
+			if (pEntry->TxQuality[pCurrTxRate->upMcs3] && (pCurrTxRate->upMcs3 != CurrRateIdx))
+				pEntry->TxQuality[pCurrTxRate->upMcs3]--;
 				
-				if (pEntry->TxQuality[pCurrTxRate->upMcs2] && (pCurrTxRate->upMcs2 != CurrRateIdx))
-					pEntry->TxQuality[pCurrTxRate->upMcs2]--;
+			if (pEntry->TxQuality[pCurrTxRate->upMcs2] && (pCurrTxRate->upMcs2 != CurrRateIdx))
+				pEntry->TxQuality[pCurrTxRate->upMcs2]--;
 				
-				if (pEntry->TxQuality[pCurrTxRate->upMcs1] && (pCurrTxRate->upMcs1 != CurrRateIdx))
-					pEntry->TxQuality[pCurrTxRate->upMcs1]--;
-			}
+			if (pEntry->TxQuality[pCurrTxRate->upMcs1] && (pCurrTxRate->upMcs1 != CurrRateIdx))
+				pEntry->TxQuality[pCurrTxRate->upMcs1]--;
 		}
 		else if (pEntry->AGSCtrl.MCSGroup > 0) /* even if TxErrorRatio > TrainUp */
 		{
@@ -748,7 +742,6 @@ VOID MlmeDynamicTxRateSwitchingAGS(
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));
 		
 		pEntry->LastSecTxRateChangeAction = RATE_UP;
-		pEntry->TxRateUpPenalty = 0;
 		RTMPZeroMemory(pEntry->PER, sizeof(UCHAR) * (MAX_TX_RATE_INDEX+1));
 		pEntry->AGSCtrl.lastRateIdx = CurrRateIdx;
 
@@ -761,7 +754,6 @@ VOID MlmeDynamicTxRateSwitchingAGS(
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));
 		
 		pEntry->LastSecTxRateChangeAction = RATE_DOWN;
-		pEntry->TxRateUpPenalty = 0; /* No penalty */
 		pEntry->TxQuality[pEntry->CurrTxRateIndex] = 0;
 		pEntry->PER[pEntry->CurrTxRateIndex] = 0;
 		pEntry->AGSCtrl.lastRateIdx = CurrRateIdx;
@@ -877,6 +869,8 @@ VOID StaQuickResponeForRateUpExecAGS(
 
 	pAd->StaCfg.StaQuickResponeForRateUpTimerRunning = FALSE;
 
+	ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
+
 	DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,
 		("%s: QuickAGS: AccuTxTotalCnt = %lu, TxSuccess = %lu, "
 		"TxRetransmit = %lu, TxFailCount = %lu, TxErrorRatio = %lu\n",
@@ -896,7 +890,7 @@ VOID StaQuickResponeForRateUpExecAGS(
 
 	pCurrTxRate = (RTMP_RA_AGS_TB *)(&pTable[(CurrRateIdx + 1) * SIZE_OF_AGS_RATE_TABLE_ENTRY]);
 
-	if ((pAGSStatisticsInfo->RSSI > -65) && (pCurrTxRate->Mode >= MODE_HTMIX))
+	if ((pAGSStatisticsInfo->RSSI > -65) && (pCurrTxRate->Mode == MODE_HTMIX))
 	{
 		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> 1));
 		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> 1));
@@ -1040,7 +1034,6 @@ VOID StaQuickResponeForRateUpExecAGS(
 		DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA, ("%s: QuickAGS: ++TX rate from %d to %d\n", 
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));	
 		
-		pEntry->TxRateUpPenalty = 0;
 		pEntry->TxQuality[pEntry->CurrTxRateIndex] = 0; /*restore the TxQuality from max to 0 */
 		RTMPZeroMemory(pEntry->PER, sizeof(UCHAR) * (MAX_TX_RATE_INDEX+1));
 	}
@@ -1050,7 +1043,6 @@ VOID StaQuickResponeForRateUpExecAGS(
 		DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA, ("%s: QuickAGS: --TX rate from %d to %d\n", 
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));
 		
-		pEntry->TxRateUpPenalty = 0; /* No penalty */
 		pEntry->TxQuality[pEntry->CurrTxRateIndex] = 0;
 		pEntry->PER[pEntry->CurrTxRateIndex] = 0;
 	}
@@ -1106,7 +1098,7 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 
 
 	DBGPRINT_RAW(RT_DEBUG_TRACE, ("AGS: ---> %s\n", __FUNCTION__));
-	
+#ifndef MULTI_CLIENT_SUPPORT
 	if (pAd->MacTab.Size == 1)
 	{
 		TX_STA_CNT1_STRUC	StaTx1;
@@ -1124,6 +1116,7 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 			TxErrorRatio = ((TxRetransmit + TxFailCount) * 100) / TxTotalCnt;
 	}
 	else
+#endif
 	{
 		TxRetransmit = pEntry->OneSecTxRetryOkCount;
 		TxSuccess = pEntry->OneSecTxNoRetryOkCount;
@@ -1135,26 +1128,25 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 	}
 
 #ifdef FIFO_EXT_SUPPORT
-		if (NicGetMacFifoTxCnt(pAd, pEntry))
-		{
-			ULONG 	HwTxCnt, HwErrRatio;
+	if (NicGetMacFifoTxCnt(pAd, pEntry))
+	{
+		ULONG HwTxCnt, HwErrRatio = 0;
 
-			HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
-			if (HwTxCnt)
-				HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
-			else
-				HwErrRatio = 0;
-			DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s()=>Wcid:%d, MCS:%d, TxErrRatio(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n", 
-					__FUNCTION__, pEntry->wcid, pEntry->HTPhyMode.field.MCS, 
-					HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
+		HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
+		if (HwTxCnt)
+			HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
 
-			TxSuccess = pEntry->fifoTxSucCnt;
-			TxRetransmit = pEntry->fifoTxRtyCnt;
-			TxTotalCnt = HwTxCnt;
-			TxErrorRatio = HwErrRatio;
+		DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s()=>Wcid:%d, MCS:%d, TxErrRatio(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n", 
+				__FUNCTION__, pEntry->wcid, pEntry->HTPhyMode.field.MCS, 
+				HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
 
-			ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
-		}
+		TxSuccess = pEntry->fifoTxSucCnt;
+		TxRetransmit = pEntry->fifoTxRtyCnt;
+		TxTotalCnt = HwTxCnt;
+		TxErrorRatio = HwErrRatio;
+
+		ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
+	}
 #endif /*  FIFO_EXT_SUPPORT */
 
 	AGSStatisticsInfo.RSSI = RTMPAvgRssi(pAd, &pEntry->RssiSample);
@@ -1398,7 +1390,7 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 				UpRateIdx, DownRateIdx));
 
 #ifdef DOT11_N_SUPPORT
-	if ((AGSStatisticsInfo.RSSI > -65) && (pCurrTxRate->Mode >= MODE_HTMIX))
+	if ((AGSStatisticsInfo.RSSI > -65) && (pCurrTxRate->Mode == MODE_HTMIX))
 	{
 		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> 1));
 		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> 1));
@@ -1610,9 +1602,9 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 		BOOLEAN	bTrainUpDown = FALSE;
 		
 		DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA,
-					("%s: AGS: TxQuality[CurrRateIdx(%d)] = %d, UpPenalty:%d\n",
+					("%s: AGS: TxQuality[CurrRateIdx(%d)] = %d\n",
 					__FUNCTION__, CurrRateIdx,
-					pEntry->TxQuality[CurrRateIdx], pEntry->TxRateUpPenalty));
+					pEntry->TxQuality[CurrRateIdx]));
 			
 		if (AGSStatisticsInfo.TxErrorRatio >= TrainDown) /* Poor quality */
 		{
@@ -1628,18 +1620,13 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 			bUpgradeQuality = TRUE;
 			
 			DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA,
-				("%s: AGS: (UP) pEntry->TxQuality[CurrRateIdx] = %d, pEntry->TxRateUpPenalty = %d\n",
+				("%s: AGS: (UP) pEntry->TxQuality[CurrRateIdx] = %d\n",
 				__FUNCTION__, 
-				pEntry->TxQuality[CurrRateIdx], 
-				pEntry->TxRateUpPenalty));
+				pEntry->TxQuality[CurrRateIdx]));
 			
 			if (pEntry->TxQuality[CurrRateIdx])
 				pEntry->TxQuality[CurrRateIdx]--;	/* Good quality in the current Tx rate */
 
-			if (pEntry->TxRateUpPenalty)
-				pEntry->TxRateUpPenalty--;	/* no use for the parameter */
-			else
-			{
 				if (pEntry->TxQuality[pCurrTxRate->upMcs3] && (pCurrTxRate->upMcs3 != CurrRateIdx))
 					pEntry->TxQuality[pCurrTxRate->upMcs3]--;
 				
@@ -1648,7 +1635,6 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 				
 				if (pEntry->TxQuality[pCurrTxRate->upMcs1] && (pCurrTxRate->upMcs1 != CurrRateIdx))
 					pEntry->TxQuality[pCurrTxRate->upMcs1]--;
-			}
 		}
 		else if (pEntry->AGSCtrl.MCSGroup > 0) /* even if TxErrorRatio > TrainUp */
 		{
@@ -1713,7 +1699,6 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));
 		
 		pEntry->LastSecTxRateChangeAction = RATE_UP;
-		pEntry->TxRateUpPenalty = 0;
 		RTMPZeroMemory(pEntry->PER, sizeof(UCHAR) * (MAX_TX_RATE_INDEX+1));
 		pEntry->AGSCtrl.lastRateIdx = CurrRateIdx;
 
@@ -1726,7 +1711,6 @@ VOID ApMlmeDynamicTxRateSwitchingAGS(
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));
 		
 		pEntry->LastSecTxRateChangeAction = RATE_DOWN;
-		pEntry->TxRateUpPenalty = 0; /* No penalty */
 		pEntry->TxQuality[pEntry->CurrTxRateIndex] = 0;
 		pEntry->PER[pEntry->CurrTxRateIndex] = 0;
 		pEntry->AGSCtrl.lastRateIdx = CurrRateIdx;
@@ -1804,6 +1788,7 @@ VOID ApQuickResponeForRateUpExecAGS(
 	pTable = pEntry->pTable;
 	TableSize = pTable[0];
 
+#ifndef MULTI_CLIENT_SUPPORT
 	if (pAd->MacTab.Size == 1)
 	{
 		TX_STA_CNT1_STRUC StaTx1;
@@ -1821,6 +1806,7 @@ VOID ApQuickResponeForRateUpExecAGS(
 			TxErrorRatio = ((TxRetransmit + TxFailCount) * 100) / TxTotalCnt;
 	}
 	else
+#endif
 	{
 		TxRetransmit = pEntry->OneSecTxRetryOkCount;
 		TxSuccess = pEntry->OneSecTxNoRetryOkCount;
@@ -1832,27 +1818,25 @@ VOID ApQuickResponeForRateUpExecAGS(
 	}
 
 #ifdef FIFO_EXT_SUPPORT
-		if (NicGetMacFifoTxCnt(pAd, pEntry))
-		{
-			ULONG 	HwTxCnt, HwErrRatio;
+	if (NicGetMacFifoTxCnt(pAd, pEntry))
+	{
+		ULONG HwTxCnt, HwErrRatio = 0;
 
-			HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
-			if (HwTxCnt)
-				HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
-			else
-				HwErrRatio = 0;
+		HwTxCnt = pEntry->fifoTxSucCnt + pEntry->fifoTxRtyCnt;
+		if (HwTxCnt)
+			HwErrRatio = (pEntry->fifoTxRtyCnt * 100) / HwTxCnt;
 
-			DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s()=>Wcid:%d, MCS:%d, TxErrRatio(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n", 
-					__FUNCTION__, pEntry->wcid, pEntry->HTPhyMode.field.MCS, 
-					HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
+		DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,("%s()=>Wcid:%d, MCS:%d, TxErrRatio(Hw:0x%lx-0x%lx, Sw:0x%lx-%lx)\n", 
+				__FUNCTION__, pEntry->wcid, pEntry->HTPhyMode.field.MCS, 
+				HwTxCnt, HwErrRatio, TxTotalCnt, TxErrorRatio));
 
-			TxSuccess = pEntry->fifoTxSucCnt;
-			TxRetransmit = pEntry->fifoTxRtyCnt;
-			TxTotalCnt = HwTxCnt;
-			TxErrorRatio = HwErrRatio;
+		TxSuccess = pEntry->fifoTxSucCnt;
+		TxRetransmit = pEntry->fifoTxRtyCnt;
+		TxTotalCnt = HwTxCnt;
+		TxErrorRatio = HwErrRatio;
 
-			ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
-		}
+		ApTxFailCntUpdate(pAd, pEntry, TxSuccess, TxRetransmit);
+	}
 #endif /*  FIFO_EXT_SUPPORT */
 
 	DBGPRINT(RT_DEBUG_INFO | DBG_FUNC_RA,
@@ -1874,7 +1858,7 @@ VOID ApQuickResponeForRateUpExecAGS(
 
 	pCurrTxRate = (RTMP_RA_AGS_TB *)(&pTable[(CurrRateIdx + 1) * SIZE_OF_AGS_RATE_TABLE_ENTRY]);
 
-	if ((AGSStatisticsInfo.RSSI > -65) && (pCurrTxRate->Mode >= MODE_HTMIX))
+	if ((AGSStatisticsInfo.RSSI > -65) && (pCurrTxRate->Mode == MODE_HTMIX))
 	{
 		TrainUp = (pCurrTxRate->TrainUp + (pCurrTxRate->TrainUp >> 1));
 		TrainDown = (pCurrTxRate->TrainDown + (pCurrTxRate->TrainDown >> 1));
@@ -2017,7 +2001,6 @@ VOID ApQuickResponeForRateUpExecAGS(
 		DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA, ("%s: QuickAGS: ++TX rate from %d to %d\n", 
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));	
 		
-		pEntry->TxRateUpPenalty = 0;
 		pEntry->TxQuality[pEntry->CurrTxRateIndex] = 0; /*restore the TxQuality from max to 0 */
 		RTMPZeroMemory(pEntry->PER, sizeof(UCHAR) * (MAX_TX_RATE_INDEX+1));
 	}
@@ -2027,7 +2010,6 @@ VOID ApQuickResponeForRateUpExecAGS(
 		DBGPRINT_RAW(RT_DEBUG_INFO | DBG_FUNC_RA, ("%s: QuickAGS: --TX rate from %d to %d\n", 
 			__FUNCTION__, CurrRateIdx, pEntry->CurrTxRateIndex));
 		
-		pEntry->TxRateUpPenalty = 0; /* No penalty */
 		pEntry->TxQuality[pEntry->CurrTxRateIndex] = 0;
 		pEntry->PER[pEntry->CurrTxRateIndex] = 0;
 	}

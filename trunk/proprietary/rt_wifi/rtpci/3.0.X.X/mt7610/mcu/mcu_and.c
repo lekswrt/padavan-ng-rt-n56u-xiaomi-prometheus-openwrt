@@ -70,10 +70,12 @@ INT ral_pci_andes_erasefw(RTMP_ADAPTER *pAd)
 	NDIS_STATUS Status = NDIS_STATUS_SUCCESS;
 	UINT32 ILMLen, DLMLen;
 	USHORT FWVersion, BuildVersion;
-	UINT32 Loop = 0, idx = 0, val = 0;
+	UINT32 idx = 0, val = 0;
 	UINT32 StartOffset, EndOffset;
 	RTMP_CHIP_CAP *pChipCap = &pAd->chipCap;
-
+#ifdef DBG
+	UINT32 Loop = 0;
+#endif
 	ILMLen = (*(pChipCap->FWImageName + 3) << 24) | (*(pChipCap->FWImageName + 2) << 16) |
 			 (*(pChipCap->FWImageName + 1) << 8) | (*pChipCap->FWImageName);
 
@@ -342,7 +344,7 @@ INT PCIKickOutCmd(
 	UINT32 Len)
 {
 	NDIS_STATUS Status = NDIS_STATUS_SUCCESS;
-	ULONG	IrqFlags = 0;
+	ULONG IrqFlags = 0;
 	ULONG FreeNum;
 	UINT32 SwIdx = 0, SrcBufPA;
 	UCHAR *pSrcBufVA;
@@ -418,8 +420,6 @@ INT PCIKickOutCmd(
 }
 #endif /* RTMP_PCI_SUPPORT */
 
-
-
 VOID MCUCtrlInit(PRTMP_ADAPTER pAd)
 {
 	struct MCU_CTRL *MCtrl = &pAd->MCUCtrl;
@@ -435,11 +435,19 @@ VOID MCUCtrlInit(PRTMP_ADAPTER pAd)
 
 VOID MCUCtrlExit(PRTMP_ADAPTER pAd)
 {
-	struct MCU_CTRL *MCtrl = &pAd->MCUCtrl;
+	struct MCU_CTRL *MCtrl;
 	struct CMD_RSP_EVENT *CmdRspEvent, *CmdRspEventTmp;
-	unsigned long IrqFlags;
+	ULONG IrqFlags = 0;
 
 	RtmpOsMsDelay(30);
+
+	if (!pAd)
+		return;
+
+	MCtrl = &pAd->MCUCtrl;
+
+	if (!MCtrl)
+		return;
 
 	RTMP_IRQ_LOCK(&MCtrl->CmdRspEventListLock, IrqFlags);
 	DlListForEachSafe(CmdRspEvent, CmdRspEventTmp, &MCtrl->CmdRspEventList, struct CMD_RSP_EVENT, List)
@@ -457,7 +465,7 @@ VOID MCUCtrlExit(PRTMP_ADAPTER pAd)
 }
 
 
-static inline UCHAR GetCmdSeq(PRTMP_ADAPTER pAd)
+inline UCHAR GetCmdSeq(PRTMP_ADAPTER pAd)
 {
 	struct MCU_CTRL *MCtrl = &pAd->MCUCtrl;
 
@@ -483,7 +491,7 @@ INT AsicSendCmdToAndes(PRTMP_ADAPTER pAd, struct CMD_UNIT *CmdUnit)
 	struct MCU_CTRL *MCtrl = &pAd->MCUCtrl;
 	struct CMD_RSP_EVENT *CmdRspEvent;
 	ULONG Expire;
-	unsigned long IrqFlags;
+	ULONG IrqFlags = 0;
 
 	if (!MCtrl->IsFWReady)
 	{
@@ -598,42 +606,42 @@ error:
 	return Ret;
 }
 
-static VOID CmdDoneHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID CmdDoneHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
 }
 
 
-static VOID CmdErrorHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID CmdErrorHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
 }
 
 
-static VOID CmdRetryHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID CmdRetryHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
 }
 
 
-static VOID PwrRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID PwrRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
 }
 
 
-static VOID WowRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID WowRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
 }
 
 
-static VOID CarrierDetectRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID CarrierDetectRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
@@ -641,7 +649,7 @@ static VOID CarrierDetectRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 }
 
 
-static VOID DFSDetectRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
+VOID DFSDetectRspEventHandler(PRTMP_ADAPTER pAd, UCHAR *Data)
 {
 
 
@@ -701,7 +709,7 @@ INT AndesBurstWrite(PRTMP_ADAPTER pAd, UINT32 Offset, UINT32 *Data, UINT32 Cnt)
 			Value = cpu2le32(Data[i + CurIndex]);
 			NdisMoveMemory(Pos, &Value, 4);
 			Pos += 4;
-		};
+		}
 
 		NdisZeroMemory(&CmdUnit, sizeof(CmdUnit));
 	
@@ -1183,7 +1191,7 @@ INT AndesRandomWrite(PRTMP_ADAPTER pAd, RTMP_REG_PAIR *RegPair, UINT32 Num)
 			Value = cpu2le32(RegPair[i + CurIndex].Value);
 			NdisMoveMemory(Pos, &Value, 4);
 			Pos += 4;
-		};
+		}
 
 		NdisZeroMemory(&CmdUnit, sizeof(CmdUnit));
 	

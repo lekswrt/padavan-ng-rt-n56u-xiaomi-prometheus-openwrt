@@ -260,7 +260,7 @@ VOID APStartUp(RTMP_ADAPTER *pAd)
 
 		if (pMbss->wdev.bWmmCapable)
 	        	bWmmCapable = TRUE;
-
+		
 #ifdef AIRPLAY_SUPPORT
         if (AIRPLAY_ON(pAd))
                 pMbss->bBcnSntReq = TRUE;
@@ -497,12 +497,12 @@ VOID APStartUp(RTMP_ADAPTER *pAd)
 	AsicLockChannel(pAd, pAd->hw_cfg.cent_ch);
 
 #ifdef DOT11_VHT_AC
-//+++Add by shiang for debug
-DBGPRINT(RT_DEBUG_OFF, ("%s(): AP Set CentralFreq at %d(Prim=%d, HT-CentCh=%d, VHT-CentCh=%d, BBP_BW=%d)\n",
+	//+++Add by shiang for debug
+	DBGPRINT(RT_DEBUG_OFF, ("%s(): AP Set CentralFreq at %d(Prim=%d, HT-CentCh=%d, VHT-CentCh=%d, BBP_BW=%d)\n",
 						__FUNCTION__, pAd->hw_cfg.cent_ch, pAd->CommonCfg.Channel, 
 						pAd->CommonCfg.CentralChannel, pAd->CommonCfg.vht_cent_ch,
 						pAd->CommonCfg.BBPCurrentBW));
-//---Add by shiang for debug
+	//---Add by shiang for debug
 #endif /* DOT11_VHT_AC */
 
 #ifdef DOT11_N_SUPPORT
@@ -680,9 +680,10 @@ DBGPRINT(RT_DEBUG_OFF, ("%s(): AP Set CentralFreq at %d(Prim=%d, HT-CentCh=%d, V
 	RTMPSetPiggyBack(pAd, pAd->CommonCfg.bPiggyBackCapable);
 #endif /* PIGGYBACK_SUPPORT */
 
-	ApLogEvent(pAd, pAd->CurrentAddress, EVENT_RESET_ACCESS_POINT);
+	//ApLogEvent(pAd, pAd->CurrentAddress, EVENT_RESET_ACCESS_POINT);
 	pAd->Mlme.PeriodicRound = 0;
 	pAd->Mlme.OneSecPeriodicRound = 0;
+	pAd->MacTab.MsduLifeTime = 5; /* default 5 seconds */
 
 	OPSTATUS_SET_FLAG(pAd, fOP_AP_STATUS_MEDIA_STATE_CONNECTED);
 
@@ -708,8 +709,10 @@ DBGPRINT(RT_DEBUG_OFF, ("%s(): AP Set CentralFreq at %d(Prim=%d, HT-CentCh=%d, V
 	if (IS_MT76x2(pAd))
 	{
 #ifdef TXBF_SUPPORT
+#ifdef RALINK_ATE
         if (pAd->hw_cfg.cent_ch > 14) 
            rtmp_ate_txbf_fix_tank_code(pAd, pAd->hw_cfg.cent_ch, 0);  // load tank code from efuse, iBF only for A band
+#endif
 #endif /*TXBF_SUPPORT*/
 		mt76x2_calibration(pAd, pAd->hw_cfg.cent_ch);
     }
@@ -892,6 +895,7 @@ VOID APStop(
 	{
 		RTMPCancelTimer(&pAd->ApCfg.CounterMeasureTimer, &Cancelled);
 		pAd->ApCfg.CMTimerRunning = FALSE;
+		pAd->ApCfg.BANClass3Data = FALSE;
 	}
 	
 #ifdef WAPI_SUPPORT
@@ -946,65 +950,13 @@ VOID APCleanupPsQueue(
 	}
 }
 
-
-#ifdef APCLI_SUPPORT
-#ifdef TRAFFIC_BASED_TXOP
-static VOID CheckApEntryInTraffic(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
+static VOID do_sta_keep_action(struct _RTMP_ADAPTER *ad, struct _MAC_TABLE_ENTRY *entry)
 {
-	UINT32 TxTotalByteCnt = 0;
-	UINT32 RxTotalByteCnt = 0;
-
-	if ((IS_ENTRY_APCLI(pEntry) || IS_ENTRY_CLIENT(pEntry))
-		&& (pEntry->PortSecured == WPA_802_1X_PORT_SECURED)) {
-		TxTotalByteCnt = pEntry->OneSecTxBytes;
-		RxTotalByteCnt = pEntry->OneSecRxBytes;
-
-		DBGPRINT(RT_DEBUG_TRACE,("WCID%d, %dM, TxBytes:%d, RxBytes:%d\n",
-				pEntry->wcid,
-				(((TxTotalByteCnt + RxTotalByteCnt) << 3) >> 20), 
-				TxTotalByteCnt, 
-				RxTotalByteCnt));
-
-		if ((TxTotalByteCnt == 0) || (RxTotalByteCnt == 0)) 
-		{
-		} 
-		else if ((((TxTotalByteCnt + RxTotalByteCnt) << 3) >> 20) > pAd->CommonCfg.ManualTxopThreshold) 
-		{
-			if (TxTotalByteCnt > RxTotalByteCnt) 
-			{
-				if ((TxTotalByteCnt/RxTotalByteCnt) >= pAd->CommonCfg.ManualTxopUpBound)
-				{
-					if (IS_ENTRY_CLIENT(pEntry))
-						pAd->StaTxopAbledCnt++;
-					else
-						pAd->ApClientTxopAbledCnt++;
-
-					DBGPRINT(RT_DEBUG_TRACE,("WCID%d, StaTxopAbledCnt:%d, ApClientTxopAbledCnt:%d\n",
-						pEntry->wcid,
-						pAd->StaTxopAbledCnt, 
-						pAd->ApClientTxopAbledCnt));
-				}
-			}
-			else
-			{
-				if ((RxTotalByteCnt/TxTotalByteCnt) <= pAd->CommonCfg.ManualTxopLowBound)
-				{
-				 	if (IS_ENTRY_CLIENT(pEntry))
-               			pAd->StaTxopAbledCnt++;
-                	else
-                    	pAd->ApClientTxopAbledCnt++;					
-				}
-			}
-		}
-	}
-
-	pEntry->OneSecTxBytes = 0;
-	pEntry->OneSecRxBytes = 0;
-
+#ifdef IAPP_SUPPORT
+	if (entry)
+		IAPP_L2_Update_Frame_Send(ad, entry->Addr, entry->apidx);
+#endif /*IAPP_SUPPORT*/
 }
-#endif /* TRAFFIC_BASED_TXOP */
-#endif /* APCLI_SUPPORT */
-
 
 /*
 	==========================================================================
@@ -1025,7 +977,7 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 	BOOLEAN bRalinkBurstMode;
 #endif /* DOT11_N_SUPPORT */
 #ifdef RTMP_MAC_PCI
-	unsigned long	IrqFlags;
+	ULONG IrqFlags = 0;
 #endif /* RTMP_MAC_PCI */
 	UINT fAnyStationPortSecured[HW_BEACON_MAX_NUM];
  	UINT bss_index;
@@ -1055,6 +1007,7 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 	pMacTable->fAnyStation20Only = FALSE;
 	pMacTable->fAnyStationIsLegacy = FALSE;
 	pMacTable->fAnyStationMIMOPSDynamic = FALSE;
+	pMacTable->fTxBurstRetune = FALSE;
 #ifdef GREENAP_SUPPORT
 	/*Support Green AP */
 	pMacTable->fAnyStationIsHT=FALSE;
@@ -1077,22 +1030,11 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 	startWcid = 2;
 #endif /* RT_CFG80211_P2P_CONCURRENT_DEVICE */
 
-#ifdef APCLI_SUPPORT
-#ifdef TRAFFIC_BASED_TXOP
-	pAd->StaTxopAbledCnt = 0;
-	pAd->ApClientTxopAbledCnt = 0;
-#endif /* TRAFFIC_BASED_TXOP */
-#endif /* APCLI_SUPPORT */
-
 	for (i = startWcid; i < MAX_LEN_OF_MAC_TABLE; i++) 
 	{
 		MAC_TABLE_ENTRY *pEntry = &pMacTable->Content[i];
-		BOOLEAN bDisconnectSta = FALSE;
+		BOOLEAN bDisconnectSta = FALSE, bKeepSta = FALSE;
 #ifdef APCLI_SUPPORT
-#ifdef TRAFFIC_BASED_TXOP	
-		CheckApEntryInTraffic(pAd, pEntry);
-#endif /* TRAFFIC_BASED_TXOP */
-
 		if(IS_ENTRY_APCLI(pEntry) && (pEntry->PortSecured == WPA_802_1X_PORT_SECURED))
 		{
 #ifdef MAC_REPEATER_SUPPORT
@@ -1321,6 +1263,15 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 			}
 		}
 
+#ifdef CONFIG_AP_SUPPORT
+#ifdef RTMP_MAC_PCI
+		/* clear ring for prevent tx ring stub */
+		if (pEntry->NoDataIdleCount >= pEntry->StaIdleTimeout/2)
+			/* Clear TXWI ack in Tx Ring*/
+			ClearTxRingClientAck(pAd, pEntry);
+#endif /* RTMP_MAC_PCI */
+#endif /* CONFIG_AP_SUPPORT */
+
 		/* 2. delete those MAC entry that has been idle for a long time */
 		if ((pEntry->NoDataIdleCount >= pEntry->StaIdleTimeout)
 #ifdef PS_ENTRY_MAITENANCE
@@ -1334,9 +1285,9 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 			if (pEntry->continuous_ps_count > pAd->ps_timeout)
 				DBGPRINT(RT_DEBUG_WARN, ("ps_timeout(%u) !!!\n", pEntry->Aid));
 #endif /* PS_ENTRY_MAITENANCE */
-			DBGPRINT(RT_DEBUG_WARN, ("ageout %02x:%02x:%02x:%02x:%02x:%02x after %d-sec silence\n",
-					PRINT_MAC(pEntry->Addr), pEntry->StaIdleTimeout));
-			ApLogEvent(pAd, pEntry->Addr, EVENT_AGED_OUT);
+			printk("%s ageout %02x:%02x:%02x:%02x:%02x:%02x after %d-sec silence\n",
+					pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", PRINT_MAC(pEntry->Addr), pEntry->StaIdleTimeout);
+			//ApLogEvent(pAd, pEntry->Addr, EVENT_AGED_OUT);
 #ifdef SMART_MESH_MONITOR
 			{
 				struct nsmpif_drvevnt_buf drvevnt;
@@ -1348,62 +1299,124 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 			}
 #endif /* SMART_MESH_MONITOR */
 		}
-		else if (pEntry->ContinueTxFailCnt >= pAd->ApCfg.EntryLifeCheck)
+		else if ((pEntry->ContinueTxFailCnt >= pAd->ApCfg.EntryLifeCheck) && (pEntry->PsMode != PWR_SAVE))
 		{
 			/*
 				AP have no way to know that the PwrSaving STA is leaving or not.
 				So do not disconnect for PwrSaving STA.
 			*/
-			if (pEntry->PsMode != PWR_SAVE)
-			{
-				bDisconnectSta = TRUE;
-#ifdef DROP_MASK_SUPPORT
-				asic_set_drop_mask(pAd, pEntry->Aid, TRUE);
-#else
-				ClearTxRingClientAck(pAd, pEntry);
-#endif
-				DBGPRINT(RT_DEBUG_WARN, ("STA-%02x:%02x:%02x:%02x:%02x:%02x had left (%d %lu)\n",
-					PRINT_MAC(pEntry->Addr),
-					pEntry->ContinueTxFailCnt, pAd->ApCfg.EntryLifeCheck));
-			}
+			bDisconnectSta = TRUE;
+			printk("%s STA-%02x:%02x:%02x:%02x:%02x:%02x had left (tx error %d of %lu)\n",
+				pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", PRINT_MAC(pEntry->Addr),
+				pEntry->ContinueTxFailCnt, pAd->ApCfg.EntryLifeCheck);
 		}
+
+		/* kickout low RSSI clients */
+		else if ((pMbss->RssiLowForStaKickOut != 0 || pMbss->RssiLowForStaKickOutPSM != 0 || pMbss->RssiLowForStaKickOutFT != 0) &&
+			    IS_ENTRY_CLIENT(pEntry) && pEntry->Sst == SST_ASSOC)
+		{
+			/* use max rssi for avoid unneeded kickout by level diviation of chains */
+			CHAR MaxRssi = RTMPMaxRssi(pAd, pEntry->RssiSample.AvgRssi0, pEntry->RssiSample.AvgRssi1, pEntry->RssiSample.AvgRssi2);
+
+			/* if in KickOutDelay sec interval all data frames have low rssi - kick STA, else drop count and again
+			   rssi == -127 or == 0 incorrect, may be not get from bbp at current time, skip it
+			*/
+			if (MaxRssi != 0 && MaxRssi > -127) {
+			    UCHAR KickOutDelay = pMbss->RssiLowForStaKickOutDelay;
+
+			    /* if client active and traffic high > ~ 32kbit/s need increase kick out delay for roam smooth */
+			    if ((pEntry->PsMode != PWR_SAVE) && (pEntry->ContinueTxFailCnt < (pAd->ApCfg.EntryLifeCheck/3))
+				    && ((pEntry->OneSecTxNoRetryOkCount + pEntry->OneSecTxRetryOkCount) > 15) && (pEntry->NoDataIdleCount < 5)) {
+				    KickOutDelay = (pMbss->RssiLowForStaKickOutDelay+(pMbss->RssiLowForStaKickOutDelay/3));
+				    DBGPRINT(RT_DEBUG_TRACE, ("%s STA %02x:%02x:%02x:%02x:%02x:%02x high traffic, increase kickout time to [%d] traffic [%d]\n",
+					    pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", PRINT_MAC(pEntry->Addr), KickOutDelay,
+					    (pEntry->OneSecTxNoRetryOkCount + pEntry->OneSecTxRetryOkCount)));
+			    }
+
+#ifdef DOT11R_FT_SUPPORT
+			    if (IS_FT_RSN_STA(pEntry) && pMbss->RssiLowForStaKickOutFT != 0) {
+				/* allways add one second delay for FT */
+				KickOutDelay++;
+				if (MaxRssi < pMbss->RssiLowForStaKickOutFT) {
+				    if (pEntry->RssiLowStaKickOutDelayCount++ > KickOutDelay) {
+					    if (pEntry->PsMode == PWR_SAVE) {
+						bKeepSta = TRUE;
+					    } else {
+						bDisconnectSta = TRUE;
+						printk("%s Disonnect STA %02x:%02x:%02x:%02x:%02x:%02x , RSSI Kickout Thres[%d:%d:%d], Current RSSI [%d], KickOutDelay [%d] at last [%d] seconds, FT Mode.\n",
+						    pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", PRINT_MAC(pEntry->Addr), pMbss->RssiLowForStaKickOut,
+						    pMbss->RssiLowForStaKickOutPSM, pMbss->RssiLowForStaKickOutFT, MaxRssi, KickOutDelay, pEntry->RssiLowStaKickOutDelayCount);
+						pEntry->RssiLowStaKickOutDelayCount = 0;
+					    }
+				    }
+				}
+			    } else
+#endif /* DOT11R_FT_SUPPORT */
+			    if ((pMbss->RssiLowForStaKickOut != 0 && MaxRssi < pMbss->RssiLowForStaKickOut && pEntry->PsMode != PWR_SAVE) ||
+				    (pMbss->RssiLowForStaKickOutPSM != 0 && MaxRssi < pMbss->RssiLowForStaKickOutPSM && pEntry->PsMode == PWR_SAVE)) {
+				    if (pEntry->RssiLowStaKickOutDelayCount++ > KickOutDelay) {
+					    if (pEntry->PsMode == PWR_SAVE) {
+						bKeepSta = TRUE;
+					    } else {
+						bDisconnectSta = TRUE;
+						printk("%s Disonnect STA %02x:%02x:%02x:%02x:%02x:%02x , RSSI Kickout Thres[%d:%d:%d], Current RSSI [%d], KickOutDelay [%d] at last [%d] seconds.\n",
+						    pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", PRINT_MAC(pEntry->Addr), pMbss->RssiLowForStaKickOut,
+						    pMbss->RssiLowForStaKickOutPSM, pMbss->RssiLowForStaKickOutFT, MaxRssi, KickOutDelay, pEntry->RssiLowStaKickOutDelayCount);
+						pEntry->RssiLowStaKickOutDelayCount = 0;
+					    }
+				    }
+			    } else
+				pEntry->RssiLowStaKickOutDelayCount = 0;
+			} else
+				pEntry->RssiLowStaKickOutDelayCount = 0;
+		}
+
 #ifdef BAND_STEERING
+#ifdef BAND_STEERING_CLIENTSTAY
 		else if (pAd->ApCfg.BndStrgTable.bEnabled == TRUE)
 		{
 			if (BndStrg_IsClientStay(pAd, pEntry) == FALSE)
 			{
-				bDisconnectSta = TRUE;
-			}
-		}
-#endif /* BAND_STEERING */
-		
-		//YF: kickout sta when 3 of 5 exceeds the threshold.
-		if (pMbss->RssiLowForStaKickOut != 0)
-		{
-#define CHECK_DATA_RSSI_UP_BOUND 3
-			CHAR rssiIndex = 0, overRssiThresCount = 0; 
-
-			for (rssiIndex=0; rssiIndex<MAX_LAST_DATA_RSSI_LEN; rssiIndex++)
-			{
-				if ((pEntry->LastDataRssi[rssiIndex] !=0 ) && 
-				    (pEntry->LastDataRssi[rssiIndex] < pMbss->RssiLowForStaKickOut))
-				{
-					DBGPRINT(RT_DEBUG_TRACE, ("%d:[%d] Fail.\n",rssiIndex,pEntry->LastDataRssi[rssiIndex]));
-					overRssiThresCount++;
+				if (pEntry->PsMode == PWR_SAVE) {
+				    bKeepSta = TRUE;
+				} else {
+				    bDisconnectSta = TRUE;
+				    printk("%s Disonnect STA %02x:%02x:%02x:%02x:%02x:%02x by band steering band change.\n",
+					pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", PRINT_MAC(pEntry->Addr));
 				}
 			}
-	
-			if (overRssiThresCount >= CHECK_DATA_RSSI_UP_BOUND)
-			{
-				bDisconnectSta = TRUE;
-				DBGPRINT(RT_DEBUG_WARN, ("Dis STA %02x:%02x:%02x:%02x:%02x:%02x , RSSI Kickout Thres[%d]-[%d]Times\n",
-							PRINT_MAC(pEntry->Addr), pMbss->RssiLowForStaKickOut, overRssiThresCount));
-			}	
+		}
+#endif /* BAND_STEERING_CLIENTSTAY */
+#endif /* BAND_STEERING */
 
+		/* if station very long sleep try wakeup for handle this STA actual signal level and DS update */
+		if (!bDisconnectSta && (bKeepSta || pEntry->NoDataIdleCount >= STA_KEEP_ALIVE_NOTIFY_L2)) {
+			/* use TIM bit to detect the PS station */
+			if (bKeepSta)
+			    WLAN_MR_TIM_BIT_SET(pAd, pEntry->apidx, pEntry->Aid);
+			do_sta_keep_action(pAd, pEntry);
 		}
 
 		if (bDisconnectSta)
 		{
+			/* temporary block probe req from last kickouted client
+			    help correct roam to new AP, copy mac and set start count to 0 */
+			if (pMbss->TmpBlockAfterKickTimes != 0) {
+				/* do not block age out clients for avoid racely reconnection */
+				if (pEntry->NoDataIdleCount < pEntry->StaIdleTimeout) {
+					pMbss->TmpBlockAfterKickCount = 0;
+					COPY_MAC_ADDR(pMbss->TmpBlockAfterKickMac, pEntry->Addr);
+					printk("%s Temp block %d times probe/assod req from %02x:%02x:%02x:%02x:%02x:%02x.\n",
+						pAd->CommonCfg.Channel > 14 ? "5GHz AP" : "2.4GHz AP", pMbss->TmpBlockAfterKickTimes,
+						PRINT_MAC(pMbss->TmpBlockAfterKickMac));
+				}
+			}
+#ifdef CONFIG_AP_SUPPORT
+#ifdef RTMP_MAC_PCI
+			/* Clear TXWI ack in Tx Ring*/
+			ClearTxRingClientAck(pAd, pEntry);
+#endif /* RTMP_MAC_PCI */
+#endif /* CONFIG_AP_SUPPORT */
 			/* send wireless event - for ageout */
 			RTMPSendWirelessEvent(pAd, IW_AGEOUT_EVENT_FLAG, pEntry->Addr, 0, 0); 
 
@@ -1435,10 +1448,6 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 								END_OF_ARGS);				
 				MiniportMMRequest(pAd, 0, pOutBuffer, FrameLen);
 				MlmeFreeMemory(pAd, pOutBuffer);
-
-				/* wait for DEAUTH processed */
-				OS_WAIT(5);
-
 #ifdef MAC_REPEATER_SUPPORT
 				if ((pAd->ApCfg.bMACRepeaterEn == TRUE) && IS_ENTRY_CLIENT(pEntry)
 #ifdef MWDS
@@ -1495,7 +1504,7 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 			MlmeFreeMemory(pAd, pOutBuffer);
 			//JERRY
 			if (!pEntry->IsKeep)
-				MacTableDeleteEntry(pAd, pEntry->Aid, pEntry->Addr);
+				MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 			continue;
 		}
 		if (pEntry->BTMDisassocCount != 0)
@@ -1685,6 +1694,10 @@ VOID MacTableMaintenance(RTMP_ADAPTER *pAd)
 		AsicUpdateProtect(pAd, pAd->CommonCfg.AddHTInfo.AddHtInfo2.OperaionMode, ALLN_SETPROTECT, FALSE, pMacTable->fAnyStationNonGF);
 	}
 #endif /* DOT11_N_SUPPORT */
+#ifdef CONFIG_AP_SUPPORT
+	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+		dynamic_tune_be_tx_op(pAd, 50);	/* change form 100 to 50 for WMM WiFi test @20070504*/
+#endif /* CONFIG_AP_SUPPORT */
 
 #ifdef RTMP_MAC_PCI
 	RTMP_IRQ_LOCK(&pAd->irq_lock, IrqFlags);
@@ -1821,9 +1834,9 @@ VOID ApLogEvent(
 		RTMP_GetCurrentSystemTime(&pLog->SystemTime);
 		COPY_MAC_ADDR(pLog->Addr, pAddr);
 		pLog->Event = Event;
-		DBGPRINT_RAW(RT_DEBUG_TRACE,("LOG#%ld %02x:%02x:%02x:%02x:%02x:%02x %s\n",
-			pAd->EventTab.Num, pAddr[0], pAddr[1], pAddr[2], 
-			pAddr[3], pAddr[4], pAddr[5], pEventText[Event]));
+		printk("LOG#%ld %02x:%02x:%02x:%02x:%02x:%02x %s\n",
+			pAd->EventTab.Num, pAddr[0], pAddr[1], pAddr[2],
+			pAddr[3], pAddr[4], pAddr[5], pEventText[Event]);
 		pAd->EventTab.Num += 1;
 	}
 }
@@ -1850,7 +1863,7 @@ VOID APUpdateOperationMode(
 	BOOLEAN bDisableBGProtect = FALSE, bNonGFExist = FALSE;
 
 	pAd->CommonCfg.AddHTInfo.AddHtInfo2.OperaionMode = 0;
-	if ((pAd->ApCfg.LastNoneHTOLBCDetectTime + (5 * OS_HZ)) > pAd->Mlme.Now32) /* non HT BSS exist within 5 sec */
+	if (pAd->CommonCfg.DisableOLBCDetect == 0 && ((pAd->ApCfg.LastNoneHTOLBCDetectTime + (5 * OS_HZ)) > pAd->Mlme.Now32)) /* non HT BSS exist within 5 sec */
 	{
 		pAd->CommonCfg.AddHTInfo.AddHtInfo2.OperaionMode = 1;
 		bDisableBGProtect = FALSE;
@@ -1867,7 +1880,7 @@ VOID APUpdateOperationMode(
 		bDisableBGProtect = TRUE;
 	}
 		
-	if (pAd->MacTab.fAnyStationIsLegacy)
+	if (pAd->MacTab.fAnyStationIsLegacy || pAd->MacTab.Size > 1)
 	{
 		pAd->CommonCfg.AddHTInfo.AddHtInfo2.OperaionMode = 3;
 		bDisableBGProtect = TRUE;
@@ -1952,7 +1965,7 @@ VOID APUpdateCapabilityAndErpIe(
 			ErpIeContent |= 0x02;                                     /* set Use_Protection bit */
 		}
 	}
-	else if (pAd->CommonCfg.UseBGProtection == 1)   
+	else if (pAd->CommonCfg.UseBGProtection == 1)
 		ErpIeContent |= 0x02;
 
 
@@ -2022,7 +2035,9 @@ VOID APUpdateCapabilityAndErpIe(
 	}
 
 	AsicSetSlotTime(pAd, ShortSlotCapable);
-
+	/*update slot time only when value is difference*/
+	if(pAd->CommonCfg.bUseShortSlotTime != ShortSlotCapable)
+		pAd->CommonCfg.bUseShortSlotTime = ShortSlotCapable;
 }
 
 /*
@@ -2404,9 +2419,10 @@ VOID APOverlappingBSSScan(RTMP_ADAPTER *pAd)
 	UCHAR Channel = pAd->CommonCfg.Channel;
 	INT chStartIdx, chEndIdx, index,curPriChIdx, curSecChIdx;
 
-	if ((!WMODE_CAP_N(pAd->CommonCfg.PhyMode)) || (pAd->CommonCfg.Channel > 14)) {
-		DBGPRINT(RT_DEBUG_TRACE, ("The PhyMode=%d, Channel=%d didn't need channel adjustment!\n", 
-				pAd->CommonCfg.PhyMode, pAd->CommonCfg.Channel));
+	if ((!WMODE_CAP_N(pAd->CommonCfg.PhyMode)) || (pAd->CommonCfg.Channel > 14))
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("The pAd->PhyMode=%d, BW=%d, didn't need channel adjustment!\n",
+				pAd->CommonCfg.PhyMode, pAd->CommonCfg.RegTransmitSetting.field.BW));
 		return;
 	}
 

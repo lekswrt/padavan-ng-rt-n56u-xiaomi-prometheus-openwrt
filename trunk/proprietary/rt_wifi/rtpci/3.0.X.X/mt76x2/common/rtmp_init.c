@@ -319,7 +319,10 @@ BOOLEAN RTMPCheckPhyMode(RTMP_ADAPTER *pAd, UINT8 band_cap, UCHAR *pPhyMode)
 */
 VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 {
-	USHORT i, value, value2;
+	USHORT i, value;
+#if !defined(EEPROM_COUNTRY_UNLOCK)
+		USHORT 	value2;
+#endif
 	EEPROM_TX_PWR_STRUC Power;
 	EEPROM_VERSION_STRUC Version;
 	EEPROM_ANTENNA_STRUC Antenna;
@@ -728,7 +731,7 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 			pAd->TssiPlusBoundaryA[0][3] = Power.field.Byte1;
 			RT28xx_EEPROM_READ16(pAd, EEPROM_A_TSSI_BOUND5, Power.word);
 			pAd->TssiPlusBoundaryA[0][4] = Power.field.Byte0;
-			pAd->TxAgcStepA = Power.field.Byte1;    
+			pAd->TxAgcStepA = Power.field.Byte1;
 			pAd->TxAgcCompensateA = 0;
 			pAd->TssiMinusBoundaryA[0][0] = pAd->TssiRefA;
 			pAd->TssiPlusBoundaryA[0][0]  = pAd->TssiRefA;
@@ -893,6 +896,7 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 		pAd->ARssiOffset[0] = value & 0x00ff;
 		pAd->ARssiOffset[1] = (value >> 8);
 	}
+
 	{
 		RT28xx_EEPROM_READ16(pAd, (EEPROM_RSSI_A_OFFSET+2), value);
 		{
@@ -1331,7 +1335,7 @@ retry:
 
 	/* pbf hardware reset, asic simulation sequence put this ahead before loading firmware */
 #ifdef MT76x2
-	// TODO: shiang-usw, check why MT762x don't need to do this!
+	// TODO: shiang-usw, check why MT76x2 don't need to do this!
 	if (!IS_MT76x2(pAd))
 #endif /* MT76x2 */
 		RTMP_IO_WRITE32(pAd, WPDMA_RST_IDX, 0xffffffff /*0x1003f*/);
@@ -1392,7 +1396,6 @@ retry:
 */
 NDIS_STATUS	NICInitializeAsic(RTMP_ADAPTER *pAd, BOOLEAN bHardReset)
 {
-	ULONG Index = 0;
 	UINT32 mac_val = 0;
 	USHORT KeyIdx;
 
@@ -1489,7 +1492,7 @@ NDIS_STATUS	NICInitializeAsic(RTMP_ADAPTER *pAd, BOOLEAN bHardReset)
 #ifdef RTMP_MAC
 	if (pAd->chipCap.hif_type == HIF_RTMP) {
 		/* Before program BBP, we need to wait BBP/RF get wake up.*/
-		Index = 0;
+		ULONG Index = 0;
 		do
 		{
 			if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))
@@ -1735,6 +1738,8 @@ VOID ClearTxRingClientAck(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 	TXD_STRUC	TxD;
 	TXWI_STRUC *pDestTxWI;
 	TXWI_STRUC	TxWI;
+#endif /* RT_BIG_ENDIAN */
+#ifdef RT_BIG_ENDIAN
 	UINT8 TXWISize;
 #endif /* RT_BIG_ENDIAN */
 
@@ -1744,7 +1749,6 @@ VOID ClearTxRingClientAck(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 #ifdef RT_BIG_ENDIAN
 	TXWISize = pAd->chipCap.TXWISize;
 #endif /* RT_BIG_ENDIAN */
-
 		for (index = 3; index >= 0; index--)
 		{
 			pTxRing = &pAd->TxRing[index];
@@ -1769,16 +1773,14 @@ VOID ClearTxRingClientAck(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 #else
 					 pTxWI = (TXWI_STRUC *)pTxRing->Cell[TxIdx].DmaBuf.AllocVa;
 #endif /* RT_BIG_ENDIAN */
-
 #ifdef RTMP_MAC
-					if (pAd->chipCap.hif_type == HIF_RTMP && pTxWI->TXWI_O.wcid == pEntry->wcid)
-						pTxWI->TXWI_O.ACK = FALSE;
+					    if (pAd->chipCap.hif_type == HIF_RTMP && pTxWI->TXWI_O.wcid == pEntry->wcid)
+						    pTxWI->TXWI_O.ACK = FALSE;
 #endif /* RTMP_MAC */
 #ifdef RLT_MAC
-					if (pAd->chipCap.hif_type == HIF_RLT && pTxWI->TXWI_N.wcid == pEntry->wcid)
-						pTxWI->TXWI_N.ACK = FALSE;
+					    if (pAd->chipCap.hif_type == HIF_RLT && pTxWI->TXWI_N.wcid == pEntry->wcid)
+						    pTxWI->TXWI_N.ACK = FALSE;
 #endif /* RTL_MAC */
-
 #ifdef RT_BIG_ENDIAN
 					RTMPWIEndianChange(pAd, (PUCHAR)pTxWI, TYPE_TXWI);
 					NdisMoveMemory((PUCHAR)pDestTxWI, (PUCHAR)pTxWI, TXWISize);
@@ -1793,31 +1795,25 @@ VOID ApTxFailCntUpdate(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry, ULONG TxSucce
 {
 #ifdef RT65xx
 	if (IS_RT65XX(pAd)) {
-		if (pAd->MacTab.Size <= 8) {
-#ifdef UAPSD_SUPPORT
-			/* check the EOSP packet by RateCtrl's way */
-			UAPSD_SP_AUE_Handle(pAd, pEntry, TRUE);
-#endif /* UAPSD_SUPPORT */
-			
-			if ((TxSuccess == 0) && (TxRetransmit > 0))
-			{
-				/* prevent fast drop long range clients */
-				if (TxRetransmit > MAC_ENTRY_LIFE_CHECK_CNT / 4)
-					TxRetransmit = MAC_ENTRY_LIFE_CHECK_CNT / 4;
-				
-				/* No TxPkt ok in this period as continue tx fail */
-				pEntry->ContinueTxFailCnt += TxRetransmit;
-			}
-			else
-			{
-				pEntry->ContinueTxFailCnt = 0;
-			}
+        	if (pAd->MacTab.Size <= 8) {
+		    if ((TxSuccess == 0) && (TxRetransmit > 0))
+		    {
+			    /* prevent fast drop long range clients */
+			    /* No TxPkt ok in this period as continue tx fail */
+			    /* error counter in ext_fifo ~3 times (with unreal big peaks) more then soft, need correction */
+			    if (TxRetransmit > 512)
+				pEntry->ContinueTxFailCnt += 170;
+			    else
+				pEntry->ContinueTxFailCnt += (TxRetransmit / 3);
+		    } else {
+			    pEntry->ContinueTxFailCnt = 0;
+		    }
 
-			if (TxSuccess > 0)
-				pEntry->NoDataIdleCount = 0;
+		    if (TxSuccess > 0) {
+			pEntry->NoDataIdleCount = 0;
+		    }
 
-			DBGPRINT(RT_DEBUG_INFO, ("%s:(OK:%ld, FAIL:%ld, ConFail:%d) \n",__FUNCTION__,
-					TxSuccess, TxRetransmit, pEntry->ContinueTxFailCnt));
+		    DBGPRINT(RT_DEBUG_INFO, ("%s:(OK:%ld, FAIL:%ld, ConFail:%d) \n",__FUNCTION__, TxSuccess, TxRetransmit, pEntry->ContinueTxFailCnt));
 		}
 	}
 	else
@@ -1839,7 +1835,10 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 	UINT32				i = 0;
 	UCHAR				pid = 0, wcid = 0;
 	INT32				reTry;
-	UCHAR				succMCS, PhyMode;
+	UCHAR				succMCS;
+#ifdef RT65xx
+	UCHAR				PhyMode;
+#endif /* RT65xx */
 
 #ifdef RALINK_ATE
 	/* Nothing to do in ATE mode */
@@ -1847,7 +1846,7 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 		return;
 #endif /* RALINK_ATE */
 
-
+#if 0 /* this break rate_adapt without fifo or with fifo at aid > 8 */
 #ifdef CONFIG_AP_SUPPORT
 #ifdef RT65xx
 	if (pAd->MacTab.Size <= 8) {
@@ -1857,7 +1856,7 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 	}
 #endif /* RT65xx */
 #endif /* CONFIG_AP_SUPPORT */
-
+#endif
 
 	do
 	{
@@ -2009,7 +2008,6 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 	{
 		pEntry->FIFOCount++;
 		pEntry->OneSecTxFailCount++;
-		pEntry->TotalTxFailCount++;
 #ifdef CONFIG_AP_SUPPORT
 		pEntry->StatTxFailCount += pEntry->OneSecTxFailCount;
 		pAd->ApCfg.MBSSID[pEntry->apidx].StatTxFailCount += pEntry->StatTxFailCount;
@@ -2023,14 +2021,22 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 		{
 			DBGPRINT(RT_DEBUG_TRACE, ("#"));
 #ifdef DOT11_N_SUPPORT
-			//pEntry->NoBADataCountDown = 64;
+			pEntry->NoBADataCountDown = 10;
 #endif /* DOT11_N_SUPPORT */
 
 			/* Update the continuous transmission counter.*/
+#ifdef CONFIG_AP_SUPPORT
 #ifdef FIFO_EXT_SUPPORT
-			if (StaFifoExt.field.txRtyCnt > 0)
-				pEntry->ContinueTxFailCnt += StaFifoExt.field.txRtyCnt;
-			else
+			/* fo 65xx incriment in ApTxFailCntUpdate function */
+			if (StaFifoExt.field.txRtyCnt > 0) {
+				/* limit incriment by fifo */
+				 /* error counter in ext_fifo ~3 times (with unreal big peaks) more then soft, need correction */
+				if (StaFifoExt.field.txRtyCnt > 512)
+				    pEntry->ContinueTxFailCnt += 170;
+				else
+				    pEntry->ContinueTxFailCnt += (StaFifoExt.field.txRtyCnt / 3);
+			} else
+#endif
 #endif
 			pEntry->ContinueTxFailCnt++;
 
@@ -2065,7 +2071,7 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 #ifdef CONFIG_AP_SUPPORT
 #ifdef RTMP_MAC_PCI
 		/* if Tx fail >= 20, then clear TXWI ack in Tx Ring*/
-		if (pEntry->ContinueTxFailCnt >= pAd->ApCfg.EntryLifeCheck)
+		if (IS_ENTRY_CLIENT(pEntry) && pEntry->ContinueTxFailCnt >= pAd->ApCfg.EntryLifeCheck)
 			ClearTxRingClientAck(pAd, pEntry);
 #endif /* RTMP_MAC_PCI */
 #endif /* CONFIG_AP_SUPPORT */
@@ -2308,7 +2314,7 @@ VOID NICUpdateFifoStaCounters(RTMP_ADAPTER *pAd)
 #ifdef FIFO_EXT_SUPPORT
 BOOLEAN NicGetMacFifoTxCnt(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 {
-	if (pEntry->bUseHwFifoExt)
+	if (pEntry->wcid >= 1 && pEntry->bUseHwFifoExt)
 	{
 		WCID_TX_CNT_STRUC wcidTxCnt;
 
@@ -2946,7 +2952,8 @@ VOID RTMPMoveMemory(VOID *pDest, VOID *pSrc, ULONG Length)
 
 	for (Index = 0; Index < Length; Index++)
 	{
-		pMem1[Index] = pMem2[Index];
+		if (pMem1 && pMem2)
+		    pMem1[Index] = pMem2[Index];
 	}
 }
 
@@ -3165,12 +3172,12 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 #ifdef UAPSD_SUPPORT
 #ifdef CONFIG_AP_SUPPORT
-{
-	UINT32 IdMbss;
+	{
+	    UINT32 IdMbss;
 
-	for(IdMbss=0; IdMbss<HW_BEACON_MAX_NUM; IdMbss++)
+	    for(IdMbss=0; IdMbss<HW_BEACON_MAX_NUM; IdMbss++)
 		UAPSD_INFO_INIT(&pAd->ApCfg.MBSSID[IdMbss].UapsdInfo);
-}
+	}
 #endif /* CONFIG_AP_SUPPORT */
 #ifdef CONFIG_STA_SUPPORT
 	pAd->StaCfg.UapsdInfo.bAPSDCapable = FALSE;
@@ -3214,6 +3221,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 #endif  /* DOT11N_DRAFT3 */
 
 	pAd->CommonCfg.bRcvBSSWidthTriggerEvents = FALSE;
+	pAd->CommonCfg.DisableOLBCDetect = 1;
 
 	NdisZeroMemory(&pAd->CommonCfg.AddHTInfo, sizeof(pAd->CommonCfg.AddHTInfo));
 	pAd->CommonCfg.BACapability.field.MMPSmode = MMPS_DISABLE;
@@ -3585,7 +3593,10 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			mbss->AuthFailRssiThreshold = 0;
 			mbss->AuthNoRspRssiThreshold = 0;
 			mbss->RssiLowForStaKickOut = 0;
-                        mbss->ProbeRspRssiThreshold = 0;
+			mbss->RssiLowForStaKickOutPSM = 0;
+			mbss->RssiLowForStaKickOutFT = 0;
+			mbss->RssiLowForStaKickOutDelay = 10;
+			mbss->ProbeRspRssiThreshold = 0;
 
 			mbss->StatTxRetryOkCount = 0;
 			mbss->StatTxFailCount = 0;
@@ -3598,6 +3609,10 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			mbss->RekeyCountDown = 0;	/* it's used for WPA rekey */
 
 			mbss->ProbeRspTimes = 3;
+
+			/* init the default 60 seconds*/
+			mbss->StationKeepAliveTime = 60;
+
 #ifdef SPECIFIC_TX_POWER_SUPPORT
 			if (IS_RT6352(pAd) || IS_MT76x2(pAd))
 				mbss->TxPwrAdj = -1;
@@ -3608,7 +3623,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			mbss->PreAuth = FALSE;
 
 			/* PMK cache setting*/
-			mbss->PMKCachePeriod = (10 * 60 * OS_HZ); /* unit : tick(default: 10 minute)*/
+			mbss->PMKCachePeriod = (480 * 60 * OS_HZ); /* unit : tick(default: 8hour ~ one work day) */
 			NdisZeroMemory(&mbss->PMKIDCache, sizeof(NDIS_AP_802_11_PMKID));
 
 			/* dot1x related per BSS */
@@ -3730,6 +3745,8 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 		pAd->ApCfg.StaIdleTimeout = MAC_TABLE_AGEOUT_TIME;
 
+		pAd->ApCfg.BANClass3Data = FALSE;
+
 #ifdef IDS_SUPPORT
 		/* Default disable IDS threshold and reset all IDS counters*/
 		pAd->ApCfg.IdsEnable = FALSE;
@@ -3740,6 +3757,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 		pAd->ApCfg.DisassocFloodThreshold = 0;
 		pAd->ApCfg.DeauthFloodThreshold = 0;
 		pAd->ApCfg.EapReqFloodThreshold = 0;
+		pAd->ApCfg.DataFloodThreshold = 0;
 		RTMPClearAllIdsCounter(pAd);
 #endif /* IDS_SUPPORT */
 
@@ -3811,13 +3829,11 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 		}
 #endif /* APCLI_SUPPORT */
 		pAd->ApCfg.EntryClientCount = 0;
-		pAd->ApCfg.ChangeTxOpClient = 0;
 	}
 
 #ifdef DYNAMIC_VGA_SUPPORT
 	if (IS_MT76x2(pAd)) {
-		pAd->CommonCfg.lna_vga_ctl.long_range_compensate_level = 0;
-		pAd->CommonCfg.lna_vga_ctl.bDyncVgaEnable = FALSE;
+		pAd->CommonCfg.lna_vga_ctl.bDyncVgaEnable = TRUE;
 		pAd->CommonCfg.lna_vga_ctl.nFalseCCATh = 800;
 		pAd->CommonCfg.lna_vga_ctl.nLowFalseCCATh = 10;
 	}
@@ -3829,6 +3845,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 		pAd->CommonCfg.lna_vga_ctl.nLowFalseCCATh = 10;
 	}
 #endif
+	pAd->CommonCfg.lna_vga_ctl.long_range_compensate_level = 0;
 #endif /* DYNAMIC_VGA_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
 
@@ -3856,6 +3873,8 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	/*
 		part IV. others
 	*/
+
+	pAd->CommonCfg.PwrConstraint = 0;
 
 	/* dynamic BBP R66:sensibity tuning to overcome background noise*/
 	pAd->BbpTuning.bEnable = TRUE;
@@ -3885,7 +3904,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->CommonCfg.bWiFiTest = FALSE;
 	pAd->CommonCfg.bMcastTest = FALSE;
 #ifdef RTMP_MAC_PCI
-    pAd->bPCIclkOff = FALSE;
+	pAd->bPCIclkOff = FALSE;
 #endif /* RTMP_MAC_PCI */
 
 #ifdef CONFIG_AP_SUPPORT
@@ -3991,7 +4010,11 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
+#ifdef DFS_SUPPORT
 		pAd->Dot11_H.RDMode = RD_SILENCE_MODE;
+#else
+		pAd->Dot11_H.RDMode = RD_NORMAL_MODE;
+#endif /* DFS_SUPPORT */
 #endif
 
 	pAd->Dot11_H.ChMovingTime = 65;
@@ -4087,8 +4110,8 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 
 
-	pAd->ed_chk = FALSE; //let country region to turn on
 #ifdef ED_MONITOR
+	pAd->ed_chk = FALSE; //let country region to turn on
 	pAd->ed_learning_time_threshold = 50; //5 sec
 	pAd->ed_debug = FALSE;
 
@@ -4124,10 +4147,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->RxDMAResetCount = 0;
 #endif /* RTMP_PCI_SUPPORT */
 #endif /* DMA_BUSY_RESET */
-
-    pAd->CommonCfg.ManualTxopThreshold = 10; // Mbps
-    pAd->CommonCfg.ManualTxopUpBound = 15; // Ratio
-    pAd->CommonCfg.ManualTxopLowBound = 5; // Ratio
 
 	DBGPRINT(RT_DEBUG_TRACE, ("<-- UserCfgInit\n"));
 }
@@ -4249,7 +4268,6 @@ VOID RTMP_TimerListRelease(RTMP_ADAPTER *pAd, VOID *pRsc)
 		delEntryList(pRscList, pListEntry);
 
 		/* free a timer record entry */
-		DBGPRINT(RT_DEBUG_LOUD, ("%s: release timer obj %lx!\n", __FUNCTION__, (ULONG)pRsc));
 		os_free_mem(NULL, pObj);
 	}
 }
@@ -4280,7 +4298,7 @@ VOID RTMP_AllTimerListRelease(RTMP_ADAPTER *pAd)
 	{
 		if (pObj == NULL)
 			break;
-		DBGPRINT(RT_DEBUG_LOUD, ("%s: Cancel timer obj %lx!\n", __FUNCTION__, (ULONG)(pObj->pRscObj)));
+		DBGPRINT(RT_DEBUG_TRACE, ("%s: Cancel timer obj %lx!\n", __FUNCTION__, (ULONG)(pObj->pRscObj)));
 		pObjOld = pObj;
 		pObj = pObj->pNext;
 		RTMPReleaseTimer(pObjOld->pRscObj, &Cancel);
@@ -4337,7 +4355,7 @@ VOID RTMPInitTimer(
 	pTimer->pAd = pAd;
 
 	RTMP_OS_Init_Timer(pAd, &pTimer->TimerObj,	pTimerFunc, (PVOID) pTimer, &pAd->RscTimerMemList);
-	DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
+	DBGPRINT(RT_DEBUG_TRACE,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
 
 	RTMP_SEM_UNLOCK(&TimerSemLock);
 }
@@ -4390,7 +4408,7 @@ VOID RTMPSetTimer(RALINK_TIMER_STRUCT *pTimer, ULONG Value)
 			RTMP_OS_Add_Timer(&pTimer->TimerObj, Value);
 		}
 
-		DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
+		DBGPRINT(RT_DEBUG_INFO,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
 	}
 	else
 	{
@@ -4440,7 +4458,7 @@ VOID RTMPModTimer(RALINK_TIMER_STRUCT *pTimer, ULONG Value)
 			RTMP_OS_Mod_Timer(&pTimer->TimerObj, Value);
 			RTMP_SEM_UNLOCK(&TimerSemLock);
 		}
-		DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
+		//DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
 	}
 	else
 	{
@@ -4494,7 +4512,7 @@ VOID RTMPCancelTimer(RALINK_TIMER_STRUCT *pTimer, BOOLEAN *pCancelled)
 		RtmpTimerQRemove(pTimer->pAd, pTimer);
 #endif /* RTMP_TIMER_TASK_SUPPORT */
 
-		DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
+		DBGPRINT(RT_DEBUG_INFO,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
 	}
 	else
 	{
@@ -4532,7 +4550,7 @@ VOID RTMPReleaseTimer(RALINK_TIMER_STRUCT *pTimer, BOOLEAN *pCancelled)
 
 		RTMP_TimerListRelease(pTimer->pAd, pTimer);
 
-		DBGPRINT(RT_DEBUG_LOUD,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
+		DBGPRINT(RT_DEBUG_INFO,("%s: %lx\n",__FUNCTION__, (ULONG)pTimer));
 	}
 	else
 	{
@@ -4571,13 +4589,6 @@ VOID RTMPEnableRxTx(RTMP_ADAPTER *pAd)
 
 	{
 		RTMP_IO_WRITE32(pAd, MAC_SYS_CTRL, 0xc);
-//+++Add by shiang for debug for pbf_loopback
-//			RTMP_IO_WRITE32(pAd, MAC_SYS_CTRL, 0x2c);
-//---Add by shiang for debug
-//+++Add by shiang for debug invalid RxWI->WCID
-#ifdef RT8592
-#endif /* RT8592 */
-//---Add by shiang for  debug invalid RxWI->WCID
 	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("<== RTMPEnableRxTx\n"));
@@ -4616,9 +4627,9 @@ static INT RtmpChipOpsRegister(RTMP_ADAPTER *pAd, INT infType)
 	return ret;
 }
 
-
-
-
+#ifdef MULTIPLE_CARD_SUPPORT
+extern BOOLEAN RTMP_CardInfoRead(PRTMP_ADAPTER pAd);
+#endif
 INT RtmpRaDevCtrlInit(VOID *pAdSrc, RTMP_INF_TYPE infType)
 {
 	RTMP_ADAPTER *pAd = (PRTMP_ADAPTER)pAdSrc;
@@ -4628,12 +4639,12 @@ INT RtmpRaDevCtrlInit(VOID *pAdSrc, RTMP_INF_TYPE infType)
 
 #ifdef CONFIG_STA_SUPPORT
 	pAd->OpMode = OPMODE_STA;
-	printk("%s STA Driver version: %s\n", "MT76x2", STA_DRIVER_VERSION);
+	printk("%s STA Driver version: %s\n", "MT7620/MT76x2", STA_DRIVER_VERSION);
 #endif /* CONFIG_STA_SUPPORT */
 
 #ifdef CONFIG_AP_SUPPORT
 	pAd->OpMode = OPMODE_AP;
-	printk("%s AP Driver version: %s\n", "MT76x2", AP_DRIVER_VERSION);
+	printk("%s AP Driver version: %s\n", "MT7620/MT76x2", AP_DRIVER_VERSION);
 #endif /* CONFIG_AP_SUPPORT */
 
 	DBGPRINT(RT_DEBUG_TRACE, ("pAd->infType=%d\n", pAd->infType));
@@ -4644,21 +4655,16 @@ INT RtmpRaDevCtrlInit(VOID *pAdSrc, RTMP_INF_TYPE infType)
 
 #ifdef MULTIPLE_CARD_SUPPORT
 #ifdef RTMP_FLASH_SUPPORT
-/*	if ((IS_PCIE_INF(pAd))) */
-	{
 		/* specific for RT6855/RT6856 */
 		pAd->E2P_OFFSET_IN_FLASH[0] = 0x40000;
 		pAd->E2P_OFFSET_IN_FLASH[1] = 0x48000;
-	}
 #endif /* RTMP_FLASH_SUPPORT */
 #endif /* MULTIPLE_CARD_SUPPORT */
 
 	if (RtmpChipOpsRegister(pAd, infType))
 		return FALSE;
 
-
 #ifdef MULTIPLE_CARD_SUPPORT
-{
 	extern BOOLEAN RTMP_CardInfoRead(PRTMP_ADAPTER pAd);
 
 	/* find its profile path*/
@@ -4674,7 +4680,6 @@ INT RtmpRaDevCtrlInit(VOID *pAdSrc, RTMP_INF_TYPE infType)
 #endif /* CONFIG_STA_SUPPORT */
 
 	DBGPRINT(RT_DEBUG_TRACE, ("MC> ROW = %d, PATH = %s\n", pAd->MC_RowID, pAd->MC_FileName));
-}
 #endif /* MULTIPLE_CARD_SUPPORT */
 
 

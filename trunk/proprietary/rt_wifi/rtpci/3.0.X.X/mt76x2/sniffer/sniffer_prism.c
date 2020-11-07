@@ -156,7 +156,7 @@ void send_prism_monitor_packets(IN PNET_DEV pNetDev,
 		ph->noise.len = 4;
 		ph->noise.data = 0;
 		RtmpDrvRateGet(NULL, PHYMODE, ShortGI, BW, MCS, newRateGetAntenna(MCS, PHYMODE), &ph->rate.data);
-	ph->rate.data /= 1000000;
+		ph->rate.data /= 1000000;
 		ph->rate.did = DIDmsg_lnxind_wlansniffrm_rate;
 		ph->rate.status = 0;
 		ph->rate.len = 4;

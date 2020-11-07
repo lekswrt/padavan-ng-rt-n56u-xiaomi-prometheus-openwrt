@@ -1226,7 +1226,7 @@ static struct wireless_dev *CFG80211_WdevAlloc(
 #ifdef WDS_SUPPORT
 	pWdev->wiphy->interface_modes | = BIT(NL80211_IFTYPE_WDS);
 #endif /* WDS_SUPPORT */
-#endif /* CONFIG_STA_SUPPORT */
+#endif /* CONFIG_AP_SUPPORT */
 
 	pWdev->wiphy->reg_notifier = CFG80211_RegNotifier;
 

@@ -511,7 +511,6 @@ enum RXWI_FRQ_OFFSET_FIELD {
 /* Bit mask for the Tx ALC and the Tx fine power control */
 /* */
 
-#define DEFAULT_BBP_TX_FINE_POWER_CTRL 	0
 
 #endif /* RTMP_INTERNAL_TX_ALC || RTMP_TEMPERATURE_COMPENSATION */
 
@@ -629,8 +628,9 @@ struct _RTMP_CHIP_CAP_ {
 	
 	/* function */
 	/* use UINT8, not bit-or to speed up driver */
+#ifdef WAPI_SUPPORT
 	BOOLEAN FlgIsHwWapiSup;
-
+#endif /* WAPI_SUPPORT */
 #ifdef THERMAL_PROTECT_SUPPORT
 	BOOLEAN ThermalProtectSup;
 #endif /* THERMAL_PROTECT_SUPPORT */
@@ -700,15 +700,7 @@ struct _RTMP_CHIP_CAP_ {
 	INT32 avg_rssi_all;
 	UCHAR dynamic_chE_mode;
 	BOOLEAN dynamic_chE_trigger;
-	BOOLEAN skip_long_range_dync_vga; 
-	/* for 76x2 runtime turn long_range_dync_vga on/off , default do long_range_dync_vga */
-#ifdef CONFIG_AP_SUPPORT
-	INT32 dynamic_lna_trigger_timer;
-	BOOLEAN microwave_enable;
-	INT32 agc1_r35_backup;
-	INT32 agc1_r39_backup;
-	INT32 agc1_r41_backup;
-#endif /* CONFIG_AP_SUPPORT */
+	BOOLEAN skip_long_range_dync_vga; /* for 76x2 runtime turn long_range_dync_vga on/off , default do long_range_dync_vga */
 #endif /* DYNAMIC_VGA_SUPPORT */
 
 	/* ---------------------------- signal ---------------------------------- */
@@ -731,10 +723,10 @@ struct _RTMP_CHIP_CAP_ {
 
 #if defined(RTMP_INTERNAL_TX_ALC) || defined(RTMP_TEMPERATURE_COMPENSATION)
 	UINT8 TxAlcTxPowerUpperBound_2G;
-	const TX_POWER_TUNING_ENTRY_STRUCT *TxPowerTuningTable_2G;
+	TX_POWER_TUNING_ENTRY_STRUCT *TxPowerTuningTable_2G;
 #ifdef A_BAND_SUPPORT
 	UINT8 TxAlcTxPowerUpperBound_5G;
-	const TX_POWER_TUNING_ENTRY_STRUCT *TxPowerTuningTable_5G;
+	TX_POWER_TUNING_ENTRY_STRUCT *TxPowerTuningTable_5G;
 #endif /* A_BAND_SUPPORT */
 
 #endif /* defined(RTMP_INTERNAL_TX_ALC) || defined(RTMP_TEMPERATURE_COMPENSATION) */
@@ -1096,7 +1088,7 @@ struct _RTMP_CHIP_OP_ {
 #ifdef RLT_MAC
 	INT32 (*TxPwrBoost)(struct _RTMP_ADAPTER *pAd,struct _TXWI_NMAC *txwi_n);
 #endif /*RLT_MAC*/
-
+	
 	/* IQ Calibration */
 	VOID (*ChipIQCalibration)(struct _RTMP_ADAPTER *pAd, UCHAR Channel);
 

@@ -48,6 +48,7 @@
 
 #define MLME_TASK_EXEC_MULTIPLE       10  /*5*/       /* MLME_TASK_EXEC_MULTIPLE * MLME_TASK_EXEC_INTV = 1 sec */
 #define REORDER_EXEC_INTV         	100       /* 0.1 sec */
+#define STA_KEEP_ALIVE_NOTIFY_L2        60
 
 #ifdef CONFIG_STA_SUPPORT
 #define STAY_10_SECONDS_AWAKE        100/* */
@@ -73,7 +74,7 @@
 #define JOIN_TIMEOUT                2000        /* unit: msec */
 #define SHORT_CHANNEL_TIME          90        /* unit: msec */
 #define MIN_CHANNEL_TIME            110        /* unit: msec, for dual band scan */
-#define MAX_CHANNEL_TIME            140       /* unit: msec, for single band scan */
+#define MAX_CHANNEL_TIME            200       /* 140 */ /* unit: msec, for single band scan */
 #define FAST_ACTIVE_SCAN_TIME	    30 		  /* Active scan waiting for probe response time */
 
 #define AUTO_CHANNEL_SEL_TIMEOUT		400		/* uint: msec */
@@ -376,8 +377,29 @@ typedef struct GNU_PACKED _EXT_CAP_INFO_ELEMENT{
 	UINT32 operating_mode_notification:1;
 	UINT32 rsv63:1;
 #endif // RT_BIG_ENDIAN //
+
+#ifdef RT_BIG_ENDIAN
+	UINT8 ftm_init:1;	/* bit71: FTM Initiator in 802.11mc D4.0*/
+	UINT8 ftm_resp:1;	/* bit70: FTM responder */
+	UINT8 rsv69:1;
+	UINT8 rsv68:1;
+	UINT8 rsv67:1;
+	UINT8 rsv66:1;
+	UINT8 rsv65:1;
+	UINT8 rsv64:1;
+#else
+	UINT8 rsv64:1;
+	UINT8 rsv65:1;
+	UINT8 rsv66:1;
+	UINT8 rsv67:1;
+	UINT8 rsv68:1;
+	UINT8 rsv69:1;
+	UINT8 ftm_resp:1;	/* bit70: FTM responder */
+	UINT8 ftm_init:1;	/* bit71: FTM Initiator in 802.11mc D4.0*/
+#endif // RT_BIG_ENDIAN //
 }EXT_CAP_INFO_ELEMENT, *PEXT_CAP_INFO_ELEMENT;
 
+#define EXT_CAP_MIN_SAFE_LENGTH         8
 
 /* 802.11n 7.3.2.61 */
 typedef struct GNU_PACKED _BSS_2040_COEXIST_ELEMENT{
@@ -943,6 +965,7 @@ typedef struct _BSS_ENTRY{
 	UCHAR Privacy;			/* Indicate security function ON/OFF. Don't mess up with auth mode. */
 	UCHAR Hidden;
 
+	BOOLEAN FromBcnReport; //source from beacon report
 	USHORT DtimPeriod;
 	USHORT CapabilityInfo;
 
@@ -1169,7 +1192,7 @@ typedef struct _MLME_AUX {
 	UCHAR vht_op_len;
 	VHT_CAP_IE vht_cap;
 	VHT_OP_IE vht_op;
-	UCHAR vht_cent_ch;
+	//UCHAR vht_cent_ch;
 #endif /* DOT11_VHT_AC */
 
     /* new for QOS */
@@ -1329,8 +1352,8 @@ typedef struct GNU_PACKED _EID_STRUCT{
 /*#define TX_WEIGHTING                     40 */
 /*#define RX_WEIGHTING                     60 */
 
-#define MAC_TABLE_AGEOUT_TIME			300			/* unit: sec */
-#define MAC_TABLE_MIN_AGEOUT_TIME		60			/* unit: sec */
+#define MAC_TABLE_AGEOUT_TIME			480			/* unit: sec */
+#define MAC_TABLE_MIN_AGEOUT_TIME		120			/* unit: sec */
 #define MAC_TABLE_ASSOC_TIMEOUT			5			/* unit: sec */
 #define MAC_TABLE_FULL(Tab)				((Tab).size == MAX_LEN_OF_MAC_TABLE)
 
@@ -1439,6 +1462,7 @@ typedef struct _bcn_ie_list {
 	OPERATING_MODE operating_mode;
 	UCHAR vht_op_mode_len;
 #endif /* DOT11_VHT_AC */
+	BOOLEAN  FromBcnReport;
 #ifdef SMART_MESH
 	UCHAR VIEFlag;       		/* Store the flag byte inside VIE*/	
 	BOOLEAN	bSupportSmartMesh; 	/* Determine If own smart mesh capability */

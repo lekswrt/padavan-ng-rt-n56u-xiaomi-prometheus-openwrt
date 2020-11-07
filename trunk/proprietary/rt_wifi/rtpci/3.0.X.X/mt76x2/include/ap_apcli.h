@@ -112,8 +112,6 @@ VOID ApCli_Remove(
 VOID RT28xx_ApCli_Close(
 	IN PRTMP_ADAPTER 	pAd);
 
-
-
 INT ApCliIfLookUp(
 	IN PRTMP_ADAPTER pAd,
 	IN PUCHAR pAddr);
@@ -294,9 +292,6 @@ BOOLEAN ApcliCompareAuthEncryp(
 VOID ApCliSwitchCandidateAP(
 	IN PRTMP_ADAPTER pAd,
 	IN UCHAR ifIndex);
-
-VOID RTMPApCliReconnectionCheck(
-	IN PRTMP_ADAPTER pAd);
 
 #endif /* APCLI_AUTO_CONNECT_SUPPORT */
 VOID ApCliRxOpenWEPCheck(

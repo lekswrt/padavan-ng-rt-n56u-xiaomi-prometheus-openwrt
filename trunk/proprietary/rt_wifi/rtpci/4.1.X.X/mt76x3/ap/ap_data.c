@@ -192,8 +192,6 @@ INT APSendPacket(RTMP_ADAPTER *pAd, PNDIS_PACKET pPacket)
 #endif /* DBG */
 		goto drop_pkt;
 	}
-	/*add hook point when enqueue*/
-	RTMP_OS_TXRXHOOK_CALL(WLAN_TX_ENQUEUE,pPacket,QueIdx,pAd);
 
 #ifdef CONFIG_HOTSPOT
 	/* 
@@ -403,6 +401,7 @@ INT APSendPacket(RTMP_ADAPTER *pAd, PNDIS_PACKET pPacket)
 #ifdef UAPSD_SUPPORT
 		if (IS_ENTRY_CLIENT(tr_entry) 
 			&& (tr_entry->PsMode == PWR_SAVE)
+			&& (wcid < MAX_LEN_OF_MAC_TABLE)
 			&& UAPSD_MR_IS_UAPSD_AC(&pAd->MacTab.Content[wcid], QueIdx))
 		{
 			UAPSD_PacketEnqueue(pAd, &pAd->MacTab.Content[wcid], pPacket, QueIdx, FALSE);
@@ -440,7 +439,8 @@ INT APSendPacket(RTMP_ADAPTER *pAd, PNDIS_PACKET pPacket)
 			{
 				/* mark corresponding TIM bit in outgoing BEACON frame */
 #ifdef UAPSD_SUPPORT
-				if (UAPSD_MR_IS_NOT_TIM_BIT_NEEDED_HANDLED(&pAd->MacTab.Content[wcid], QueIdx))
+				if ((wcid < MAX_LEN_OF_MAC_TABLE)
+					&& (UAPSD_MR_IS_NOT_TIM_BIT_NEEDED_HANDLED(&pAd->MacTab.Content[wcid], QueIdx)))
 				{
 					/*
 						1. the station is UAPSD station;
@@ -473,8 +473,7 @@ INT APSendPacket(RTMP_ADAPTER *pAd, PNDIS_PACKET pPacket)
 drop_pkt:	
 	RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 nofree_drop_pkt:
-	/*add hook point when drop*/
-	RTMP_OS_TXRXHOOK_CALL(WLAN_TX_DROP,NULL,QueIdx,pAd);
+
 	DBGPRINT(RT_DEBUG_INFO, ("%s():drop pkt, drop_reason=%d!, wcid = %d\n", __FUNCTION__, drop_reason, wcid));
 
 	return NDIS_STATUS_FAILURE;
@@ -509,13 +508,12 @@ static inline VOID APFindCipherAlgorithm(RTMP_ADAPTER *pAd, TX_BLK *pTxBlk)
 
 	ASSERT(pTxBlk->wdev_idx < WDEV_NUM_MAX);
 	wdev = pAd->wdev_list[pTxBlk->wdev_idx];
-
-	if (!TX_BLK_TEST_FLAG(pTxBlk, fTX_bApCliPacket))
-		ASSERT(wdev->func_idx < pAd->ApCfg.BssidNum);
+	//ASSERT(wdev->func_idx < pAd->ApCfg.BssidNum);
 
 #ifdef WAPI_SUPPORT
 	pMbss = &pAd->ApCfg.MBSSID[wdev->func_idx];
 #endif /* WAPI_SUPPORT */
+
 	// TODO: shiang-usw, we should use this check to replace rest of the codes!
 
 	/* These EAPoL frames must be clear before 4-way handshaking is completed. */
@@ -692,7 +690,7 @@ static inline VOID APBuildCache802_11Header(
 {
 	STA_TR_ENTRY *tr_entry;
 	HEADER_802_11 *pHeader80211;
-#if defined(MESH_SUPPORT) || defined(APCLI_SUPPORT)
+#if defined(APCLI_SUPPORT)
 	MAC_TABLE_ENTRY *pMacEntry = pTxBlk->pMacEntry;
 #endif
 	pHeader80211 = (PHEADER_802_11)pHeader;
@@ -1395,7 +1393,7 @@ VOID AP_AMPDU_Frame_Tx(RTMP_ADAPTER *pAd, TX_BLK *pTxBlk)
 			INC_COUNTER64(pMacEntry->TxPackets);
 			pMacEntry->TxBytes+=pTxBlk->SrcBufLen;
 			pMacEntry->OneSecTxBytes+=pTxBlk->SrcBufLen;
-            pAd->TxTotalByteCnt += pTxBlk->SrcBufLen;
+        		pAd->TxTotalByteCnt += pTxBlk->SrcBufLen;
 		}
 	}
 
@@ -1723,6 +1721,7 @@ REPEATER_CLIENT_ENTRY *pReptEntry = NULL;
 			NdisZeroMemory(pHeaderBufPtr, padding + AMSDU_SUBHEAD_LEN);
 			pHeaderBufPtr += padding;
 			pTxBlk->MpduHeaderLen = padding;
+			pTxBlk->HdrPadLen += padding;
 		}
 
 		/*
@@ -3049,11 +3048,8 @@ NDIS_STATUS APHardTransmit(RTMP_ADAPTER *pAd, TX_BLK *pTxBlk)
 		RTMP_SET_PACKET_VLAN(pTxBlk->pPacket, FALSE);
 	}
 
-	/*add hook point when dequeue*/
-	RTMP_OS_TXRXHOOK_CALL(WLAN_TX_DEQUEUE,pPacket,pTxBlk->QueIdx,pAd);
-
 #ifdef DOT11K_RRM_SUPPORT
-#ifdef QUIET_SUPPORT
+#ifdef QUIET_SUPPORT_TXSTOP
 {
 	struct wifi_dev *wdev = pAd->wdev_list[pTxBlk->wdev_idx];
 	
@@ -3178,15 +3174,14 @@ BOOLEAN APChkCls2Cls3Err(RTMP_ADAPTER *pAd, UCHAR wcid, HEADER_802_11 *hdr)
 	if (wcid >= MAX_LEN_OF_MAC_TABLE)
 	{
 		MAC_TABLE_ENTRY *pEntry;
-		
-		DBGPRINT(RT_DEBUG_WARN, ("%s():Rx a frame from %02x:%02x:%02x:%02x:%02x:%02x with WCID(%d) > %d\n",
+
+		pEntry = MacTableLookup(pAd, hdr->Addr2);
+		if (pEntry && IS_ENTRY_CLIENT(pEntry))
+			return FALSE;
+
+		DBGPRINT(RT_DEBUG_INFO, ("%s():Rx a frame from %02x:%02x:%02x:%02x:%02x:%02x with WCID(%d) > %d\n",
 					__FUNCTION__, PRINT_MAC(hdr->Addr2), 
 					wcid, MAX_LEN_OF_MAC_TABLE));
-//+++Add by shiang for debug
-		pEntry = MacTableLookup(pAd, hdr->Addr2);
-		if (pEntry)
-			return FALSE;
-//---Add by shiang for debug
 
 		APCls2errAction(pAd, MAX_LEN_OF_MAC_TABLE, hdr);
 		return TRUE;
@@ -3218,6 +3213,9 @@ VOID detect_wmm_traffic(
 	IN UCHAR UserPriority,
 	IN UCHAR FlgIsOutput)
 {
+	if (pAd == NULL)
+		return;
+
 	/* For BE & BK case and TxBurst function is disabled */
 	if ((pAd->CommonCfg.bEnableTxBurst == FALSE) 
 #ifdef DOT11_N_SUPPORT
@@ -3415,63 +3413,6 @@ VOID APRxErrorHandle(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 #endif /* APCLI_SUPPORT */	
 }
 
-#ifdef RLT_MAC_DBG
-static int dump_next_valid = 0;
-#endif
-BOOLEAN APCheckVaildDataFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
-{
-	HEADER_802_11 *pHeader = pRxBlk->pHeader;
-	BOOLEAN isVaild = FALSE;
-
-	do
-	{
-		if (pHeader->FC.ToDs == 0)
-			break;
-
-#ifdef IDS_SUPPORT
-		if ((pHeader->FC.FrDs == 0) && (pRxBlk->wcid == RESERVED_WCID)) /* not in RX WCID MAC table */
-		{
-			if (++pAd->ApCfg.RcvdMaliciousDataCount > pAd->ApCfg.DataFloodThreshold)
-				break;
-		}
-#endif /* IDS_SUPPORT */
-	
-		/* check if Class2 or 3 error */
-		if ((pHeader->FC.FrDs == 0) && (APChkCls2Cls3Err(pAd, pRxBlk->wcid, pHeader))) 
-			break;
-
-//+++Add by shiang for debug
-#ifdef RLT_MAC_DBG
-		if (pAd->chipCap.hif_type == HIF_RLT) {
-			if (pRxBlk->wcid >= MAX_LEN_OF_MAC_TABLE) {
-				MAC_TABLE_ENTRY *pEntry = NULL;
-
-				DBGPRINT(RT_DEBUG_WARN, ("ErrWcidPkt: seq=%d\n", pHeader->Sequence));
-				pEntry = MacTableLookup(pAd, pHeader->Addr2);
-				if (pEntry && (pEntry->Sst == SST_ASSOC) && IS_ENTRY_CLIENT(pEntry))
-					pRxBlk->wcid = pEntry->wcid;
-
-				dump_next_valid = 1;
-			}
-			else if (dump_next_valid)
-			{
-				DBGPRINT(RT_DEBUG_WARN, ("NextValidWcidPkt: seq=%d\n", pHeader->Sequence));
-				dump_next_valid = 0;
-			}
-		}
-#endif /* RLT_MAC_DBG */
-//---Add by shiang for debug
-
-		if(pAd->ApCfg.BANClass3Data == TRUE)
-			break;
-
-		isVaild = TRUE;
-	} while (0);
-
-	return isVaild;
-}
-
-
 INT ap_rx_pkt_allow(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 {
 	RXINFO_STRUC *pRxInfo = pRxBlk->pRxInfo;
@@ -3552,6 +3493,10 @@ INT ap_rx_pkt_allow(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	}
 #endif /* defined(WDS_SUPPORT) || defined(CLIENT_WDS) */
 
+	/* check if Class2 or 3 error */
+	if (APChkCls2Cls3Err(pAd, pRxBlk->wcid, pHeader))
+		return FALSE;
+
 	if (!pEntry) {
 #ifdef IDS_SUPPORT
 		if ((pHeader->FC.FrDs == 0) && (pRxBlk->wcid == RESERVED_WCID)) /* not in RX WCID MAC table */
@@ -3573,10 +3518,6 @@ INT ap_rx_pkt_allow(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 
 		return FALSE;
 	}
-
-	/* check if Class2 or 3 error */
-	if (APChkCls2Cls3Err(pAd, pRxBlk->wcid, pHeader))
-		return FALSE;
 
 //+++Add by shiang for debug
 #ifdef RLT_MAC_DBG
@@ -3600,7 +3541,7 @@ INT ap_rx_pkt_allow(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 #endif /* RLT_MAC_DBG */
 //---Add by shiang for debug
 
-	if(pAd->ApCfg.BANClass3Data == TRUE)
+	if(pAd && (pAd->ApCfg.BANClass3Data == TRUE))
 		return FALSE;
 
 #ifdef STATS_COUNT_SUPPORT
@@ -3817,7 +3758,7 @@ INT ap_rx_foward_handle(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET p
 
 		APSendPacket(pAd, pForwardPacket);
 
-		RTMPDeQueuePacket(pAd, FALSE, NUM_OF_TX_RING, WCID_ALL, MAX_TX_PROCESS);
+		RTMPDeQueuePacket(pAd, FALSE, WMM_NUM_OF_AC, WCID_ALL, MAX_TX_PROCESS);
 	}
 	
 	return to_os;

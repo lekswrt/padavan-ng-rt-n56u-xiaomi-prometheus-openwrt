@@ -300,11 +300,10 @@ void MT76xx_PciMlmeRadioOn(RTMP_ADAPTER *pAd)
 	}
 #endif
 
-
 	/* Enable Tx/Rx*/
 	RTMPEnableRxTx(pAd);
-	
-	if (pAd->chipCap.ed_cca_enable == TRUE) {
+
+       if (pAd->chipCap.ed_cca_enable == TRUE) {
 		RTMP_IO_READ32(pAd, TXOP_CTRL_CFG, &mac_val);
 		mac_val |= (1 << 20);
 		RTMP_IO_WRITE32(pAd, TXOP_CTRL_CFG, mac_val);
@@ -313,11 +312,10 @@ void MT76xx_PciMlmeRadioOn(RTMP_ADAPTER *pAd)
 	RTMP_IO_READ32(pAd, TXOP_HLDR_ET, &mac_val);
 	mac_val |= 2;
 	RTMP_IO_WRITE32(pAd, TXOP_HLDR_ET, mac_val);
-	
 
 	/* Restore RTS retry count */
-	RTMP_IO_WRITE32(pAd, 0x1344, pAd->rts_tx_retry_num);		
-	
+	RTMP_IO_WRITE32(pAd, 0x1344, pAd->rts_tx_retry_num);
+
 	/* Clear Radio off flag*/
 	RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF);
 	RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF);
@@ -379,7 +377,7 @@ void MT76xx_PciMlmeRadioOFF(RTMP_ADAPTER *pAd)
 
 	RTMP_OS_NETDEV_STOP_QUEUE(pAd->net_dev);
 
-	/* disable prim/second EDCCA before disable mac TX/RX */
+	 /* disable prim/second EDCCA before disable mac TX/RX */
 	RTMP_IO_READ32(pAd, TXOP_CTRL_CFG, &mac_val);
 	if ((mac_val & 0x100000) == 0x100000) {
 		DBGPRINT(RT_DEBUG_OFF,("%s:: ED CCA has been enabled\n", __FUNCTION__));
@@ -436,7 +434,7 @@ void MT76xx_PciMlmeRadioOFF(RTMP_ADAPTER *pAd)
 	{
 		BOOLEAN		Cancelled;
 
-		RTMPCancelTimer(&pAd->MlmeAux.APScanTimer, &Cancelled);
+		RTMPReleaseTimer(&pAd->MlmeAux.APScanTimer, &Cancelled);
 	}
 #endif /* AP_SCAN_SUPPORT */
 

@@ -156,6 +156,12 @@ INT Set_PwrConstraint(
 	IN	PSTRING			arg);
 
 
+#ifdef DOT11K_RRM_SUPPORT
+INT Set_VoPwrConsTest(
+	IN	PRTMP_ADAPTER	pAd,
+	IN	PSTRING			arg);
+#endif /* DOT11K_RRM_SUPPORT */
+
 NDIS_STATUS	MeasureReqTabInit(
 	IN PRTMP_ADAPTER pAd);
 
@@ -179,7 +185,8 @@ VOID InsertChannelRepIE(
 	OUT PUCHAR pFrameBuf,
 	OUT PULONG pFrameLen,
 	IN PSTRING pCountry,
-	IN UINT8 RegulatoryClass);
+	IN UINT8 RegulatoryClass,
+	IN UINT8 *ChReptList);
 
 VOID InsertTpcReportIE(
 	IN PRTMP_ADAPTER pAd,

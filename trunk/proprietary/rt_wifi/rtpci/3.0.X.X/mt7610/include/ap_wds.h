@@ -31,7 +31,7 @@
 #ifndef _AP_WDS_H_
 #define _AP_WDS_H_
 
-#define WDS_ENTRY_RETRY_INTERVAL	(100 * OS_HZ / 1000)
+#define WDS_ENTRY_RETRY_INTERVAL	(50 * OS_HZ / 1000)
 
 #ifdef WDS_VLAN_SUPPORT /* support WDS VLAN */
 #define WDS_VLAN_INFO_GET(												\
@@ -135,6 +135,10 @@ VOID WdsPeerBeaconProc(
 	IN UCHAR MaxSupportedRateLen,
 	IN BOOLEAN bWmmCapable,
 	IN ULONG ClientRalinkIe,
+#ifdef DOT11_VHT_AC
+	IN UCHAR vht_cap_len,
+	IN VHT_CAP_IE *vht_cap,
+#endif /* DOT11_VHT_AC */
 	IN HT_CAPABILITY_IE *pHtCapability,
 	IN UCHAR HtCapabilityLen);
 
