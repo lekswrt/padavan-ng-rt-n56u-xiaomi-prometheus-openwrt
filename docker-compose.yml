@@ -1,0 +1,6 @@
+version: '2'
+services:
+  padavan:
+    build: .
+    tty: true
+    stdin_open: true

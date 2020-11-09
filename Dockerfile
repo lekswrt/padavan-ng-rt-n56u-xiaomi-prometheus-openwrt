@@ -1,12 +1,10 @@
-FROM ubuntu:xenial
-
-MAINTAINER Andy Voigt <voigt-andy@hotmail.de>
+FROM ubuntu:focal
 
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -qy apt-utils
 RUN apt-get -qy install locales
-RUN locale-gen --no-purge en_US.UTF-8
+RUN locale-gen --no-purge en_US.UTF-8 ru_RU.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 
@@ -31,11 +29,13 @@ RUN apt-get install -qy \
 	libncurses5-dev \
 	nano \
 	vim \
-  	autopoint \
+	autopoint \
 	gperf \
-	python-docutils
+	python-docutils \
+	help2man \
+	libtool-bin \
+	libtool-doc
 
+RUN git clone https://gitlab.com/dm38/padavan-ng.git --depth=1 /opt/padavan-ng
 
-RUN git clone https://bitbucket.org/padavan/rt-n56u.git /opt/rt-n56u
-
-RUN cd /opt/rt-n56u/toolchain-mipsel && ./clean_sources && ./build_toolchain_3.4.x
+RUN cd /opt/padavan-ng/toolchain && ./clean_sources.sh && ./build_toolchain.sh
