@@ -713,6 +713,13 @@ static const struct usb_device_id	products[] = {
 	.driver_info = 0,
 },
 
+/* Novatel MC679 - handled by qmi_wwan */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(NOVATEL_VENDOR_ID, 0x7031, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
 /* Dell Wireless 5800 (Novatel E362) - handled by qmi_wwan */
 {
 	USB_DEVICE_AND_INTERFACE_INFO(DELL_VENDOR_ID, 0x8195, USB_CLASS_COMM,
