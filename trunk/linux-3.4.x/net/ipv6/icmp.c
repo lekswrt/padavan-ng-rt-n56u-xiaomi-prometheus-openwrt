@@ -157,11 +157,11 @@ static int is_ineligible(struct sk_buff *skb)
 /*
  * Check the ICMP output rate limit
  */
-static inline bool icmpv6_xrlim_allow(struct sock *sk, u8 type,
-				      struct flowi6 *fl6)
+static bool icmpv6_xrlim_allow(struct sock *sk, u8 type,
+			       struct flowi6 *fl6)
 {
-	struct dst_entry *dst;
 	struct net *net = sock_net(sk);
+	struct dst_entry *dst;
 	bool res = false;
 
 	/* Informational messages are not limited. */
@@ -191,9 +191,11 @@ static inline bool icmpv6_xrlim_allow(struct sock *sk, u8 type,
 		if (rt->rt6i_dst.plen < 128)
 			tmo >>= ((128 - rt->rt6i_dst.plen)>>5);
 
-		if (!rt->rt6i_peer)
-			rt6_bind_peer(rt, 1);
-		res = inet_peer_xrlim_allow(rt->rt6i_peer, tmo);
+		if (icmp_global_allow()) {
+			if (!rt->rt6i_peer)
+				rt6_bind_peer(rt, 1);
+			res = inet_peer_xrlim_allow(rt->rt6i_peer, tmo);
+		}
 	}
 	dst_release(dst);
 	return res;
