@@ -520,6 +520,11 @@ if [ "$CONFIG_FIRMWARE_INCLUDE_WIREGUARD" = "y" ] ; then
 	func_enable_kernel_param "CONFIG_WIREGUARD_DEBUG"
 fi
 
+if [ "$CONFIG_FIRMWARE_INCLUDE_SHORTCUT_FE" = "y" ] ; then
+	func_enable_kernel_param "CONFIG_SHORTCUT_FE"
+	func_enable_kernel_param "CONFIG_NF_CONNTRACK_EVENTS"
+	func_enable_kernel_param "CONFIG_NF_CONNTRACK_CHAIN_EVENTS"
+fi
 
 #######################################################################
 echo --------------------------MAKE-DEP--------------------------------
