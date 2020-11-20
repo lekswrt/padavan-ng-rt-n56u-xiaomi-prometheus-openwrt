@@ -1065,7 +1065,7 @@ void reply_query(int fd, int family, time_t now)
       forward->sentto->edns_pktsz = SAFE_PKTSZ;
       forward->sentto->pktsz_reduced = now;
       (void)prettyprint_addr(&forward->sentto->addr, daemon->addrbuff);
-      my_syslog(LOG_WARNING, _("reducing DNS packet size for nameserver %s to %d"), daemon->addrbuff, SAFE_PKTSZ);
+      my_syslog(LOG_INFO, _("reducing DNS packet size for nameserver %s to %d"), daemon->addrbuff, SAFE_PKTSZ);
     }
 
     
