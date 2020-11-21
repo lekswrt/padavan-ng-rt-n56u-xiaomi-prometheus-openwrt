@@ -1,4 +1,4 @@
-SRC_NAME=transmission-2.9X
+SRC_NAME=transmission-3.0X
 
 COMMON_FLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -D_LARGEFILE64_SOURCE -D_LFS64_LARGEFILE
 CFLAGS   += $(COMMON_FLAGS)
