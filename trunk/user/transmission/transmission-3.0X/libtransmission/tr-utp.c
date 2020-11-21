@@ -56,7 +56,7 @@ void UTP_RBDrained(struct UTPSocket* socket)
     TR_ASSERT(false); /* FIXME: this is too much for the long term, but probably needed in the short term */
 }
 
-bool UTP_Write(struct UTPSocket* socket, size_t count)
+uint8_t UTP_Write(struct UTPSocket* socket, size_t count)
 {
     tr_logAddNamedError(MY_NAME, "UTP_RBDrained(%p, %zu) was called.", socket, count);
     dbgmsg("UTP_RBDrained(%p, %zu) was called.", socket, count);

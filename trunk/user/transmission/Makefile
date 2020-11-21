@@ -1,11 +1,11 @@
 SRC_NAME=transmission-3.0X
 
-COMMON_FLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -D_LARGEFILE64_SOURCE -D_LFS64_LARGEFILE
-CFLAGS   += $(COMMON_FLAGS)
-CXXFLAGS += $(COMMON_FLAGS) -fvisibility-inlines-hidden
-LDFLAGS  += -Wl,--gc-sections
-
 THISDIR = $(shell pwd)
+
+COMMON_FLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -D_LARGEFILE64_SOURCE -D_LFS64_LARGEFILE
+CFLAGS   += $(COMMON_FLAGS) -I$(THISDIR)/$(SRC_NAME)/third-party
+CXXFLAGS += $(COMMON_FLAGS)  -I$(THISDIR)/$(SRC_NAME)/third-party -fvisibility-inlines-hidden
+LDFLAGS  += -Wl,--gc-sections
 
 all: config_test
 	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME) && \
@@ -20,8 +20,7 @@ config_test:
 
 configure:
 	( cd $(SRC_NAME) ; \
-	HAVE_CXX=yes \
-	PKG_CONFIG_PATH=$(STAGEDIR)/lib/pkgconfig \
+	./autogen.sh ; \
 	./configure \
 		--prefix=/usr \
 		--enable-daemon \
