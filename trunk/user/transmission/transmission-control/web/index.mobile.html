@@ -20,7 +20,7 @@
 	<!-- -->
 	<!-- System class library -->
 	<script type="text/javascript" src="tr-web-control/script/min/public.min.js?v=20180906"></script>
-	<script type="text/javascript" src="tr-web-control/script/min/ua-parser.min.js?v=20170522"></script>
+	<script type="text/javascript" src="tr-web-control/script/other/ua-parser.min.js?v=20170522"></script>
 	<script type="text/javascript" src="tr-web-control/script/min/transmission.min.js?v=20180906"></script>
 	<script type="text/javascript" src="tr-web-control/script/min/transmission.torrents.min.js?v=20180906"></script>
 	<script type="text/javascript" src="tr-web-control/script/min/system.mobile.min.js?v=20180906"></script>
@@ -69,6 +69,7 @@
 			<ul data-role="listview" data-divider-theme="a" data-theme="c" data-icon="false" style="margin-top:15px;">
 				<li data-role='list-divider'>UI</li>
 				<li><a href="#" onclick="location.href = 'index.html?devicetype=computer';"><img src="tr-web-control/style/images/computer.png" class="ui-li-icon"/><span system-lang="toolbar['ui-computer']"></span></a></li>
+				<li><a href="#" onclick="location.href = 'index.original.html';"><img src="tr-web-control/style/images/transmission.png" class="ui-li-icon"/><span system-lang="toolbar['ui-original']"></span></a></li>
 			</ul>
 			<ul data-role="listview" data-divider-theme="a" data-theme="c" data-icon="false" style="margin-top:15px;">
 				<li data-role='list-divider'><span system-lang="title.status"></span></li>
@@ -103,6 +104,8 @@
 				<textarea id="torrent-url" style="height:130px;"></textarea>
 				<label for="download-dir" system-lang="dialog['torrent-add']['download-dir']"></label>
 				<input id="download-dir"/>
+                <label for="used-download-dir" system-lang="dialog['torrent-add']['used-download-dir']"></label>
+                <select id="used-download-dir" data-mini="true"></select>
 				<div data-role="fieldcontain">
 					<label for="autostart" system-lang="dialog['torrent-add']['autostart']"></label>
 					<select name="autostart" id="autostart" data-role="slider">
@@ -171,6 +174,15 @@
 		$('#download-dir').val(system.downloadDir);
 		system.showContent('add-torrent');
 		$("#navPanel").panel("close");
+
+        //将常用目录初始化,并设置默认目录
+        var $usedDownloadDir = $("#used-download-dir");
+        $usedDownloadDir.empty();
+        $.each(transmission.downloadDirs, function( index, dir ) {
+            $usedDownloadDir.append(new Option(dir, dir));
+        });
+        $usedDownloadDir.val(system.downloadDir).selectmenu('refresh', true);
+
 	}
 	function addUrl()
 	{
@@ -227,6 +239,10 @@
 			system.control.torrentlist.find("input[type='checkbox']").prop("checked",checked).checkboxradio("refresh");
 			system.changeTorrentToolbar();
 		});
+
+        $("#used-download-dir").change(function(){
+            $('#download-dir').val($(this).val());
+        });
 
 		function saveConfig()
 		{
