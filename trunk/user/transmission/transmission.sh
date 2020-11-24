@@ -12,6 +12,7 @@ SVC_PRIORITY=5
 SVC_NAME="Transmission"
 SVC_PATH="/usr/bin/transmission-daemon"
 DIR_LINK="/mnt/transmission"
+export CURL_CA_BUNDLE="/etc/ssl/cert.pem"
 
 func_start()
 {
