@@ -515,17 +515,19 @@ static int wg_set_device(struct sk_buff *skb, struct genl_info *info)
 	if (flags & ~__WGDEVICE_F_ALL)
 		goto out;
 
-#ifndef ISPADAVAN
 	if (info->attrs[WGDEVICE_A_LISTEN_PORT] || info->attrs[WGDEVICE_A_FWMARK]) {
 		struct net *net;
 		rcu_read_lock();
 		net = rcu_dereference(wg->creating_net);
+#ifndef ISPADAVAN
 		ret = !net || !ns_capable(net->user_ns, CAP_NET_ADMIN) ? -EPERM : 0;
+#else
+		ret = !net ? -EPERM : 0;
+#endif
 		rcu_read_unlock();
 		if (ret)
 			goto out;
 	}
-#endif
 
 	++wg->device_update_gen;
 
