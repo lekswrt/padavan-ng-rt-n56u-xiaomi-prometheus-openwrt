@@ -50,13 +50,13 @@ struct host
 #define SENSE_DENY 0
 
 #ifndef DEFAULT_AUTH_FILE
-#define DEFAULT_AUTH_FILE "/etc/xl2tpd/l2tp-secrets"
+#define DEFAULT_AUTH_FILE "/etc/xl2tpd-secrets"
 #endif
 #ifndef DEFAULT_CONFIG_FILE
-#define DEFAULT_CONFIG_FILE "/etc/xl2tpd/xl2tpd.conf"
+#define DEFAULT_CONFIG_FILE "/etc/xl2tpd.conf"
 #endif
-#define ALT_DEFAULT_AUTH_FILE "/etc/l2tpd/l2tp-secrets"
-#define ALT_DEFAULT_CONFIG_FILE "/etc/l2tp/l2tpd.conf"
+#define ALT_DEFAULT_AUTH_FILE ""
+#define ALT_DEFAULT_CONFIG_FILE ""
 #define DEFAULT_PID_FILE "/var/run/xl2tpd.pid"
 
 /* Definition of an LNS */
@@ -130,6 +130,7 @@ struct lac
     int idle;                   /* Idle timeout in seconds */
     int autodial;               /* Try to dial immediately? */
     int defaultroute;           /* Use as default route? */
+    int route_rdgw;             /* Add route to remote host via default gateway */
     int redial;                 /* Redial if disconnected */
     int rmax;                   /* Maximum # of consecutive redials */
     int rtries;                 /* # of tries so far */

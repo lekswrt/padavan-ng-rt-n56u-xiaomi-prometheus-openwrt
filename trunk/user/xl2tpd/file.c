@@ -170,6 +170,7 @@ struct lac *new_lac ()
     tmp->pass_peer = 0;
     tmp->pppoptfile[0] = 0;
     tmp->defaultroute = 0;
+    tmp->route_rdgw = 1;
     return tmp;
 }
 
@@ -506,6 +507,26 @@ int set_defaultroute (char *word, char *value, int context, void *item)
     case CONTEXT_LAC:
         if (set_boolean (word, value, &(((struct lac *) item)->defaultroute)))
             return -1;
+        break;
+    default:
+        snprintf (filerr, sizeof (filerr), "'%s' not valid in this context\n",
+                  word);
+        return -1;
+    }
+    return 0;
+}
+
+int set_route_rdgw (char *word, char *value, int context, void *item)
+{
+    if (atoi (value) < 0)
+    {
+        snprintf (filerr, sizeof (filerr), "route_rdgw value must be at least 0\n");
+        return -1;
+    }
+    switch (context & ~CONTEXT_DEFAULT)
+    {
+    case CONTEXT_LAC:
+        set_int (word, value, &(((struct lac *) item)->route_rdgw));
         break;
     default:
         snprintf (filerr, sizeof (filerr), "'%s' not valid in this context\n",
@@ -1595,6 +1616,7 @@ struct keyword words[] = {
     {"local ip range", &set_localiprange},
     {"remote ip", &set_remoteaddr},
     {"defaultroute", &set_defaultroute},
+    {"route_rdgw", &set_route_rdgw},
     {"length bit", &set_lbit},
     {"hidden bit", &set_hbit},
     {"require pap", &set_papchap},

@@ -41,12 +41,17 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/route.h>
+#include <sys/ioctl.h>
+#include <net/route.h>
+#include <sys/ioctl.h>
+#include <resolv.h>
 #include "l2tp.h"
 
 struct tunnel_list tunnels;
 int rand_source;
 int ppd = 1;                    /* Packet processing delay */
-int control_fd;                 /* descriptor of control area */
+int control_fd = -1;                 /* descriptor of control area */
 
 static char *dial_no_tmp;              /* jz: Dialnumber for Outgoing Call */
 int switch_io = 0;              /* jz: Switch for Incoming or Outgoing Call */
@@ -427,6 +432,7 @@ int start_pppd (struct call *c, struct ppp_opts *opts)
        if (flags == -1 || fcntl(fd2, F_SETFL, flags | O_NONBLOCK) == -1) {
            l2tp_log (LOG_WARNING, "%s: Unable to set PPPoL2TP socket nonblock.\n",
                 __FUNCTION__);
+           close(fd2);
            return -EINVAL;
        }
        memset(&sax, 0, sizeof(sax));
@@ -568,12 +574,16 @@ int start_pppd (struct call *c, struct ppp_opts *opts)
         }
 
         /* close the UDP socket fd */
-        if(server_socket!=-1)
+        if(server_socket != -1) {
             close (server_socket);
+            server_socket = -1;
+        }
 
         /* close the control pipe fd */
-        if(control_fd!=-1)
+        if(control_fd != -1) {
             close (control_fd);
+            control_fd = -1;
+        }
 
         if( c->dialing[0] )
         {
@@ -690,8 +700,21 @@ void destroy_tunnel (struct tunnel *t)
         close (t->pppox_fd);
     if (t->udp_fd > -1 )
         close (t->udp_fd);
+    route_del(&t->rt);
     destroy_call (me);
     free (t);
+}
+
+void schedule_redial(struct lac *lac)
+{
+    struct timeval tv;
+    if (lac->redial && (lac->rtimeout > 0) && !lac->rsched)
+    {
+        l2tp_log (LOG_INFO, "Network is broken now. Will redial in %d seconds\n", lac->rtimeout);
+        tv.tv_sec = lac->rtimeout;
+        tv.tv_usec = 0;
+        lac->rsched = schedule (tv, magic_lac_dial, lac);
+    }
 }
 
 static struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
@@ -708,8 +731,8 @@ static struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
     hp = gethostbyname (host);
     if (!hp)
     {
-        l2tp_log (LOG_WARNING, "Host name lookup failed for %s.\n",
-             host);
+        l2tp_log (LOG_WARNING, "Host name lookup failed for %s.\n", host);
+        schedule_redial(lac);
         return NULL;
     }
     bcopy (hp->h_addr, &addr.s_addr, hp->h_length);
@@ -723,8 +746,8 @@ static struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
     tmp = get_call (0, 0, addr, port, IPSEC_SAREF_NULL, IPSEC_SAREF_NULL);
     if (!tmp)
     {
-        l2tp_log (LOG_WARNING, "%s: Unable to create tunnel to %s.\n", __FUNCTION__,
-             host);
+        l2tp_log (LOG_WARNING, "%s: Unable to create tunnel to %s.\n", __FUNCTION__, host);
+        schedule_redial(lac);
         return NULL;
     }
     tmp->container->tid = 0;
@@ -741,6 +764,14 @@ static struct tunnel *l2tp_call (char *host, int port, struct lac *lac,
      */
     l2tp_log (LOG_NOTICE, "Connecting to host %s, port %d\n", host,
          ntohs (port));
+
+    if (lac) {
+        if (lac->route_rdgw == 1)
+            route_add(tmp->container->peer.sin_addr, 0, &tmp->container->rt);
+        else if (lac->route_rdgw == 2)
+            route_add(tmp->container->peer.sin_addr, 1, &tmp->container->rt);
+    }
+
     control_finish (tmp->container, tmp);
     return tmp->container;
 }
@@ -894,6 +925,7 @@ struct tunnel *new_tunnel ()
         return NULL;
     tmp->debug = -1;
     tmp->tid = -1;
+    memset(&tmp->rt, 0, sizeof(tmp->rt));
 #ifndef TESTING
 /*      while(get_call((tmp->ourtid = rand() & 0xFFFF),0,0,0)); */
 /*        tmp->ourtid = rand () & 0xFFFF; */
@@ -1920,4 +1952,141 @@ int main (int argc, char *argv[])
     dial_no_tmp = calloc (128, sizeof (char));
     network_thread ();
     return 0;
+}
+
+/* Route manipulation */
+static int
+route_ctrl(int ctrl, struct rtentry *rt)
+{
+	int s;
+
+	/* Open a raw socket to the kernel */
+	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0 || ioctl(s, ctrl, rt) < 0)
+		route_msg("%s: %s", __FUNCTION__, strerror(errno));
+	else
+		errno = 0;
+
+	close(s);
+	return errno;
+}
+
+/* static */ int
+route_del(struct rtentry *rt)
+{
+	if (rt->rt_dev) {
+		route_ctrl(SIOCDELRT, rt);
+		free(rt->rt_dev);
+	}
+
+	memset(rt, 0, sizeof(*rt));
+
+	return 0;
+}
+
+/* static */ int
+route_add(const struct in_addr inetaddr, int any_dgw, struct rtentry *rt)
+{
+	char buf[256], dev[64], rdev[64];
+	u_int32_t dest, mask, gateway, flags, bestmask = 0;
+	u_int32_t metric, metric_min = UINT_MAX;
+
+	FILE *fp = fopen("/proc/net/route", "r");
+	if (!fp) {
+		/* route_msg("%s: /proc/net/route: %s", strerror(errno), __FUNCTION__); */
+		return -1;
+	}
+
+	rt->rt_gateway.sa_family = 0;
+
+	while (fgets(buf, sizeof(buf), fp)) {
+		if (sscanf(buf, "%63s %x %x %x %*s %*s %d %x",
+			dev, &dest, &gateway, &flags, &metric, &mask) != 6)
+			continue;
+		
+		if ((flags & RTF_UP) != RTF_UP)
+			continue;
+		
+		if (!any_dgw) {
+			/* use only physical WAN/MAN interface */
+			if (strncmp(dev, "eth", 3) != 0 &&
+			    strncmp(dev, "apcli", 5) != 0 &&
+			    strncmp(dev, "wwan", 4) != 0 &&
+			    strncmp(dev, "weth", 4) != 0)
+				continue;
+			
+			if ( (inetaddr.s_addr & mask) == dest && gateway ) {
+				if ((mask | bestmask) == bestmask && rt->rt_gateway.sa_family)
+					continue;
+				
+				bestmask = mask;
+				
+				sin_addr(&rt->rt_gateway).s_addr = gateway;
+				rt->rt_gateway.sa_family = AF_INET;
+				rt->rt_flags = flags;
+				rt->rt_metric = (dest) ? metric : 0;
+				strncpy(rdev, dev, sizeof(rdev));
+				
+				if (mask == INADDR_BROADCAST)
+					break;
+			}
+		} else {
+			/* skip lo and LAN */
+			if (strcmp(dev, "lo") == 0 ||
+			    strcmp(dev, "br0") == 0)
+				continue;
+			
+			if ( !dest && !mask && gateway && metric < metric_min ) {
+				metric_min = metric;
+				
+				sin_addr(&rt->rt_gateway).s_addr = gateway;
+				rt->rt_gateway.sa_family = AF_INET;
+				rt->rt_flags = flags;
+				rt->rt_metric = 0;
+				strncpy(rdev, dev, sizeof(rdev));
+			}
+		}
+	}
+
+	fclose(fp);
+
+	/* check for no route */
+	if (rt->rt_gateway.sa_family != AF_INET) 
+	{
+		/* route_msg("%s: no route to host", __FUNCTION__); */
+		return -1;
+	}
+
+	/* check for existing route to this host,
+	 * add if missing based on the existing routes */
+	if (rt->rt_flags & RTF_HOST)
+	{
+		/* route_msg("%s: not adding existing route", __FUNCTION__); */
+		return -1;
+	}
+
+	sin_addr(&rt->rt_dst) = inetaddr;
+	rt->rt_dst.sa_family = AF_INET;
+
+	sin_addr(&rt->rt_genmask).s_addr = INADDR_BROADCAST;
+	rt->rt_genmask.sa_family = AF_INET;
+
+	rt->rt_flags &= RTF_GATEWAY;
+	rt->rt_flags |= RTF_UP | RTF_HOST;
+
+	rt->rt_metric++;
+	rt->rt_dev = strdup(rdev);
+
+	if (!rt->rt_dev)
+	{
+		/* route_msg("%s: no memory", __FUNCTION__); */
+		return -1;
+	}
+
+	if (!route_ctrl(SIOCADDRT, rt))
+		return 0;
+
+	free(rt->rt_dev);
+	memset(rt, 0, sizeof(*rt));
+
+	return -1;
 }
