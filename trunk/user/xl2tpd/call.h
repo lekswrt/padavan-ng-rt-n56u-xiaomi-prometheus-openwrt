@@ -74,6 +74,7 @@ struct call
     int rbuf_pos;               /* Read buffer position */
     int rbuf_max;               /* Read buffer data length */
     struct buffer *ppp_buf;     /* Packet readed from pty */
+    struct termios *oldptyconf;
     int die;
     int nego;                   /* Show negotiation? */
     int pppd;                   /* PID of pppd */
@@ -81,6 +82,7 @@ struct call
     int error;                  /* Error code */
     int fbit;                   /* Use sequence numbers? */
     int ourfbit;                /* Do we want sequence numbers? */
+/*	int ourrws;		Our RWS for the call */
     int cnu;                    /* Do we need to send updated Ns, Nr values? */
     int pnu;                    /* ditto for payload packet */
     char errormsg[MAXSTRLEN];   /* Error message */

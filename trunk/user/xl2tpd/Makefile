@@ -27,7 +27,6 @@ include Makefile.ver
 # -DDEBUG_MAGIC
 # -DDEBUG_FLOW_MORE
 # -DDEBUG_AUTH
-# -DDEBUG_MORE
 #
 # -DTEST_HIDDEN makes Assigned Call ID sent as a hidden AVP
 #
@@ -40,13 +39,6 @@ include Makefile.ver
 # The cost of not trusting pppd to die (and shoot it down hard), is that your
 # pppd's ip-down scripts will not have a chance to run.
 #
-# -DDISABLE_OCRP_OCCN
-# Defining DISABLE_OCRP_OCCN disable L2TPv3 extensions support.
-# Uncommented this if use only as l2tp client.
-#
-# -DFIX_ZLB
-# Defining FIX_ZLB for fix connections with some providers.
-#
 # For more details see: http://bugs.xelerance.com/view.php?id=739
 #
 # Confirmed bad versions of pppd:
@@ -57,16 +49,15 @@ include Makefile.ver
 # ppp 2.4.3 sends a SIGTERM after 5 seconds, so it should be safe to
 # trust pppd. This work around will be removed in the near future.
 
-# DFLAGS= -g -DFIX_ZLB -DTRUST_PPPD_TO_DIE -DDEBUG_HELLO -DDEBUG_CLOSE -DDEBUG_FLOW -DDEBUG_PAYLOAD -DDEBUG_CONTROL -DDEBUG_CONTROL_XMIT -DDEBUG_FLOW_MORE -DDEBUG_MAGIC -DDEBUG_ENTROPY -DDEBUG_HIDDEN -DDEBUG_PPPD -DDEBUG_AAA -DDEBUG_FILE -DDEBUG_FLOW -DDEBUG_HELLO -DDEBUG_CLOSE -DDEBUG_ZLB -DDEBUG_AUTH -DDEBUG_MORE
-# DFLAGS?= -DDEBUG_PPPD -DTRUST_PPPD_TO_DIE
-
-DFLAGS= -g -DFIX_ZLB -DTRUST_PPPD_TO_DIE
+# DFLAGS= -g -DDEBUG_HELLO -DDEBUG_CLOSE -DDEBUG_FLOW -DDEBUG_PAYLOAD -DDEBUG_CONTROL -DDEBUG_CONTROL_XMIT -DDEBUG_FLOW_MORE -DDEBUG_MAGIC -DDEBUG_ENTROPY -DDEBUG_HIDDEN -DDEBUG_PPPD -DDEBUG_AAA -DDEBUG_FILE -DDEBUG_FLOW -DDEBUG_HELLO -DDEBUG_CLOSE -DDEBUG_ZLB -DDEBUG_AUTH
+DFLAGS?= -DDEBUG_PPPD -DTRUST_PPPD_TO_DIE
 
 # Uncomment the next line for Linux. KERNELSRC is needed for if_pppol2tp.h,
 # but we use a local copy if we don't find it.
 #
 #KERNELSRC=/lib/modules/`uname -r`/build/
-OSFLAGS?= -DLINUX -I$(KERNEL_HEADERS_PATH)
+KERNELSRC?=./linux
+OSFLAGS?= -DLINUX -I$(KERNELSRC)/include/
 #
 # Uncomment the following to use the kernel interface under Linux
 # This requires the pppol2tp-linux-2.4.27.patch patch from contrib
@@ -76,67 +67,103 @@ OSFLAGS?= -DLINUX -I$(KERNEL_HEADERS_PATH)
 #
 OSFLAGS+= -DUSE_KERNEL
 #
-# Uncomment the following for set high prio for xl2tpd process
-#
-OSFLAGS+= -DHIGH_PRIO
 #
 # Uncomment the next line for FreeBSD
 #
-#OSFLAGS= -DFREEBSD
+#OSFLAGS?= -DFREEBSD
+#
+# Uncomment the next three lines for NetBSD
+#
+#OSFLAGS?= -DNETBSD
+#CFLAGS+= -D_NETBSD_SOURCE
+#LDLIBS?= -lutil
 #
 # Uncomment the next line for Solaris. For solaris, at least,
 # we don't want to specify -I/usr/include because it is in
 # the basic search path, and will over-ride some gcc-specific
 # include paths and cause problems.
 #
-#OSFLAGS= -DSOLARIS
-#OSLIBS= -lnsl -lsocket
+#CC?=gcc
+# Change /opt/sfw/ to whereever your pcap library/include files are
+#OSFLAGS?= -DSOLARIS -DPPPD=\"/usr/bin/pppd\" -std=c99 -pedantic -D__EXTENSIONS__ -D_XPG4_2 -D_XPG6 -I/opt/sfw/include
+#OSLIBS?= -lnsl -lsocket
 
 # Uncomment the next two lines for OpenBSD
 #
-#OSFLAGS= -DOPENBSD
-#LDLIBS= -lutil
+#OSFLAGS?= -DOPENBSD
+#LDLIBS?= -lutil
 
 # Feature flags
 #
 # Comment the following line to disable xl2tpd maintaining IP address
 # pools to pass to pppd to control IP address allocation
 
-IPFLAGS= -DIP_ALLOCATION
+IPFLAGS?= -DIP_ALLOCATION
 
-CFLAGS+= $(DFLAGS) -fPIC -pipe -fno-builtin -Wall -DSANITY $(OSFLAGS) $(IPFLAGS)
+CFLAGS+= $(DFLAGS) -Os -Wall -Wextra -DSANITY $(OSFLAGS) $(IPFLAGS)
 HDRS=l2tp.h avp.h misc.h control.h call.h scheduler.h file.h aaa.h md5.h
 OBJS=xl2tpd.o pty.o misc.o control.o avp.o call.o network.o avpsend.o scheduler.o file.o aaa.o md5.o
 SRCS=${OBJS:.o=.c} ${HDRS}
 CONTROL_SRCS=xl2tpd-control.c
+#LIBS= $(OSLIBS) # -lefence # efence for malloc checking
 EXEC=xl2tpd
 CONTROL_EXEC=xl2tpd-control
 
-PREFIX?=./filesystem
+PREFIX?=/usr/local
 SBINDIR?=$(DESTDIR)${PREFIX}/sbin
 BINDIR?=$(DESTDIR)${PREFIX}/bin
 MANDIR?=$(DESTDIR)${PREFIX}/share/man
 
-CFLAGS  += -ffunction-sections -fdata-sections -fvisibility=hidden
-LDFLAGS += -Wl,--gc-sections
 
-all: $(EXEC) 
+all: $(EXEC) pfc $(CONTROL_EXEC)
 
 clean:
-	rm -f $(OBJS) $(EXEC) pfc.o pfc
+	rm -f $(OBJS) $(EXEC) pfc.o pfc $(CONTROL_EXEC)
 
 $(EXEC): $(OBJS) $(HDRS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+
+$(CONTROL_EXEC): $(CONTROL_SRCS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CONTROL_SRCS) -o $@
 
 pfc:
 	$(CC) $(CFLAGS) -c contrib/pfc.c
 	$(CC) $(LDFLAGS) -o pfc pfc.o -lpcap $(LDLIBS)
 
 romfs:
-	$(ROMFSINST) /usr/sbin/$(EXEC)
+	$(ROMFSINST) /bin/$(EXEC)
 
 version:
 	@echo ${XL2TPDVERSION}
+
+packagingprep:
+	sed -i "s/XL2TPDVERSION=.*/XL2TPDVERSION=${XL2TPDBASEVERSION}/" Makefile.ver
+	sed -i "s/#define SERVER_VERSION .*/#define SERVER_VERSION \"xl2tpd-${XL2TPDBASEVERSION}\"/" l2tp.h
+	sed -i "s/Version: .*/Version: ${XL2TPDBASEVERSION}/" packaging/*/*.spec
+	sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${XL2TPDBASEVERSION}/" packaging/openwrt/Makefile
+
+install: ${EXEC} pfc ${CONTROL_EXEC}
+	install -d -m 0755 ${SBINDIR}
+	install -m 0755 $(EXEC) ${SBINDIR}/$(EXEC)
+	install -d -m 0755 ${MANDIR}/man5
+	install -d -m 0755 ${MANDIR}/man8
+	install -m 0644 doc/xl2tpd.8 ${MANDIR}/man8/
+	install -m 0644 doc/xl2tpd-control.8 ${MANDIR}/man8/
+	install -m 0644 doc/xl2tpd.conf.5 doc/l2tp-secrets.5 \
+		 ${MANDIR}/man5/
+	# pfc
+	install -d -m 0755 ${BINDIR}
+	install -m 0755 pfc ${BINDIR}/pfc
+	install -d -m 0755 ${MANDIR}/man1
+	install -m 0644 contrib/pfc.1 ${MANDIR}/man1/
+	# control exec
+	install -d -m 0755 ${SBINDIR}
+	install -m 0755 $(CONTROL_EXEC) ${SBINDIR}/$(CONTROL_EXEC)
+	
+# openbsd
+#	install -d -m 0755 /var/run/xl2tpd
+#	mkfifo /var/run/l2tp-control
+
 
 TAGS:	${SRCS}
 	etags ${SRCS}

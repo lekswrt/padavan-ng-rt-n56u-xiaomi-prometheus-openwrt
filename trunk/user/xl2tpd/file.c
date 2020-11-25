@@ -51,6 +51,7 @@ int init_config ()
     gconfig.debug_tunnel = 0;
     gconfig.debug_state = 0;
     gconfig.max_retries = DEFAULT_MAX_RETRIES;
+    gconfig.cap_backoff = 0;
     lnslist = NULL;
     laclist = NULL;
     deflac = (struct lac *) calloc (1, sizeof (struct lac));
@@ -169,7 +170,6 @@ struct lac *new_lac ()
     tmp->pass_peer = 0;
     tmp->pppoptfile[0] = 0;
     tmp->defaultroute = 0;
-    tmp->route_rdgw = 1;
     return tmp;
 }
 
@@ -232,7 +232,7 @@ int set_port (char *word, char *value, int context, void *item)
     {
     case CONTEXT_GLOBAL:
 #ifdef DEBUG_FILE
-        l2tp_log (LOG_DEBUG, "set_port: Setting global port number to %s\n",
+        l2tp_log (LOG_DEBUG, "set_maxretries: Setting global max retries to %s\n",
              value);
 #endif
         set_int (word, value, &(((struct global *) item)->port));
@@ -376,6 +376,26 @@ int set_maxretries (char *word, char *value, int context, void *item)
 
 }
 
+int set_capbackoff (char *word, char *value, int context, void *item)
+{
+    switch (context & ~CONTEXT_DEFAULT)
+    {
+    case CONTEXT_GLOBAL:
+#ifdef DEBUG_FILE
+        l2tp_log (LOG_DEBUG, "set_capbackoff: Setting global cap backoff to %s\n",
+             value);
+#endif
+        set_int (word, value, &(((struct global *) item)->cap_backoff));
+        break;
+    default:
+        snprintf (filerr, sizeof (filerr), "'%s' not valid in this context\n",
+                  word);
+        return -1;
+    }
+    return 0;
+
+}
+
 int set_rmax (char *word, char *value, int context, void *item)
 {
     if (atoi (value) < 1)
@@ -443,7 +463,7 @@ int set_autodial (char *word, char *value, int context, void *item)
 
 int set_flow (char *word, char *value, int context, void *item)
 {
-    int v;
+    int v = -1;
     set_boolean (word, value, &v);
     if (v < 0)
         return -1;
@@ -486,26 +506,6 @@ int set_defaultroute (char *word, char *value, int context, void *item)
     case CONTEXT_LAC:
         if (set_boolean (word, value, &(((struct lac *) item)->defaultroute)))
             return -1;
-        break;
-    default:
-        snprintf (filerr, sizeof (filerr), "'%s' not valid in this context\n",
-                  word);
-        return -1;
-    }
-    return 0;
-}
-
-int set_route_rdgw (char *word, char *value, int context, void *item)
-{
-    if (atoi (value) < 0)
-    {
-        snprintf (filerr, sizeof (filerr), "route_rdgw value must be at least 0\n");
-        return -1;
-    }
-    switch (context & ~CONTEXT_DEFAULT)
-    {
-    case CONTEXT_LAC:
-        set_int (word, value, &(((struct lac *) item)->route_rdgw));
         break;
     default:
         snprintf (filerr, sizeof (filerr), "'%s' not valid in this context\n",
@@ -1595,7 +1595,6 @@ struct keyword words[] = {
     {"local ip range", &set_localiprange},
     {"remote ip", &set_remoteaddr},
     {"defaultroute", &set_defaultroute},
-    {"route_rdgw", &set_route_rdgw},
     {"length bit", &set_lbit},
     {"hidden bit", &set_hbit},
     {"require pap", &set_papchap},
@@ -1621,5 +1620,6 @@ struct keyword words[] = {
     {"rx bps", &set_speed},
     {"bps", &set_speed},
     {"max retries" , &set_maxretries},
+    {"cap backoff" , &set_capbackoff},
     {NULL, NULL}
 };

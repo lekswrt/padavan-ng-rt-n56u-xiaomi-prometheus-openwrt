@@ -428,7 +428,18 @@ void destroy_call (struct call *c)
        * Sometimes pppd takes 7 sec to go down! We don't have that much time,
        * since all other calls are suspended while doing this.
        */
-       kill_pppd(pid);
+
+#ifdef TRUST_PPPD_TO_DIE
+ #ifdef DEBUG_PPPD
+      l2tp_log (LOG_DEBUG, "Terminating pppd: sending TERM signal to pid %d\n", pid);
+ #endif
+      kill (pid, SIGTERM);
+#else
+ #ifdef DEBUG_PPPD
+      l2tp_log (LOG_DEBUG, "Terminating pppd: sending KILL signal to pid %d\n", pid);
+ #endif
+      kill (pid, SIGKILL);
+#endif
     }
     if (c->container)
     {
@@ -471,6 +482,8 @@ void destroy_call (struct call *c)
             c->lac->rsched = schedule (tv, magic_lac_dial, c->lac);
         }
     }
+    if(c->oldptyconf)
+        free(c->oldptyconf);
 
     free (c);
 }
@@ -483,10 +496,30 @@ struct call *new_call (struct tunnel *parent)
 
     if (!tmp)
         return NULL;
-
+    tmp->tx_pkts = 0;
+    tmp->rx_pkts = 0;
+    tmp->tx_bytes = 0;
+    tmp->rx_bytes = 0;
+    tmp->zlb_xmit = NULL;
+/*	tmp->throttle = 0; */
+/*	tmp->dethrottle=NULL; */
+    tmp->prx = 0;
+/*	tmp->rbit = 0; */
+    tmp->msgtype = 0;
+/*	tmp->timeout = 0; */
+    tmp->data_seq_num = 0;
+    tmp->data_rec_seq_num = 0;
+    tmp->pLr = -1;
+    tmp->nego = 0;
+    tmp->debug = 0;
+    tmp->seq_reqd = 0;
+    tmp->state = 0;             /* Nothing so far */
     if (parent->self)
     {
 #ifndef TESTING
+/*	while(get_call(parent->ourtid, (tmp->ourcid = (rand() && 0xFFFF)),0,0)); */
+            /* FIXME: What about possibility of multiple random #'s??? */
+            /* tmp->ourcid = (rand () & 0xFFFF); */
             get_entropy(entropy_buf, 2);
         {
             unsigned short *temp;
@@ -500,21 +533,45 @@ struct call *new_call (struct tunnel *parent)
         tmp->ourcid = 0x6227;
 #endif
     }
-    tmp->pLr = -1;
+    tmp->dialed[0] = 0;
+    tmp->dialing[0] = 0;
+    tmp->subaddy[0] = 0;
     tmp->physchan = -1;
+    tmp->serno = 0;
     tmp->bearer = -1;
+    tmp->cid = -1;
     tmp->qcid = -1;
+    tmp->container = parent;
 /*	tmp->rws = -1; */
     tmp->fd = -1;
+    tmp->rbuf_pos = 0;
+    tmp->rbuf_max = 0;
+    tmp->ppp_buf = new_payload (parent->peer);
+    tmp->oldptyconf = malloc (sizeof (struct termios));
+    tmp->pnu = 0;
+    tmp->cnu = 0;
+    tmp->needclose = 0;
+    tmp->closing = 0;
+    tmp->die = 0;
+    tmp->pppd = 0;
     tmp->error = -1;
     tmp->result = -1;
-    tmp->container = parent;
-    tmp->ppp_buf = new_payload (parent->peer);
-
+    tmp->errormsg[0] = 0;
+    tmp->fbit = 0;
+    tmp->cid = 0;
+    tmp->lbit = 0;
     /* Inherit LAC and LNS from parent */
     tmp->lns = parent->lns;
     tmp->lac = parent->lac;
-
+    tmp->addr = 0;
+/*	tmp->ourrws = DEFAULT_RWS_SIZE;	 */
+/*	if (tmp->ourrws >= 0)
+		tmp->ourfbit = FBIT;
+	else */
+    tmp->ourfbit = 0;           /* initialize to 0 since we don't actually use this
+                                   value at this point anywhere in the code (I don't
+                                   think)  We might just be able to remove it completely */
+    tmp->dial_no[0] = '\0';     /* jz: dialing number for outgoing call */
     return tmp;
 }
 
@@ -569,8 +626,7 @@ struct call *get_call (int tunnel, int call,  struct in_addr addr, int port,
 			if (sc->ourcid == call) return sc;
                         sc = sc->next;
                     }
-                    if (gconfig.debug_tunnel)
-			l2tp_log (LOG_DEBUG, "%s: can't find call %d in tunnel %d (ref=%d/%d)\n",
+                    l2tp_log (LOG_DEBUG, "%s: can't find call %d in tunnel %d\n (ref=%d/%d)",
 			      __FUNCTION__, call, tunnel, refme, refhim);
                     return NULL;
                 }
@@ -581,9 +637,9 @@ struct call *get_call (int tunnel, int call,  struct in_addr addr, int port,
             }
             st = st->next;
         }
-#ifdef DEBUG_MORE
-        l2tp_log (LOG_INFO, "Can not find tunnel %u (refhim=%u)\n", tunnel, refhim);
-#endif
+
+        l2tp_log (LOG_INFO, "Can not find tunnel %u (refhim=%u)\n",
+		  tunnel, refhim);
         return NULL;
     }
     else

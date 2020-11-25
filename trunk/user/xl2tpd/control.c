@@ -643,7 +643,6 @@ int control_finish (struct tunnel *t, struct call *c)
             magic_lac_dial (t->lac);
         }
         break;
-#ifndef DISABLE_OCRP_OCCN
     case SCCCN:
         if (t->chal_them.state)
         {
@@ -678,7 +677,6 @@ int control_finish (struct tunnel *t, struct call *c)
 #endif
         t->hello = schedule (tv, hello, (void *) t);
         break;
-#endif
     case StopCCN:
         if (t->qtid < 0)
         {
@@ -827,10 +825,10 @@ int control_finish (struct tunnel *t, struct call *c)
             return -EINVAL;
         }
         c->state = ICCN;
-        if (t->fc & ASYNC_FRAMING)
-            c->frame = ASYNC_FRAMING;
-        else
+        if (t->fc & SYNC_FRAMING)
             c->frame = SYNC_FRAMING;
+        else
+            c->frame = ASYNC_FRAMING;
 
         buf = new_outgoing (t);
         add_message_type_avp (buf, ICCN);
@@ -1022,6 +1020,7 @@ int control_finish (struct tunnel *t, struct call *c)
             po = add_opt (po, "ipparam");
             po = add_opt (po, IPADDY (t->peer.sin_addr));
         }
+
         start_pppd (c, po);
         opt_destroy (po);
         l2tp_log (LOG_NOTICE,
@@ -1029,7 +1028,6 @@ int control_finish (struct tunnel *t, struct call *c)
              IPADDY (t->peer.sin_addr), c->pppd, c->ourcid, c->cid,
              c->serno);
         break;
-#ifndef DISABLE_OCRP_OCCN
     case OCRP:                 /* jz: nothing to do for OCRP, waiting for OCCN */
         break;
     case OCCN:                 /* jz: get OCCN, so the only thing we must do is to start the pppd */
@@ -1097,7 +1095,7 @@ int control_finish (struct tunnel *t, struct call *c)
         if (c->lac)
             c->lac->rtries = 0;
         break;
-#endif
+
 
     case CDN:
         if (c->qcid < 0)
@@ -1206,12 +1204,10 @@ static inline int check_control (const struct buffer *buf, struct tunnel *t,
 #endif
     if (h->Ns != t->control_rec_seq_num)
     {
-#ifdef DEBUG_MORE
         if (DEBUG)
             l2tp_log (LOG_DEBUG,
                  "%s: Received out of order control packet on tunnel %d (got %d, expected %d)\n",
                  __FUNCTION__, t->tid, h->Ns, t->control_rec_seq_num);
-#endif
         if (((h->Ns < t->control_rec_seq_num) &&
             ((t->control_rec_seq_num - h->Ns) < 32768)) ||
             ((h->Ns > t->control_rec_seq_num) &&
@@ -1227,15 +1223,12 @@ static inline int check_control (const struct buffer *buf, struct tunnel *t,
                 l2tp_log (LOG_DEBUG, "%s: Sending an updated ZLB in reponse\n",
                      __FUNCTION__);
 #endif
-
             if (buf->len != sizeof (struct control_hdr))
             {
                 /* don't send a ZLB in response to a ZLB. it leads to a loop */
                 zlb = new_outgoing (t);
                 control_zlb (zlb, t, c);
-#ifndef FIX_ZLB
-                udp_xmit (zlb, t);
-#endif
+                /*udp_xmit (zlb, t);*/
                 toss (zlb);
             }
         }
@@ -1615,10 +1608,8 @@ static inline int write_packet (struct buffer *buf, struct tunnel *t, struct cal
 
     if (c->fd < 0)
     {
-#ifdef DEBUG_MORE
         if (DEBUG)
             l2tp_log (LOG_DEBUG, "%s: tty is not open yet.\n", __FUNCTION__);
-#endif
         return -EIO;
     }
     /*
@@ -1750,7 +1741,7 @@ int handle_special (struct buffer *buf, struct call *c, _u16 call)
     struct tunnel *t = c->container;
     /* Don't do anything unless it's a control packet */
     if (!CTBIT (*((_u16 *) buf->start)))
-        return -EINVAL;
+        return 0;
     /* Temporarily, we make the tunnel have cid of call instead of 0,
        but we need to stop any scheduled events (like Hello's in
        particular) which might use this value */
@@ -1762,19 +1753,16 @@ int handle_special (struct buffer *buf, struct call *c, _u16 call)
             /* If it's a ZLB, we ignore it */
             if (gconfig.debug_tunnel)
                 l2tp_log (LOG_DEBUG, "%s: ZLB for closed call\n", __FUNCTION__);
-            t->control_rec_seq_num--;
             c->cid = 0;
-            return 1;
+            return 0;
         }
         /* Make a packet with the specified call number */
         /* FIXME: If I'm not a CDN, I need to send a CDN */
         control_zlb (buf, t, c);
         c->cid = 0;
-#ifndef FIX_ZLB
-        udp_xmit (buf, t);
-#endif
+        /*udp_xmit (buf, t);*/
         toss (buf);
-        return 0;
+        return 1;
     }
     else
     {
@@ -1782,8 +1770,7 @@ int handle_special (struct buffer *buf, struct call *c, _u16 call)
         if (gconfig.debug_tunnel)
             l2tp_log (LOG_DEBUG, "%s: invalid control packet\n", __FUNCTION__);
     }
-
-    return -EINVAL;
+    return 0;
 }
 
 static int handle_control(struct buffer *buf, struct tunnel *t,
@@ -1792,9 +1779,7 @@ static int handle_control(struct buffer *buf, struct tunnel *t,
     /* We have a control packet */
     if (check_control (buf, t, c))
     {
-#ifndef DEBUG_MORE
         l2tp_log (LOG_DEBUG, "%s: bad control packet!\n", __FUNCTION__);
-#endif
         return -EINVAL;
     }
 

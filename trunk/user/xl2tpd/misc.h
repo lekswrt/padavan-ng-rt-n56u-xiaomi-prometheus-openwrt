@@ -75,5 +75,4 @@ extern void safe_copy (char *, char *, int);
 extern void opt_destroy (struct ppp_opts *);
 extern struct ppp_opts *add_opt (struct ppp_opts *, char *, ...);
 extern void process_signal (void);
-extern void kill_pppd (pid_t pid);
 #endif
