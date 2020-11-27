@@ -17,8 +17,6 @@
 
 #include <linux/version.h>
 
-//#define CONFIG_NF_CONNTRACK_CHAIN_EVENTS
-
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0))
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 #include <net/netfilter/nf_conntrack_timeout.h>
@@ -182,7 +180,7 @@ static inline struct net_device *sfe_dev_get_master(struct net_device *dev)
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0))
-#define sfe_dst_get_neighbour(dst, daddr) dst_neigh_lookup(dst, addr)
+#define sfe_dst_get_neighbour(dst, daddr) dst_neigh_lookup(dst, daddr)
 #else
 static inline struct neighbour *
 sfe_dst_get_neighbour(struct dst_entry *dst, void *daddr)
