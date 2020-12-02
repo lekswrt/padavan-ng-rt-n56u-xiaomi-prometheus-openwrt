@@ -390,7 +390,7 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid)
 	}
 #endif
 	ret = db_upgrade(db);
-	if ((ret != 0) || (GETFLAG(UPDATE_SCAN_MASK)))
+	if (ret != 0)
 	{
 #ifdef MD_CHECK_MP
 rescan:
@@ -417,7 +417,7 @@ rescan:
 		if (CreateDatabase() != 0)
 			DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to create sqlite database!  Exiting...\n");
 	}
-	if (ret || GETFLAG(RESCAN_MASK))
+	if (ret || GETFLAG(RESCAN_MASK) || GETFLAG(UPDATE_SCAN_MASK))
 	{
 #if USE_FORK
 		sqlite3_close(db);
