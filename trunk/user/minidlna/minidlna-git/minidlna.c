@@ -341,14 +341,17 @@ open_db(sqlite3 **sq3)
 	return new_db;
 }
 
+//#define MD_CHECK_MP 1
+
 static void
 check_db(sqlite3 *db, int new_db, pid_t *scanner_pid)
 {
-	struct media_dir_s *media_path = NULL;
 	char cmd[PATH_MAX*2];
+	int ret;
+#ifdef MD_CHECK_MP
+	struct media_dir_s *media_path = NULL;
 	char **result;
 	int i, rows = 0;
-	int ret;
 
 	if (!new_db)
 	{
@@ -385,18 +388,22 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid)
 		}
 		sqlite3_free_table(result);
 	}
-
+#endif
 	ret = db_upgrade(db);
-	if (ret != 0)
+	if ((ret != 0) || (GETFLAG(UPDATE_SCAN_MASK)))
 	{
+#ifdef MD_CHECK_MP
 rescan:
+#endif
 		CLEARFLAG(RESCAN_MASK);
 		if (ret < 0)
 			DPRINTF(E_WARN, L_GENERAL, "Creating new database at %s/files.db\n", db_path);
+#ifdef MD_CHECK_MP
 		else if (ret == 1)
 			DPRINTF(E_WARN, L_GENERAL, "New media_dir detected; rebuilding...\n");
 		else if (ret == 2)
 			DPRINTF(E_WARN, L_GENERAL, "Removed media_dir detected; rebuilding...\n");
+#endif
 		else
 			DPRINTF(E_WARN, L_GENERAL, "Database version mismatch (%d => %d); need to recreate...\n",
 				ret, DB_VERSION);
@@ -956,6 +963,9 @@ init(int argc, char **argv)
 			SETFLAG(SYSTEMD_MASK);
 			break;
 #endif
+		case 'U':
+			SETFLAG(UPDATE_SCAN_MASK);
+			break;
 		case 'V':
 			printf("Version " MINIDLNA_VERSION "\n");
 			exit(0);
@@ -990,6 +1000,7 @@ init(int argc, char **argv)
 #if defined(__linux__) || defined(__APPLE__)
 			"\t-S changes behaviour for systemd/launchd\n"
 #endif
+			"\t-U starts an update scan\n"
 			"\t-V print the version number\n",
 			argv[0], pidfilename);
 		return 1;
