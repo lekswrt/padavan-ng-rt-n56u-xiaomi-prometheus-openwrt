@@ -113,19 +113,18 @@ void
 process_handle_child_termination(int signal)
 {
 	pid_t pid;
-	if (number_of_children > 0) {
-		while ((pid = waitpid(-1, NULL, WNOHANG)))
+
+	while ((pid = waitpid(-1, NULL, WNOHANG)))
+	{
+		if (pid == -1)
 		{
-			if (pid == -1)
-			{
-				if (errno == EINTR)
-					continue;
-				else
-					break;
-			}
-			number_of_children--;
-			remove_process_info(pid);
+			if (errno == EINTR)
+				continue;
+			else
+				break;
 		}
+		number_of_children--;
+		remove_process_info(pid);
 	}
 }
 

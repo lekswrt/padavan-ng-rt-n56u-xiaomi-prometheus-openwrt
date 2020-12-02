@@ -62,7 +62,7 @@ int valid_cache = 0;
 struct virtual_item
 {
 	int64_t objectID;
-	char parentID[64];
+	char parentID[80];
 	char name[256];
 };
 
@@ -203,7 +203,7 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 		else
 		{
 			insert_container(date_taken, last_cam.parentID, NULL, "album.photoAlbum", NULL, NULL, NULL, &objectID, &parentID);
-			sprintf(last_camdate.parentID, "%s$%llX", last_cam.parentID, (long long)parentID);
+			sprintf(last_camdate.parentID, "%.63s$%llX", last_cam.parentID, (long long)parentID);
 			last_camdate.objectID = objectID;
 			strncpyt(last_camdate.name, date_taken, sizeof(last_camdate.name));
 			//DEBUG DPRINTF(E_DEBUG, L_SCANNER, "Creating cached camdate item: %s/%s/%s/%X\n", camera, last_camdate.name, last_camdate.parentID, last_camdate.objectID);
@@ -277,7 +277,7 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 				last_artistAlbum.name[0] = '\0';
 				/* Add this file to the "- All Albums -" container as well */
 				insert_container(_("- All Albums -"), last_artist.parentID, NULL, "album", artist, genre, NULL, &objectID, &parentID);
-				sprintf(last_artistAlbumAll.parentID, "%s$%llX", last_artist.parentID, (long long)parentID);
+				sprintf(last_artistAlbumAll.parentID, "%.63s$%llX", last_artist.parentID, (long long)parentID);
 				last_artistAlbumAll.objectID = objectID;
 			}
 			else
@@ -293,7 +293,7 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 			{
 				insert_container(album?album:_("Unknown Album"), last_artist.parentID, album?last_album.parentID:NULL,
 				                 "album.musicAlbum", artist, genre, album_art, &objectID, &parentID);
-				sprintf(last_artistAlbum.parentID, "%s$%llX", last_artist.parentID, (long long)parentID);
+				sprintf(last_artistAlbum.parentID, "%.63s$%llX", last_artist.parentID, (long long)parentID);
 				last_artistAlbum.objectID = objectID;
 				strncpyt(last_artistAlbum.name, album ? album : _("Unknown Album"), sizeof(last_artistAlbum.name));
 				//DEBUG DPRINTF(E_DEBUG, L_SCANNER, "Creating cached artist/album item: %s/%s/%X\n", last_artist.name, last_artist.parentID, last_artist.objectID);
@@ -318,7 +318,7 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 				strncpyt(last_genre.name, genre, sizeof(last_genre.name));
 				/* Add this file to the "- All Artists -" container as well */
 				insert_container(_("- All Artists -"), last_genre.parentID, NULL, "person", NULL, genre, NULL, &objectID, &parentID);
-				sprintf(last_genreArtistAll.parentID, "%s$%llX", last_genre.parentID, (long long)parentID);
+				sprintf(last_genreArtistAll.parentID, "%.63s$%llX", last_genre.parentID, (long long)parentID);
 				last_genreArtistAll.objectID = objectID;
 			}
 			else
@@ -333,7 +333,7 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 			{
 				insert_container(artist?artist:_("Unknown Artist"), last_genre.parentID, artist?last_artist.parentID:NULL,
 				                 "person.musicArtist", NULL, genre, NULL, &objectID, &parentID);
-				sprintf(last_genreArtist.parentID, "%s$%llX", last_genre.parentID, (long long)parentID);
+				sprintf(last_genreArtist.parentID, "%.63s$%llX", last_genre.parentID, (long long)parentID);
 				last_genreArtist.objectID = objectID;
 				strncpyt(last_genreArtist.name, artist ? artist : _("Unknown Artist"), sizeof(last_genreArtist.name));
 				//DEBUG DPRINTF(E_DEBUG, L_SCANNER, "Creating cached genre/artist item: %s/%s/%X\n", last_genreArtist.name, last_genreArtist.parentID, last_genreArtist.objectID);
@@ -491,7 +491,7 @@ insert_file(const char *name, const char *path, const char *parentID, int object
 		return -1;
 	}
 
-	sprintf(objectID, "%s%s$%X", BROWSEDIR_ID, parentID, object);
+	snprintf(objectID, sizeof(objectID), "%s%s$%X", BROWSEDIR_ID, parentID, object);
 	objname = strdup(name);
 	strip_ext(objname);
 
@@ -718,26 +718,6 @@ filter_avp(scan_filter *d)
 		);
 }
 
-static int
-is_sys_dir(const char *dirname)
-{
-	static const char *MS_System_folder[] = {"SYSTEM VOLUME INFORMATION", "RECYCLER", "RECYCLED", "$RECYCLE.BIN", NULL};
-	static const char *Linux_System_folder[] = {"lost+found", NULL};
-	int i;
-
-	for (i = 0; MS_System_folder[i] != NULL; ++i) {
-		if (!strcasecmp(dirname, MS_System_folder[i]))
-			return 1;
-	}
-
-	for (i = 0; Linux_System_folder[i] != NULL; ++i) {
-		if (!strcasecmp(dirname, Linux_System_folder[i]))
-			return 1;
-	}
-
-	return 0;
-}
-
 static void
 ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 {
@@ -745,7 +725,7 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 	int i, n, startID = 0;
 	char *full_path;
 	char *name = NULL;
-	static uint64_t fileno = 0;
+	static long long unsigned int fileno = 0;
 	enum file_types type;
 
 	DPRINTF(parent?E_INFO:E_WARN, L_SCANNER, _("Scanning %s\n"), dir);
@@ -819,24 +799,7 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 		}
 		if( (type == TYPE_DIR) && (access(full_path, R_OK|X_OK) == 0) )
 		{
-			char *parent_id, *objectID;
-
-			if (is_sys_dir(name))
-				goto next_entry;
-
-			if ( GETFLAG(UPDATE_SCAN_MASK) )
-			{
-				objectID = sql_get_text_field(db, "SELECT OBJECT_ID from OBJECTS o left join DETAILS d"
-				                                  " on (d.ID = o.DETAIL_ID) where d.PATH = '%q'"
-				                                  " and o.OBJECT_ID glob '%s$*'", full_path, BROWSEDIR_ID);
-				if( objectID )
-				{
-					ScanDirectory(full_path, objectID+2, dir_types);
-					sqlite3_free(objectID);
-					goto next_entry;
-				}
-			}
-
+			char *parent_id;
 			insert_directory(name, full_path, BROWSEDIR_ID, THISORNUL(parent), i+startID);
 			xasprintf(&parent_id, "%s$%X", THISORNUL(parent), i+startID);
 			ScanDirectory(full_path, parent_id, dir_types);
@@ -844,17 +807,9 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 		}
 		else if( type == TYPE_FILE && (access(full_path, R_OK) == 0) )
 		{
-			if( GETFLAG(UPDATE_SCAN_MASK) )
-			{
-				/* TODO: Check the timestamp, and update the file details if it's newer */
-				if( sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", full_path) > 0 )
-					goto next_entry;
-			}
-
 			if( insert_file(name, full_path, THISORNUL(parent), i+startID, dir_types) == 0 )
 				fileno++;
 		}
-next_entry:
 		free(name);
 		free(namelist[i]);
 	}
@@ -946,7 +901,7 @@ start_scanner(void)
 		DPRINTF(E_WARN, L_INOTIFY,  "Failed to reduce scanner thread priority\n");
 
 	setlocale(LC_COLLATE, "");
-	av_register_all();
+	lav_register_all();
 	av_log_set_level(AV_LOG_PANIC);
 
 	if( GETFLAG(RESCAN_MASK) )
@@ -964,7 +919,7 @@ start_scanner(void)
 		{
 			int startID = get_next_available_id("OBJECTS", BROWSEDIR_ID);
 			id = insert_directory(bname, path, BROWSEDIR_ID, "", startID);
-			sprintf(buf, "$%X", startID);
+			snprintf(buf, sizeof(buf), "$%X", startID);
 			parent = buf;
 		}
 		else
@@ -977,11 +932,7 @@ start_scanner(void)
 	/* Create this index after scanning, so it doesn't slow down the scanning process.
 	 * This index is very useful for large libraries used with an XBox360 (or any
 	 * client that uses UPnPSearch on large containers). */
-
-	if( !GETFLAG(UPDATE_SCAN_MASK) )
-	{
 	sql_exec(db, "create INDEX IDX_SEARCH_OPT ON OBJECTS(OBJECT_ID, CLASS, DETAIL_ID);");
-	}
 
 	fill_playlists();
 

@@ -57,7 +57,7 @@
 
 #include <sqlite3.h>
 
-#define MINIDLNA_VERSION "1.2.1"
+#define MINIDLNA_VERSION "1.3.0"
 
 #ifdef NETGEAR
 # define SERVER_NAME "ReadyDLNA"
@@ -199,7 +199,6 @@ extern uint32_t runtime_flags;
 #define TIVO_BONJOUR_MASK     0x0080
 #else
 #define TIVO_BONJOUR_MASK     0x0000
-#define UPDATE_SCAN_MASK      0x0080
 #endif
 #define SCANNING_MASK         0x0100
 #define RESCAN_MASK           0x0200
@@ -212,6 +211,7 @@ extern uint32_t runtime_flags;
 
 extern const char *pidfilename;
 
+#define UUIDVALUE_MAX_LEN 42
 extern char uuidvalue[];
 
 #define MODELNAME_MAX_LEN 64
