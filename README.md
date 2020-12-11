@@ -94,6 +94,10 @@ Hardware device support:
 
 Script community support: [Russian pda developers board, forum thread](https://4pda.ru/forum/index.php?showtopic=714487)
 
+### Wiki
+
+Knowledge base: https://gitlab.com/CSRedRat/padavan-ng/-/wikis/Home
+
 ### Contribution guidelines ###
 
 * To be completed
