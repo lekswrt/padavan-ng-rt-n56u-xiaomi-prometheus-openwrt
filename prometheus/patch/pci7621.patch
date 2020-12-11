@@ -1,0 +1,12 @@
+--- rt-n56u/trunk/linux-3.4.x/arch/mips/rt2880/pci.c	2017-12-29 22:27:38.000000000 +0300
++++ rt-n56u/trunk/linux-3.4.x/arch/mips/rt2880/pci.c	2018-01-26 15:10:33.000000000 +0300
+@@ -676,6 +676,8 @@
+ 		bypass_pipe_rst();
+ 	set_phy_for_ssc();
+ 
++	mdelay(100);
++
+ #if defined (GPIO_PERST)
+ 	val = 0;
+ #if defined (CONFIG_PCIE_PORT0)
+

@@ -1,0 +1,10 @@
+--- ./user/Makefile.orig    2016-03-24 10:37:32.367495495 +0300
++++ ./user/Makefile 2016-03-24 10:38:27.700102463 +0300
+@@ -76,6 +76,7 @@
+ dir_y						+= busybox
+ dir_y						+= iptables
+ dir_$(CONFIG_FIRMWARE_INCLUDE_IPSET)		+= ipset
++dir_$(CONFIG_FIRMWARE_INCLUDE_ENTWARE)		+= entware
+ dir_y						+= ebtables
+ dir_y						+= iproute2
+ dir_y						+= wireless_tools

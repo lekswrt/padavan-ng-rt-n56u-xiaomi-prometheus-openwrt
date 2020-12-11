@@ -1,0 +1,11 @@
+# Steps to create your own localization.
+# 1) Copy messages_en file as messages_xx where xx is new language in lowercase (i.e. ru, uk, us, zh, pl).
+# 2) File messages_xx consists of key/value pairs. Replace each value with message in your language.
+# 3) Done!
+
+# File messages_xx structure overview.
+dictionary=(
+    ["key1"]="value1"
+    ["key2"]="value2"
+    ["key3"]="value3"
+)

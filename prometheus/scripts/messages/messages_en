@@ -1,0 +1,541 @@
+dictionary=(
+    ["padavan_ng_repository_warning"]="\n $RED You have just selected the padavan-ng (linaro) repository.\nSome parts of code in the Linux kernel related to a chip flashing has been rewritten and not carefully tested!\n It's NOT RECOMMENDED to use this repository if your device HAS NO RECOVERY MODE $NONE"
+    ["select_the_version_of_the_repository"]="$BLUE Please select a repository: $NONE"
+    ["cleaning_is_launched"]="$BLUE ATTENTION! The source code cleaning is strongly required. "
+    ["available_patchs"]="$BLUE The following patches are available: $NONE"
+    ["select_patch"]="Please, select the patch number you want to apply: "
+    ["patchs_are_absent"]="$RED Patches are missing! The patches are not included in the standard package of the script. You might need to update this module to download actual patches. $NONE"
+    ["patch_has_been_added"]="$GREEN The patch has been successfully applied. $NONE"
+    ["mi3_recovery_confirm"]="$RED The router will be rebooted into recovery mode. An USB flash drive with a stock firmware (miwifi.bin) is strongly required. $NONE"
+    ["please_enter_the_first_mac"]="$BLUE Please enter a primary MAC-address or type "NO" to generate it. (WAN&WLAN2.4)$NONE"
+    ["please_enter_the_second_mac"]="$BLUE Please enter a secondary MAC-address or type "NO" to generate it. (LAN&WLAN5)$NONE"
+    ["selected_mac"]="$BLUE The MAC-address is accepted! $NONE"
+    ["select_existed_mac"]="$RED Please, enter a valid MAC-address.
+$BLUE For example: DD:AF:E2:01:2A:65$NONE"
+    ["mac_addresses_selected"]="$BLUE The following MAC-addresses have been selected:
+ WAN/WLAN 2.4 : $YELLOW$MAC1$BLUE
+ LAN/WLAN 5   : $YELLOW$MAC2$NONE"
+    ["addresses_have_changed"]="$RED The MAC addresses have been successfully updated. $NONE"
+    ["confirm_the_input_addresses"]="$RED Are you sure that you want to update the MAC-address? (y/n) $NONE"
+    ["you_want_to_delete_config"]="$RED Are you sure that you want to delete the $GREEN$CONFIG_FIRMWARE_PRODUCT_ID$RED config? (y/n) $NONE"
+    ["i_understand_and_agree"]="$RED Are you sure that you want to flash it anyway? (y/n) $NONE"
+    ["ids_comparison"]="$BLUE An identification error, please check and validate the following data:
+ Firmware: $RED$FFM$BLUE
+ Router:   $RED$rt_hostname$BLUE
+ Config:   $RED$CONFIG_FIRMWARE_PRODUCT_ID$BLUE
+ The data may be different from the stock firmware, it is normal behaviour.$NONE"
+    ["source_code_download_error"]="$RED Source code download error! $NONE"
+    ["software_installation_error"]="$RED Software installation error! $NONE"
+    ["incorrect_configuration"]="$RED An error has been occuired. The configuration is incorrect. Terminating the operation... $NONE"
+    ["tor_patch_not_applied"]="$RED The patch is not applied. Terminating the operation... $NONE"
+    ["select_mtd"]=" Please enter number of required partition: "
+    ["available_mtd"]="$BLUE The list of available partition: $NONE"
+    ["mtd_has_been_selected"]="$GREEN ${MTDS[$yn]} is selected for installing $NONE"
+    ["insert_usb_flash_drive"]="$RED Please, attach an USB flash drive with a stock firmware (miwifi.bin) in the USB port and shortly press the reset button. $NONE"
+    ["error_firmware_1"]="$RED Warning! Immediately flash a factory firmware via WEB interface! Do not restart the router! $NONE"
+    ["entware_mounted"]="$GREEN Entware is successfully mounted! $NONE"
+    ["error_occured_so_removing_module"]="$RED $error_text...removing the module $NONE"
+    ["cleaning_router_temp_directory"]="$GREEN Cleaning the router's temp directory... $NONE"
+    ["copying_entware_from_router_to_firmware"]="$GREEN Copying Entware from the router to a firmware... $NONE"
+    ["compressing_router_entware"]="$GREEN Compressing the router's entware... $NONE"
+    ["cant_get_access_to_the_router"]="Can't get access to the router"
+    ["testing_router_connection"]="$GREEN Checking the connection to the router... $NONE"
+    ["router_access_params_is_abc"]="$BLUE The router access parameters is: user=$ROOTWRT, pass=$PWDR, ip=$IPWRT $NONE"
+    ["removing_entware_patch"]="$GREEN Removing Entware patch... $NONE"
+    ["applying_entware_patch"]="$GREEN Applying Entware patch... $NONE"
+    ["paragon_ntfs_driver_has_been_added"]="$BLUE The Paragon NTFS driver is successfully applied... $NONE"
+    ["cleaning_sources"]="$BLUE Cleaning the sources... $NONE"
+    ["do_you_want_to_clean_up"]=" Are you sure that you want to cleanup the sources? (y/n) "
+    ["cleaning_module_is_launched"]="$BLUE The cleaning is started! $RED"
+    ["resetting_module_settings"]="$BLUE Resetting the module settings... $NONE"
+    ["adding_module_to_config_ok"]="$BLUE Adding the module to config$GREEN OK $NONE"
+    ["removing_module_from_config_ok"]="$BLUE Removing the module from config$GREEN OK $NONE"
+    ["tor_privoxy_patch_has_been_removed"]="$GREEN TOR&PRIVOXY&DNSCRYPT patch is removed! $NONE"
+    ["moving_module_patch"]="$BLUE Moving the module patch... $NONE"
+    ["adding_module_update_fix"]="$BLUE Adding the module update fix... $NONE"
+    ["applying_tor_privoxy_patch"]="$BLUE Applying TOR&PRIVOXY&DNSCRYPT patch... $NONE"
+    ["please_before_module_deletion_update_sources"]="$BLUE Please update the sources before removing of the module! $NONE"
+    ["module_has_been_deactivated"]="$GREEN The module is disabled! $NONE"
+    ["preparing_module_patch"]="$BLUE Preparing the module patch... $NONE"
+    ["module_operation_canceled"]="$GREEN Cancelling... $NONE"
+    ["module_already_installed_do_you_want_to_remove"]="$RED The module is already installed. Are you sure that you want to remove it? (y/n)  $NONE"
+    ["do_you_want_to_install_module"]="$RED Are you sure that you want to install this modulе? (y/n)  $NONE"
+    ["languages_have_been_lost"]="$RED Ooops! There is no any language to select... $NONE"
+    ["selected_language_is_abc"]="$RED Interface languages: ${CONFIGN[$yn]} $NONE"
+    ["please_select_existed_language"]="$RED Please select an existing item $NONE"
+    ["cancel_archive_backup"]="$BLUE Q) Cancel $NONE"
+    ["cleaning_update"]="$BLUE Cleaning the update... $NONE"
+    ["decompressing_update"]="$BLUE Decompressing the update... $NONE"
+    ["downloading_update"]="$BLUE Downloading the update... $NONE"
+    ["activate_item_with_number_or_return_with_q"]="$YELLOW Enter item number to enable/disable it or return back with Q key.$NONE"
+    ["you_can_build_uboot_only_on_x86_machine"]="$YELLOW Please, note that building of U-Boot is allowed on х86-machines only.$NONE"
+    ["archive_file_is_absent_please_update_script"]="$RED An archive file is absent, please update the script$NONE"
+    ["archive_file_is_corrupted_please_update_script"]="$RED The archive file is damaged, please update the script$NONE"
+    ["changes_will_be_applied_after_reboot"]="$BLUE All changes will be applied after reboot ... $NONE"
+    ["action_has_been_canceled_because_of_copy_error"]="$RED The action is cancelled due to the copying error. Please try again. $NONE"
+    ["do_you_want_to_flash_stock_uboot"]=" Are you sure that you want to flash a stock U-Boot? (y/n) "
+    ["uboot_isnt_found"]="$RED U-Boot is not found! $NONE"
+    ["your_uboot_has_actual_version"]="$GREEN The U-Boot is already up-to-date! $NONE"
+    ["update_canceled"]="$BLUE The update is canceled. $NONE"
+    ["dont_reboot_your_router_if_you_have_stock_firmware"]="$BLUE Please, do not reboot the router if it still has the stock firmware... $NONE $BLUE"
+    ["dont_reboot_your_router_until_bootloader_will_be_flashed_successfully"]="$RED DO NOT REBOOT$BLUE the router until U-Boot will be successfully flashed!!! $NONE"
+    ["newer_bootloader_with_version_abc_has_been_found"]="$RED Newer bootloader is detected: $uboot_new_version $NONE $BLUE"
+    ["current_bootloader_version_is_abc"]="$BLUE Current bootloader version is $uboot_old_version $NONE"
+    ["preparing_uboot"]="$BLUE Preparing U-Boot... $NONE"
+    ["do_you_want_to_flash_uboot"]=" Are you sure that you want to flash U-Boot? (y/n) "
+    ["uboot_has_been_uploaded_to_the_router"]="$BLUE The uboot.bin file is successfully uploaded to the router... $NONE"
+    ["uboot_assembled"]="$GREEN U-Boot is assembled! $NONE"
+    ["configs_have_been_lost"]="$RED Ooops! Configuration files are lost... $NONE"
+    ["dumping_partition_to_path_abc"]="$BLUE Dumping /dev/$mtd to $SNAPSHOT  $NONE"
+    ["sources_have_been_patched"]="$BLUE Patch,$NONE$GREEN OK $NONE"
+    ["please_try_again"]="$BLUE Please try again $NONE"
+    ["unfortunately_something_goes_wrong"]="$RED Unfortunately something goes wrong $NONE"
+    ["access_parameters_for_ssh_are_abc"]="$BLUE SSH access parameters:  $RED IP: $GREEN$IP   $RED username:$GREEN root   $RED password: $GREEN$password $NONE"
+    ["congratulations_you_have_obtained_ssh_access"]="$GREEN Congratulations!!! ${BLUE} SSH-access is successfully obtained$NONE"
+    ["checking_ssh_access"]="$BLUE Checking SSH-access availability$NONE"
+    ["launching_ssh"]="$BLUE Starting SSH $NONE"
+    ["telnet_has_been_launched"]="$GREEN Telnet is started $NONE"
+    ["launch_error_is_abc"]="$RED Launch error: $BLUE$result$NONE"
+    ["launching_telnet_on_router"]="$BLUE Starting telnet on the router $NONE"
+    ["your_ssh_telnet_password_is_abc"]="$BLUE Your ssh/telnet password is $GREEN$password$NONE"
+    ["founded_router_version_is_abc"]="$BLUE The following router is found: $GREEN$platform $BLUE($version $revision) SN=$GREEN$serial $BLUE($memory) $NONE"
+    ["checkpoint_has_been_created"]="$NONE$GREEN The checkpoint is saved $NONE"
+    ["do_you_want_to_create_current_state_checkpoint"]=" Are you sure that you want to save a checkpoint with current state? (y/n) "
+    ["backup_has_been_saved_to_selected_directory"]="$GREEN Backup is saved to MTD_BACKUP_$CONFIG_FIRMWARE_PRODUCT_ID/$SNAPSHOT $NONE$RED"
+    ["something_goes_wrong_unable_to_create_backup"]="$RED Something goes wrong, unable to save backup! $NONE"
+    ["preparing_partitions_backup"]="$BLUE Preparing the partitions backup... $NONE"
+    ["do_you_want_create_backup_of_all_partitions"]=" Are you sure that you want to backup all partitions? (y/n) "
+    ["checking_eeprom"]="$BLUE Checking EEPROM... $NONE"
+    ["eeprom_already_has_been_patched_there_is_no_need_to_do_it_again"]="$GREEN The EEPROM is already patched! There is no any reason to do it again. $NONE"
+    ["keeping_eeprom_in_its_original_state"]="$BLUE The EEPROM is kept unchanged... $NONE"
+    ["uploading_eeprom"]="$BLUE Uploading the EEPROM... $NONE"
+    ["do_you_want_to_flash_eeprom"]=" Are you sure that you want to flash the EEPROM? (y/n) "
+    ["do_you_want_to_do_it_now"]="$BLUE"
+    ["stock_eeprom_has_been_found_its_recommended_apply_patch"]="$RED Stock EEPROM was detected, it is strongly recommended to apply the patch!  $NONE"
+    ["file_doesnt_exist_or_empty"]="$RED The file does not exist or empty!!! $NONE"
+    ["in_every_unknown_situation_press_3"]="$YELLOW If you are unsure of your actions press 3.$NONE"
+    ["in_every_unknown_situation_press_1"]="$YELLOW If you are unsure of your actions press 1.$NONE"
+    ["something_has_been_deleted"]="$YELLOW The archive is cleaned. $NONE"
+    ["action_has_been_canceled"]="$BLUE The action is canceled. $NONE"
+    ["router_has_been_flashed_successfully"]="$GREEN The router is successfully flashed... $NONE $BLUE"
+    ["flashing_firmware"]="$BLUE Flashing... $NONE"
+    ["detecting_partition"]="$BLUE Detecting partition... $NONE"
+    ["checking_checksum"]="$BLUE Checking checksum... $NONE"
+    ["error_occured_during_firmware_uploading"]="$RED An error occured during the firmware uploading... $NONE"
+    ["rebooting_router_wait_20_seconds"]="$BLUE Rebooting the router, please wait 20 seconds... $NONE"
+    ["rebooting_router_wait_50_seconds"]="$BLUE Rebooting the router, please wait 50 seconds... $NONE"
+    ["unsupported_router"]="$RED Unsupported router! $NONE"
+    ["do_you_want_reboot_router"]=" Are you sure that you want to reboot the router? (y/n) "
+    ["flashing_completed"]="$BLUE Flashing completed... $NONE"
+    ["resetting_sources_to_initial_state"]="$BLUE Resettings the sources to the initial state... $NONE"
+    ["do_you_want_restore_sources"]=" Are you sure that you want to restore the sources? (y/n) "
+    ["looks_like_error_happened_in_middle_of_compilation"]="$BLUE An error occured during the compilation process! $NONE"
+    ["your_firmware_fits_allowed_size"]="$GREEN File size of $FFM is $firmware_size bytes. The file size completely corresponds to the maximum allowed size of $max_allowed_size bytes $NONE"
+    ["your_firmware_exceeds_allowed_size"]="$RED WARNING! Size of $FFM is $firmware_size bytes. The file size DOES NOT corresponds to the maximum allowed size of $max_allowed_size bytes $NONE"
+    ["building_firmware"]="$BLUE Building firmware... $NONE"
+    ["do_you_want_try_fast_build"]=" Are you sure that you want to try quick build (might lead to errors) or quit? (y/n/q) "
+    ["fast_build_available_only_for_same_source_version"]="$BLUE Quick build is available for the same source version only.$NONE $RED"
+    ["you_already_have_build_this_firmware"]="$BLUE The firmware was already built. $NONE"
+    ["modules_are_absent"]="$RED Modules are absent! $NONE"
+    ["module_has_been_selected"]="$GREEN ${MODS[$yn]} is selected for installing $NONE"
+    ["selected_module_doesnt_support_updates"]="$RED $line does not support updates. $NONE"
+    ["getting_update_for_selected_module"]="$BLUE Getting update for $line ... $NONE"
+    ["go_backward_key"]="$BLUE Q)  Quit $NONE"
+    ["update_modules_key"]="$BLUE U)  Update $NONE"
+    ["script_will_be_restarted"]="$RED Script will be restarted. $NONE"
+    ["ssh_connection_cant_be_established"]="$RED SSH connection can not be established! $NONE"
+    ["uploading_storage"]="$BLUE Uploading Storage... $NONE"
+    ["uploading_firmware"]="$BLUE Uploading Firmware... $NONE"
+    ["uploading_factory"]="$BLUE Uploading Factory... $NONE"
+    ["flashing_backup"]="$BLUE Flashing... $NONE"
+    ["done_now_you_must_reboot_your_router_manually"]="$BLUE Done! It is strongly recommended to reboot the router immediately... $NONE"
+    ["should_not_reboot_your_router_until_uboot_flashed_successfully"]="$RED ATTENTION! Don't reboot the router until u-boot will be successfully flashed! $NONE"
+    ["script_is_stopping_because_of_possibility_router_brick"]="$RED The script is stopping due to possibility of the router damage! $NONE"
+    ["uploading_uboot"]="$BLUE Uploading U-Boot... $NONE"
+    ["uploading_bootenv"]="$BLUE Uploading BootEnv... $NONE"
+    ["preparing_bootenv"]="$BLUE Preparing BootEnv... $NONE"
+    ["do_you_want_restore_uboot_from_backup_or_remain_one_unchanged"]=" Are you sure that you want to restore U-Boot from the backup (Y), or leave it unchanged (N) "
+    ["do_you_want_restore_firmware_using_selected_file"]=" Are you sure that you want to restore firmware using file ${BACKUP[$I]}? "
+    ["please_enter_existed_backup"]="$RED Please enter the existing backup. $NONE"
+    ["restore_backup_canceled"]="$BLUE Cancel... $NONE"
+    ["select_backup_that_you_want_to_flash"]=" Select a backup that you would like to flash "
+    ["restore_backup_quit"]="$BLUE Q) Cancel $NONE"
+    ["this_script_works_only_with_xrmwrt_firmware"]="$BLUE This script operates with XRMWRT firmware only $NONE"
+    ["backups_not_found"]="$RED Backups not found... $NONE"
+    ["starting_tftp_server_enter_password"]="$YELLOW Starting TFTP server, you have to enter password from $NONE"
+    ["firmware_size_cant_exceed_n_bytes"]="$YELLOW Firmware size must correspond to the maximum size of $RED $mtd_max_size $YELLOW bytes $NONE"
+    ["please_enter_yes_or_no"]="Please enter 'yes' or 'no'"
+    ["do_you_want_flash_anyway"]=" Are you sure that you want to flash anyway? (y/n) "
+    ["router_flashed_with_exactly_same_build"]="$RED The router is already flashed with exactly same build $FFM... $NONE $BLUE"
+    ["you_dont_have_firmware"]="$BLUE There is no any firmware found, at least one should be built first. $NONE"
+    ["enter_existing_file"]="$RED Please, enter the existing file number only $NONE"
+    ["canceling"]="$BLUE Canceled... $NONE"
+    ["select_build_that_you_want_to_flash"]="Please, select a build you want to flash: "
+    ["creating_directories"]="$BLUE Creating directories... $NONE"
+    ["better_use_stable_build"]="$YELLOW If unsure, use a stable version of the script.$NONE"
+    ["remote_server_doesnt_respond"]="$RED The remote server is not responding, further work is not possible! $NONE"
+    ["server_connection_is_slow"]="The connection with the server is too slow"
+    ["checking_connection"]="$BLUE Checking connection... $NONE"
+    ["command_not_found"]="$RED The command is not found! $NONE"
+    ["in_capital_letters_please"]="$YELLOW Uppercase letters are allowed only! $NONE"
+    ["enter_router_password"]="$BLUE  Enter router's password: $NONE"
+    ["enter_router_login"]="$BLUE  Enter router's login: $NONE"
+    ["router_ip_examples"]="$BLUE  For example: 192.168.1.1 or freize.net:22 $NONE"
+    ["enter_router_ip2"]="$BLUE  Enter router's IP-address: $NONE"
+    ["enter_data"]="$BLUE  Enter data: $NONE"
+    ["trying_again"]="$BLUE Trying once again... $NONE"
+    ["telnet_access_has_been_granted"]="$BLUE TELNET access is granted... $NONE"
+    ["ssh_access_has_been_granted"]="$BLUE SSH access is granted... $NONE"
+    ["ssh_access_error"]="$RED SSH access error, check again... $NONE"
+    ["obtained_telnet_connection"]="$BLUE Telnet connection is established $NONE"
+    ["connected_to_devicex"]="$YELLOW Connected to $deviceX $NONE"
+    ["connected_to_unknown_device_running_openwrt"]="$YELLOW Connected to unknown device that running OpenWrt $NONE"
+    ["connected_to_config_firmware_product_id"]="$YELLOW Connected to $CONFIG_FIRMWARE_PRODUCT_ID $NONE"
+    ["connected_to_mi_mini"]="$GREEN Connected to MI router$NONE"
+    ["login_n_pass_couldnt_be_empty"]="$RED Login and password can not be empty! $NONE"
+    ["you_entered_wrong_routerip_or_one_not_connected"]="$RED Probably entered IP-address is incorrect or the router is not properly connected $NONE"
+    ["maybe_ssh_connection_forbidden"]="$RED Probably SSH-connection is forbidden, check the router settings! $NONE"
+    ["invalid_login_or_password"]="$RED Login or password is invalid! $NONE"
+    ["connection_settings"]="$BLUE Connection parameters: $NONE"
+    ["sources_error2"]="$BLUE Sources:$NONE$RED ERROR $NONE"
+    ["sources_error"]="$BLUE Sources,$NONE$RED ERROR $NONE"
+    ["checking_loaded_files"]="$BLUE Checking loaded files... $NONE"
+    ["loading_sources"]="$BLUE Loading sources... $NONE"
+    ["you_want_to_continue"]=" Continue? (y/n) "
+    ["unrecognized_router"]="$RED Unrecognized version of the router $GREEN$platform $BLUE($version $revision) SN=$GREEN$serial $BLUE($memory) $NONE"
+    ["getting_router_info"]="$BLUE Gathering information about the router $NONE"
+    ["init_router"]="$BLUE Initializing the router (can take up to 30 sec) $NONE"
+    ["wrong_pass_or_ipaddr"]="$RED Probably the password or IP-address is incorrect $NONE"
+    ["logging_to_webui"]="$BLUE Logging into webui $NONE"
+    ["enter_pass_from_linux_account"]="$YELLOW Please, enter a password from your Linux account. $NONE"
+    ["no_connection_with_router"]="$RED The connection to the router can not be established $NONE"
+    ["connecting_to_router"]="$BLUE Connecting to the router address $IP $NONE"
+    ["bad_pass"]="$RED The password is incorrect. $NONE"
+    ["webui_pass"]="$BLUE A password from WebUI: $NONE"
+    ["enter_router_ip"]="$BLUE Please, enter the router's IP address (default - 192.168.31.1): $NONE"
+    ["you_want_to_continue_task"]=" Are sure you that you want to continue? (y/n) "
+    ["source_code_patch_is_good"]="$GREEN Source patch is valid, build is safe. $NONE"
+    ["source_code_patch_is_bad"]="$RED Patch for the sources IS NOT VALID, building can lead to errors! "
+    ["dont_ask_questions_without_logs"]="$RED Please copy the logs and then ask questions on 4pda! $NONE"
+    ["toolchain_error"]="$BLUE The toolchain build is finished with errors! $NONE"
+    ["building_toolchain"]="$BLUE Building the toolchain... $NONE"
+    ["enter_yes_no"]=" Please enter 'yes' or 'no'"
+    ["toolchain_build_canceled"]="$BLUE The toolchain build is aborted! $NONE"
+    ["toolchain_build_started"]="$BLUE The toolchain build is started... $NONE"
+    ["rebuild_toolchain"]=" Rebuild the toolchain? "
+    ["checking_installed_themes"]="$BLUE Checking the installed themes... $NONE"
+    ["updating_skins"]="$BLUE Updating and applying the themes... $NONE"
+    ["updating_source_code"]="$BLUE Updating sources... $NONE"
+    ["revert_classic_skin"]="$BLUE Restoring the original theme... $NONE"
+    ["skins_found"]="$BLUE Installed themes are detected $NONE"
+    ["ssh_access_established"]="$YELLOW SSH access is established... $NONE"
+    ["ssh_access_not_established"]="$YELLOW SSH access is not established, the script is finished. $NONE"
+    ["rebooting_router"]="$YELLOW Rebooting the router and finishing the script! $NONE"
+    ["press_to_proceed"]="$RED Press any key to continue... $NONE"
+    ["skins_screen_select_item"]="${BLUE}Please enter number of required menu item: $NONE"
+    ["white_theme_off"]="$NONE 6. White theme              [0.0 MB] [$RED0$off$NONE]"
+    ["white_theme_on"]="$NONE 6. White theme              [0.2 MB] [$GREEN0$on$NONE]"
+    ["yellow_theme_off"]="$NONE 5. Yellow theme             [0.0 MB] [$RED0$off$NONE]"
+    ["yellow_theme_on"]="$NONE 5. Yellow theme             [0.2 MB] [$GREEN0$on$NONE]"
+    ["dark_blue_theme_off"]="$NONE 4. Dark-blue theme          [0.0 MB] [$RED0$off$NONE]"
+    ["dark_blue_theme_on"]="$NONE 4. Dark-blue theme          [0.6 MB] [$GREEN0$on$NONE]"
+    ["blue_theme_off"]="$NONE 3. Blue theme               [0.0 MB] [$RED0$off$NONE]"
+    ["blue_theme_on"]="$NONE 3. Blue theme               [0.4 MB] [$GREEN0$on$NONE]"
+    ["grey_theme_vector_off"]="$NONE 2. Dark-grey theme (vector) [0.0 MB] [$RED0$off$NONE]"
+    ["grey_theme_vector_on"]="$NONE 2. Dark-grey theme (vector) [0.6 MB] [$GREEN0$on$NONE]"
+    ["grey_theme_off"]="$NONE 1. Dark-grey theme          [0.0 MB] [$RED0$off$NONE]"
+    ["grey_theme_on"]="$NONE 1. Dark-grey theme          [0.6 MB] [$GREEN0$on$NONE]"
+    ["skins_core_off"]="$NONE 0. Skins core               [0.0 MB] [$RED0$off$NONE]"
+    ["skins_core_on"]="$NONE 0. Skins core               [0.4 MB] [$GREEN0$on$NONE]"
+    ["available_skins"]="$BLUE The list of available skins: $NONE"
+    ["select_module"]=" Please enter number of required module: "
+    ["available_modules"]="$BLUE The list of available modules: $NONE"
+    ["skin_full_tp2"]="$BLUE Skin:    $NONE $YELLOW    FULL-TP $NONE"
+    ["skin_full_tp"]="$BLUE Skin:$NONE$YELLOW FULL-TP$NONE"
+    ["skin_original2"]="$BLUE Skin:    $NONE $GREEN    ORIGINAL $NONE"
+    ["skin_original"]="$BLUE Skin:$NONE$GREEN ORIGINAL$NONE"
+    ["skin_lite_tp2"]="$BLUE Skin:    $NONE $YELLOW    LITE-TP $NONE"
+    ["skin_lite_tp"]="$BLUE Skin:$NONE$YELLOW LITE-TP$NONE"
+    ["installing_software"]="$YELLOW Installing software, please enter password of $NONE"
+    ["from_your_linux_account"]="$YELLOW your Linux account. $NONE"
+    ["selected_config"]="$RED Selected ${CONFIGN[$yn]} $NONE"
+    ["select_existed_config"]="$RED Please select the existing config: $NONE"
+    ["select_config"]=" Enter required config number: "
+    ["configs_to_choose"]="$BLUE The list of available router configs: $NONE"
+    ["xrmwrt_patch_ok"]="$BLUE XRMWRT Patch:$NONE$GREEN OK $NONE"
+    ["source_code_not_found"]="$BLUE Sources:$NONE$YELLOW     NOT FOUND $NONE"
+    ["source_code_ok"]="$BLUE Sources:$NONE$YELLOW      $GITCOMMIT $NONE"
+    ["directories_not_found"]="$BLUE Directories:$NONE$YELLOW     NOT FOUND $NONE"
+    ["directories_ok"]="$BLUE Directories:$NONE$GREEN  OK $NONE"
+    ["dependencies_ok"]="$BLUE Dependencies:$NONE$GREEN OK$NONE"
+    ["no_internet_connection"]="$RED No internet connection is found. Further work is not possible! $NONE"
+    ["config_ok"]="$BLUE Config:$NONE$GREEN       OK $NONE"
+    ["slow_connection"]="Internet connection is too slow"
+    ["scripts_ok"]="$BLUE Scripts:$NONE$GREEN      OK $NONE"
+    ["editor_warning_msg"]="$RED Please, note that to disable a parameter, put # (hash sign) at the begining of a line and vice versa...$NONE"
+    ["autoeditor_bottom2"]="$NONE (F)AQ 		Follo(W)ing page 	(Q)uit $NONE\n\n${BLUE} Please enter number of required menu item: $NONE"
+    ["autoeditor_bottom1"]="$NONE (F)AQ		Follo(W)ing page 	(O)penSSL	(Q)uit $NONE\n\n${BLUE} Please enter number of required menu item: $NONE"
+    ["autoeditor_title"]="$BLUE List of available config parameters:$NONE\n-------------------------------------------------------------------------------"
+    ["faq_screen_menu3"]="$YELLOW Restore all changes     (S) - restores a stock backup.$NONE"
+    ["faq_screen_menu2"]="$YELLOW Flash EEPROM patch      (6) - applies once only.$NONE"
+    ["please_enter_number_of_desired_language"]="$NONE-------------------------------------------------------------------------------$RED
+ Please enter number of required menu item: "
+    ["list_of_available_languages"]="$BLUE The list of available interface languages: $NONE
+$NONE-------------------------------------------------------------------------------"
+    ["entware_module_header"]="$BLUE This module adds ability to start your Entware without an external storage. $NONE
+$BLUE The module requires a properly connected router with Entware installed. $NONE
+$RED Firmware compression ratio is 5.
+ e.g. 30Mb of Entware will increase the firmware up to 6Mb. $NONE"
+    ["tor_privoxy_module_header"]="$BLUE This module adds TOR&PRIVOXY&DNSCRYPT into source codes. $NONE
+$RED Please, pay attention that this module requires a custom version of source codes!
+ If you apply the module the source codes will be downgraded
+ to the custom version of source codes! $NONE
+$BLUE After installtion you can select what software you want to include by editing config file. $NONE"
+    ["you_dont_have_to_change_opened_file"]="$RED You do not have to change opened file.
+ define - enabled, undef - disabled.$NONE"
+    ["router_will_be_available_on_next_address_dont_forget_turn_on_ssh"]="$BLUE The router will be accessible (after reboot) at 192.168.1.1 address ,
+ Login is 'admin'; Password is 'admin'; WiFi network SSID is 'ASUS';
+ WiFi default password is '1234567890'.
+ Please, do not forget to enable SSH access for the further firmware upgrades.
+ Note, previous router settings are not changed... $NONE"
+    ["uboot_screen_menu_other_routers"]="  Please enter number of required menu item:
+  Flash/Update U-Boot          (1)
+  Build U-Boot from sources    (2)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["uboot_screen_menu_mi_mini"]="  Please enter number of required menu item:
+  Flash/Update U-Boot          (1)
+  Build U-Boot from sources    (2)
+  Restore stock U-Boot         (3)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["uboot_screen_menu_mi_3"]="  Please enter number of required menu item:
+  Flash/Update U-Boot          (1)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["your_firmware_destroyed_in_safety_precautions"]="$RED The firmware is destroyed in safety reasons!
+ Change configuration and build it again.$NONE"
+    ["restore_backup_warning"]="$RED Warning! $NONE
+$BLUE If something goes wrong, do not reboot the router and flash it again until success. $NONE
+$BLUE After rollback all router settings will be restored to the state when backup is created. $NONE
+
+"
+    ["faq_screen_menu"]="$YELLOW Plese, select required item. If you do not know what to do, select
+ each item, from the top to the bottom. You make it on your own risk...
+
+ Update the scripts      (1) - updates the script.
+ Update the sources      (2) - updates the source codes, do it before 3-rd and 4-th point.
+ Build toolchain         (3) - uses to build a toolchain, changes very rarely.
+ Flash a firmware        (4) - uploads a firmware to the router.
+ U-Boot                  (5) - flashes a router boot sector.$NONE"
+    ["firmware_uploaded_into_router_do_flashing"]="$BLUE Firmware is uploaded to the router... $NONE
+$BLUE Flashing... $NONE"
+    ["enable_ssh_and_enter_data_from_xiaomi_site_or_xrmwrt_webui"]="$YELLOW For stock firmware get data from xiaomi site, for xrmwrt
+ get login and password from WebUI, also remember it
+ SSH access must be enabled in WebUI. $NONE"
+    ["connection_screen_menu"]="-------------------------------------------------------------------------------
+ Are above-mentioned parameters correct?
+ Enter an answer:
+ The parameters are correct 	(1)
+ Update the parameters     	(2)
+                 		(F)AQ
+                 		(Q)uit
+-------------------------------------------------------------------------------"
+    ["update_prometheus_menu"]="-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Update the script to a stable version 	(1)
+  Update the script to a test version       	(2)
+  Update a patch only                           (3)
+                                 		(F)AQ
+                                 		(Q)uit
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Auto-editor                  		(1)
+  Edit config in a notepad     		(2)
+  Reset all changes            		(3)
+                               		(F)AQ
+                               		(Q)uit
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_wt3020"]="-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Auto-editor                  		(1)
+  Edit config in a notepad    		(2)
+  Reset all changes            		(3)
+  Replace 'Reset' button with 'WPS'	(4) [ Can be changed in WebUI ]
+                               		(F)AQ
+                               		(Q)uit
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_mi_mini"]="-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Auto-editor                  		(1)
+  Edit config in a notepad     		(2)
+  Reset all changes            		(3)
+  Replace 'Reset' button with 'WPS'	(4) [ Can be changed in WebUI ]
+  Enable RED LED for WAN       		(5) [ Can be changed in WebUI ]
+                               		(F)AQ
+                               		(Q)uit
+-------------------------------------------------------------------------------"
+    ["firmware_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Change build config          		(1)
+  Apply skins                  		(2)
+  Build a firmware            		(3)
+  Flash a firmware             		(4)
+  Select a firmware from the archive 	(5)
+  Cleanup the firmware archive 		(6)
+                               		(F)AQ
+                               		(Q)uit
+-------------------------------------------------------------------------------"
+    ["firmware_screen_menu_mi_3"]="-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Change build config          		(1)
+  Apply skins                  		(2)
+  Build a firmware            		(3)
+  Flash a firmware             		(4)
+  Select a firmware from the archive 	(5)
+  Cleanup the firmware archive 		(6)
+  Format RWFS                           (7)
+                               		(F)AQ
+                               		(Q)uit
+-------------------------------------------------------------------------------"
+    ["settings_screen_menu"]="
+$BLUE  Script authors: Freize, Yadoff, Firsthash.
+  English translaton: NEt_Browser
+  Contacts: is@freize.net
+  Site: http://prometheus.freize.net/ $NONE
+
+-------------------------------------------------------------------------------
+  Please enter number of required menu item:
+  Change router configuration  (1)
+  Delete config                (2)
+  Modules                      (3)
+  Language                     (4)
+  SSH Settings                 (5)
+  Select a repository          (6)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["prometheus_header"]="-------------------------------------------------------------------------------$BLUE
+  $NONE$GREEN                               PROMETHEUS $NONE$BLUE
+  $NONE$RED                       Script version: $PROMETHEUS2$PROMETHEUS3 $stable $NONE$BLUE
+  Prometheus is the script for maintaining and upgrading a router firmware.
+  Router config: $GREEN$CONFIG_FIRMWARE_PRODUCT_ID$BLUE SN: $YELLOW$SSHTOK$BLUE GIT$GITOK$YELLOW$GITCOMMIT$BLUE
+ $ST52$FIRM$SKIN$NONE
+"
+    ["main_screen_menu_mi_mini"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+    EEPROM                       (6)  [          Applies once only          ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_mini"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    SSH-hack of stock firmware   (0)  [        Not completely tested        ]
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+    EEPROM                       (6)  [          Applies once only          ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_mi_3"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+    EEPROM                       (6)  [          Applies once only          ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_3"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    SSH-hack of stock firmware   (0)  [        Not completely tested        ]
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+    EEPROM                       (6)  [          Applies once only          ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_mi_nano"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_nano"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    SSH-hack of stock firmware   (0)  [        Not completely tested        ]
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  Please enter number or letter of required menu item
+  Initial operations:
+    Update scripts               (1)
+    Update sources               (2)
+    Build toolchain              (3)
+  Final operations:
+    Firmware                     (4)
+    U-Boot                       (5)  [ ATTENTION! Router might be damaged! ]
+  Miscellaneous:
+    Script settings              (S)ettings
+    Restore backup              s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+)

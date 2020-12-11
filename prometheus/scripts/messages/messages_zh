@@ -1,0 +1,538 @@
+dictionary=(
+    ["select_the_version_of_the_repository"]="$BLUE Please select the version of the repository: $NONE"
+    ["cleaning_is_launched"]="$BLUE 注意! 强烈建议清理源代码. "
+    ["available_patchs"]="$BLUE 下列补丁可用: $NONE"
+    ["select_patch"]="请选择需要应用的补丁编号: "
+    ["patchs_are_absent"]="$RED 补丁丢失! 补丁不包含在此脚本的标准包中. 你可能需要升级此模块来获取补丁. $NONE"
+    ["patch_has_been_added"]="$GREEN 补丁已成功应用. $NONE"
+    ["mi3_recovery_confirm"]="$RED 你的路由器将会进入恢复模式. 你需要一个含有原始固件 (miwifi.bin) 的 U 盘来恢复它. $NONE"
+    ["please_enter_the_first_mac"]="$BLUE 请输入主 MAC 地址:"
+    ["please_enter_the_second_mac"]="$BLUE 请输入次 MAC 地址:"
+    ["selected_mac"]="$BLUE MAC 地址已接受! $NONE"
+    ["select_existed_mac"]="$RED 请输入一个有效的 MAC 地址.
+$BLUE 例如: DD:AF:E2:01:2A:65$NONE"
+    ["mac_addresses_selected"]="$BLUE 已选择下列 MAC 地址:
+ WAN/WLAN 2.4 : $YELLOW$MAC1$BLUE
+ LAN/WLAN 5   : $YELLOW$MAC2$NONE"
+    ["addresses_have_changed"]="$RED MAC 地址已成功更新. $NONE"
+    ["confirm_the_input_addresses"]="$RED 你确定要更新 MAC 地址吗? (y/n) $NONE"
+    ["you_want_to_delete_config"]="$RED 你确定要删除 $GREEN$CONFIG_FIRMWARE_PRODUCT_ID$RED 配置? (y/n) $NONE"
+    ["i_understand_and_agree"]="$RED 你确定要刷入吗? (y/n) $NONE"
+    ["ids_comparison"]="$BLUE 发生认证错误, 请检查下列数据:
+ 固件:   $RED$FFM$BLUE
+ 路由器: $RED$rt_hostname$BLUE
+ 配置:   $RED$CONFIG_FIRMWARE_PRODUCT_ID$BLUE
+ 此数据可能与原版固件有差异, 是正常的.$NONE"
+    ["source_code_download_error"]="$RED 下载源代码时出现错误! $NONE"
+    ["software_installation_error"]="$RED 软件安装错误! $NONE"
+    ["incorrect_configuration"]="$RED 出现了一个错误. 配置不正确. 正在终止操作... $NONE"
+    ["tor_patch_not_applied"]="$RED 没有应用补丁. 正在终止操作... $NONE"
+    ["select_mtd"]=" 请输入分区编号: "
+    ["available_mtd"]="$BLUE 可用的分区列表: $NONE"
+    ["mtd_has_been_selected"]="$GREEN ${MTDS[$yn]} 已被选择用于安装 $NONE"
+    ["insert_usb_flash_drive"]="$RED 请在路由器的 USB 接口上插入一个含有原始固件 (miwifi.bin) 的 U 盘然后短按重置键. $NONE"
+    ["error_firmware_1"]="$RED 警告! 即将通过 Web 界面刷入工厂固件! 不要重启路由器! $NONE"
+    ["entware_mounted"]="$GREEN Entware 挂载成功! $NONE"
+    ["error_occured_so_removing_module"]="$RED $error_text...正在移除模块 $NONE"
+    ["cleaning_router_temp_directory"]="$GREEN 正在清理路由器的临时目录... $NONE"
+    ["copying_entware_from_router_to_firmware"]="$GREEN 正在从路由器复制 Entware 到固件... $NONE"
+    ["compressing_router_entware"]="$GREEN 正在压缩路由器的 Entware... $NONE"
+    ["cant_get_access_to_the_router"]="无法访问路由器"
+    ["testing_router_connection"]="$GREEN 正在检查到路由器的连接... $NONE"
+    ["router_access_params_is_abc"]="$BLUE 路由器访问参数为: 用户=$ROOTWRT, 密码=$PWDR, IP=$IPWRT $NONE"
+    ["removing_entware_patch"]="$GREEN 正在移除 Entware 补丁... $NONE"
+    ["applying_entware_patch"]="$GREEN 正在应用 Entware 补丁... $NONE"
+    ["paragon_ntfs_driver_has_been_added"]="$BLUE 已成功应用 Paragon NTFS 驱动... $NONE"
+    ["cleaning_sources"]="$BLUE 正在清理源代码... $NONE"
+    ["do_you_want_to_clean_up"]=" 你要清理源代码吗? (y/n) "
+    ["cleaning_module_is_launched"]="$BLUE 已开始清理! $RED"
+    ["resetting_module_settings"]="$BLUE 正在重置模块设置... $NONE"
+    ["adding_module_to_config_ok"]="$BLUE 添加模块到配置$GREEN 成功 $NONE"
+    ["removing_module_from_config_ok"]="$BLUE 从配置中移除模块$GREEN 成功 $NONE"
+    ["tor_privoxy_patch_has_been_removed"]="$GREEN TOR&PRIVOXY&DNSCRYPT 补丁已移除! $NONE"
+    ["moving_module_patch"]="$BLUE 正在移动模块补丁... $NONE"
+    ["adding_module_update_fix"]="$BLUE 正在添加模块更新修复... $NONE"
+    ["applying_tor_privoxy_patch"]="$BLUE 正在应用 TOR&PRIVOXY&DNSCRYPT 补丁... $NONE"
+    ["please_before_module_deletion_update_sources"]="$BLUE 请在移除模块前更新源代码! $NONE"
+    ["module_has_been_deactivated"]="$GREEN 此模块已禁用! $NONE"
+    ["preparing_module_patch"]="$BLUE 正在准备模块补丁... $NONE"
+    ["module_operation_canceled"]="$GREEN 正在取消... $NONE"
+    ["module_already_installed_do_you_want_to_remove"]="$RED 此模块已安装. 你要移除它吗? (y/n)  $NONE"
+    ["do_you_want_to_install_module"]="$RED 你要安装这个模块吗? (y/n)  $NONE"
+    ["languages_have_been_lost"]="$RED 糟糕! 没有任何语言可供选择... $NONE"
+    ["selected_language_is_abc"]="$RED 界面语言: ${CONFIGN[$yn]} $NONE"
+    ["please_select_existed_language"]="$RED 请选择一个存在的项目 $NONE"
+    ["cancel_archive_backup"]="$BLUE Q) 取消 $NONE"
+    ["cleaning_update"]="$BLUE 正在清理更新... $NONE"
+    ["decompressing_update"]="$BLUE 正在解压更新... $NONE"
+    ["downloading_update"]="$BLUE 正在下载更新... $NONE"
+    ["activate_item_with_number_or_return_with_q"]="$YELLOW 输入项目序号来启用/禁用或按 Q 返回.$NONE"
+    ["you_can_build_uboot_only_on_x86_machine"]="$YELLOW 请注意, 只能在 x86 电脑上构建 U-Boot.$NONE"
+    ["archive_file_is_absent_please_update_script"]="$RED 归档文件不存在, 请更新脚本$NONE"
+    ["archive_file_is_corrupted_please_update_script"]="$RED 归档文件已损坏, 请更新脚本$NONE"
+    ["changes_will_be_applied_after_reboot"]="$BLUE 所有更改将在重启后应用... $NONE"
+    ["action_has_been_canceled_because_of_copy_error"]="$RED 因为复制错误, 操作已取消. 请再试一次. $NONE"
+    ["do_you_want_to_flash_stock_uboot"]=" 你要刷入原始 U-Boot 吗? (y/n) "
+    ["uboot_isnt_found"]="$RED 找不到 U-Boot! $NONE"
+    ["your_uboot_has_actual_version"]="$GREEN U-Boot 已是最新! $NONE"
+    ["update_canceled"]="$BLUE 更新已取消. $NONE"
+    ["dont_reboot_your_router_if_you_have_stock_firmware"]="$BLUE 如果路由器是原始固件, 请不要重启... $NONE $BLUE"
+    ["dont_reboot_your_router_until_bootloader_will_be_flashed_successfully"]="$BLUE 在 U-Boot 成功刷入之前 $RED 请不要重启 $BLUE 路由器!!! $NONE"
+    ["newer_bootloader_with_version_abc_has_been_found"]="$RED 检测到新的bootloader: $uboot_new_version $NONE $BLUE"
+    ["current_bootloader_version_is_abc"]="$BLUE 目前 bootloader 的版本是 $uboot_old_version $NONE"
+    ["preparing_uboot"]="$BLUE 正在准备 U-Boot... $NONE"
+    ["do_you_want_to_flash_uboot"]=" 你要刷入 U-Boot 吗? (y/n) "
+    ["uboot_has_been_uploaded_to_the_router"]="$BLUE uboot.bin 文件已成功上传到路由器... $NONE"
+    ["uboot_assembled"]="$GREEN U-Boot 已编译! $NONE"
+    ["configs_have_been_lost"]="$RED 糟糕! 配置文件丢失... $NONE"
+    ["dumping_partition_to_path_abc"]="$BLUE 正在转存 /dev/$mtd 到 $SNAPSHOT  $NONE"
+    ["sources_have_been_patched"]="$BLUE 补丁,$NONE$GREEN 正常 $NONE"
+    ["please_try_again"]="$BLUE 请再试一次 $NONE"
+    ["unfortunately_something_goes_wrong"]="$RED 很可惜出了一些错误 $NONE"
+    ["access_parameters_for_ssh_are_abc"]="$BLUE SSH 访问参数:  $RED IP: $GREEN$IP   $RED 用户名:$GREEN root   $RED 密码: $GREEN$password $NONE"
+    ["congratulations_you_have_obtained_ssh_access"]="$GREEN 恭喜!!! ${BLUE} 已成功获取 SSH 访问权限$NONE"
+    ["checking_ssh_access"]="$BLUE 正在检查 SSH 访问$NONE"
+    ["launching_ssh"]="$BLUE 正在启动 SSH $NONE"
+    ["telnet_has_been_launched"]="$GREEN Telnet 已启动 $NONE"
+    ["launch_error_is_abc"]="$RED 启动错误: $BLUE$result$NONE"
+    ["launching_telnet_on_router"]="$BLUE 正在路由器上启动 telnet $NONE"
+    ["your_ssh_telnet_password_is_abc"]="$BLUE 你的 ssh/telnet 密码是 $GREEN$password$NONE"
+    ["founded_router_version_is_abc"]="$BLUE 找到路由器: $GREEN$platform $BLUE($version $revision) SN=$GREEN$serial $BLUE($memory) $NONE"
+    ["checkpoint_has_been_created"]="$NONE$GREEN 已保存当前状态 $NONE"
+    ["do_you_want_to_create_current_state_checkpoint"]=" 你要保存当前状态吗? (y/n) "
+    ["backup_has_been_saved_to_selected_directory"]="$GREEN 已保存备份到 MTD_BACKUP_$CONFIG_FIRMWARE_PRODUCT_ID/$SNAPSHOT $NONE$RED"
+    ["something_goes_wrong_unable_to_create_backup"]="$RED 出了一些错误, 无法保存备份! $NONE"
+    ["preparing_partitions_backup"]="$BLUE 正在准备备份分区... $NONE"
+    ["do_you_want_create_backup_of_all_partitions"]=" 你要备份所有分区吗? (y/n) "
+    ["checking_eeprom"]="$BLUE 正在检查 EEPROM... $NONE"
+    ["eeprom_already_has_been_patched_there_is_no_need_to_do_it_again"]="$GREEN EEPROM 已经打过补丁! 不需要再进行一次. $NONE"
+    ["keeping_eeprom_in_its_original_state"]="$BLUE EEPROM 未改动... $NONE"
+    ["uploading_eeprom"]="$BLUE 正在上传 EEPROM... $NONE"
+    ["do_you_want_to_flash_eeprom"]=" 你要刷入 EEPROM 吗? (y/n) "
+    ["do_you_want_to_do_it_now"]="$BLUE"
+    ["stock_eeprom_has_been_found_its_recommended_apply_patch"]="$RED 检测到原始 EEPROM, 强烈建议应用补丁!  $NONE"
+    ["file_doesnt_exist_or_empty"]="$RED 文件无法找到或者为空!!! $NONE"
+    ["in_every_unknown_situation_press_3"]="$YELLOW 如果你不确定请按 3.$NONE"
+    ["in_every_unknown_situation_press_1"]="$YELLOW 如果你不确定请按 1.$NONE"
+    ["something_has_been_deleted"]="$YELLOW 档案已被清理. $NONE"
+    ["action_has_been_canceled"]="$BLUE 操作已取消. $NONE"
+    ["router_has_been_flashed_successfully"]="$GREEN 路由器刷机成功... $NONE $BLUE"
+    ["flashing_firmware"]="$BLUE 正在刷入... $NONE"
+    ["detecting_partition"]="$BLUE 正在检测分区... $NONE"
+    ["checking_checksum"]="$BLUE 正在检查校验和... $NONE"
+    ["error_occured_during_firmware_uploading"]="$RED 上传固件时出现错误... $NONE"
+    ["rebooting_router_wait_20_seconds"]="$BLUE 正在重启路由器, 请等待 20 秒... $NONE"
+    ["rebooting_router_wait_50_seconds"]="$BLUE 正在重启路由器, 请等待 50 秒... $NONE"
+    ["unsupported_router"]="$RED 不支持的路由器! $NONE"
+    ["do_you_want_reboot_router"]=" 你要重启路由器吗? (y/n) "
+    ["flashing_completed"]="$BLUE 刷写完成... $NONE"
+    ["resetting_sources_to_initial_state"]="$BLUE 正在恢复源代码到初始状态... $NONE"
+    ["do_you_want_restore_sources"]=" 你要恢复源代码吗? (y/n) "
+    ["looks_like_error_happened_in_middle_of_compilation"]="$BLUE 编译时出现错误! $NONE"
+    ["your_firmware_fits_allowed_size"]="$GREEN 固件 $FFM 的大小为 $firmware_size 字节, 符合最大允许的大小 $max_allowed_size 字节 $NONE"
+    ["your_firmware_exceeds_allowed_size"]="$RED 警告! 固件 $FFM 的大小为 $firmware_size 字节, 不符合最大允许的大小 $max_allowed_size 字节 $NONE"
+    ["building_firmware"]="$BLUE 正在构建固件... $NONE"
+    ["do_you_want_try_fast_build"]=" 你要尝试快速构建 (可能导致错误) 还是退出? (y/n/q) "
+    ["fast_build_available_only_for_same_source_version"]="$BLUE 快速构建只可用于相同的源代码版本.$NONE $RED"
+    ["you_already_have_build_this_firmware"]="$BLUE 固件已经构建. $NONE"
+    ["modules_are_absent"]="$RED 模块不存在! $NONE"
+    ["module_has_been_selected"]="$GREEN 已选择 ${MODS[$yn]} $NONE"
+    ["selected_module_doesnt_support_updates"]="$RED $line 不支持更新. $NONE"
+    ["getting_update_for_selected_module"]="$BLUE 正在获取 $line 的更新 ... $NONE"
+    ["go_backward_key"]="$BLUE Q)  退出 $NONE"
+    ["update_modules_key"]="$BLUE U)  更新 $NONE"
+    ["script_will_be_restarted"]="$RED 脚本即将重启. $NONE"
+    ["ssh_connection_cant_be_established"]="$RED 无法建立 SSH 连接! $NONE"
+    ["uploading_storage"]="$BLUE 正在上传存储... $NONE"
+    ["uploading_firmware"]="$BLUE 正在上传固件... $NONE"
+    ["uploading_factory"]="$BLUE 正在上传工厂数据... $NONE"
+    ["flashing_backup"]="$BLUE 正在刷入... $NONE"
+    ["done_now_you_must_reboot_your_router_manually"]="$BLUE 完成! 强烈建议立刻重启路由器... $NONE"
+    ["should_not_reboot_your_router_until_uboot_flashed_successfully"]="$RED 注意! 在 U-Boot 成功刷入之前请不要重启路由器! $NONE"
+    ["script_is_stopping_because_of_possibility_router_brick"]="$RED 因为可能损坏路由器, 脚本正在停止! $NONE"
+    ["uploading_uboot"]="$BLUE 正在上传 U-Boot... $NONE"
+    ["uploading_bootenv"]="$BLUE 正在上传 BootEnv... $NONE"
+    ["preparing_bootenv"]="$BLUE 正在准备 BootEnv... $NONE"
+    ["do_you_want_restore_uboot_from_backup_or_remain_one_unchanged"]=" 你要从备份恢复 U-Boot (Y), 还是保留现状 (N) "
+    ["do_you_want_restore_firmware_using_selected_file"]=" 你要使用文件 ${BACKUP[$I]} 恢复固件吗? "
+    ["please_enter_existed_backup"]="$RED 请输入存在的备份. $NONE"
+    ["restore_backup_canceled"]="$BLUE 取消... $NONE"
+    ["select_backup_that_you_want_to_flash"]=" 选择一个你要刷入的备份 "
+    ["restore_backup_quit"]="$BLUE Q) 取消 $NONE"
+    ["this_script_works_only_with_xrmwrt_firmware"]="$BLUE 此脚本只支持 XRMWRT 固件 $NONE"
+    ["backups_not_found"]="$RED 未找到备份... $NONE"
+    ["starting_tftp_server_enter_password"]="$YELLOW 正在启动 TFTP 服务器, $NONE"
+    ["firmware_size_cant_exceed_n_bytes"]="$YELLOW 固件大小必须符合最大允许的大小 $RED $mtd_max_size $YELLOW 字节 $NONE"
+    ["please_enter_yes_or_no"]="请输入 'yes' 或 'no'"
+    ["do_you_want_flash_anyway"]=" 你确定要刷入吗? (y/n) "
+    ["router_flashed_with_exactly_same_build"]="$RED 路由器已经刷入了相同的版本 $FFM... $NONE $BLUE"
+    ["you_dont_have_firmware"]="$BLUE 没有任何固件, 需要先构建一个. $NONE"
+    ["enter_existing_file"]="$RED 请输入存在的文件序号 $NONE"
+    ["canceling"]="$BLUE 已取消... $NONE"
+    ["select_build_that_you_want_to_flash"]="请选择你要刷入的固件: "
+    ["creating_directories"]="$BLUE 正在创建目录... $NONE"
+    ["better_use_stable_build"]="$YELLOW 如果你不确定, 请使用稳定版的.$NONE"
+    ["remote_server_doesnt_respond"]="$RED 远程服务器没有响应, 接下来的工作无法进行! $NONE"
+    ["server_connection_is_slow"]="到服务器的连接非常缓慢"
+    ["checking_connection"]="$BLUE 正在检查连接... $NONE"
+    ["command_not_found"]="$RED 没有找到命令! $NONE"
+    ["in_capital_letters_please"]="$YELLOW 请输入大写字母! $NONE"
+    ["enter_router_password"]="$BLUE  请输入路由器的密码: $NONE"
+    ["enter_router_login"]="$BLUE  请输入路由器的用户名: $NONE"
+    ["router_ip_examples"]="$BLUE  例如: 192.168.1.1 或 freize.net:22 $NONE"
+    ["enter_router_ip2"]="$BLUE  输入路由器的 IP 地址: $NONE"
+    ["enter_data"]="$BLUE  输入数据: $NONE"
+    ["trying_again"]="$BLUE 再次尝试... $NONE"
+    ["telnet_access_has_been_granted"]="$BLUE 已获得 Telnet 访问权限... $NONE"
+    ["ssh_access_has_been_granted"]="$BLUE 已获得 SSH 访问权限... $NONE"
+    ["ssh_access_error"]="$RED SSH 访问错误, 重新检查... $NONE"
+    ["obtained_telnet_connection"]="$BLUE 已建立 Telnet 连接 $NONE"
+    ["connected_to_devicex"]="$YELLOW 已连接到 $deviceX $NONE"
+    ["connected_to_unknown_device_running_openwrt"]="$YELLOW 已连接到一个运行 OpenWrt 的未知设备 $NONE"
+    ["connected_to_config_firmware_product_id"]="$YELLOW 已连接到 $CONFIG_FIRMWARE_PRODUCT_ID $NONE"
+    ["connected_to_mi_mini"]="$GREEN 已连接到 MI-MINI $NONE"
+    ["login_n_pass_couldnt_be_empty"]="$RED 用户名和密码不能为空! $NONE"
+    ["you_entered_wrong_routerip_or_one_not_connected"]="$RED 可能输入的 IP 地址不正确或者路由器未正确连接 $NONE"
+    ["maybe_ssh_connection_forbidden"]="$RED Probably SSH-connection is forbidden, check the router settings! $NONE"
+    ["invalid_login_or_password"]="$RED 用户名或密码无效! $NONE"
+    ["connection_settings"]="$BLUE 连接参数: $NONE"
+    ["sources_error2"]="$BLUE 源代码:$NONE$RED 错误 $NONE"
+    ["sources_error"]="$BLUE 源代码,$NONE$RED 错误 $NONE"
+    ["checking_loaded_files"]="$BLUE 正在检查加载的文件... $NONE"
+    ["loading_sources"]="$BLUE 正在加载源代码... $NONE"
+    ["you_want_to_continue"]=" 继续? (y/n) "
+    ["unrecognized_router"]="$RED 无法识别的路由器版本 $GREEN$platform $BLUE($version $revision) SN=$GREEN$serial $BLUE($memory) $NONE"
+    ["getting_router_info"]="$BLUE 正在收集路由器信息 $NONE"
+    ["init_router"]="$BLUE 正在初始化路由器 (可能需要 30 秒) $NONE"
+    ["wrong_pass_or_ipaddr"]="$RED 密码或 IP 地址可能不正确 $NONE"
+    ["logging_to_webui"]="$BLUE Logging into webui $NONE"
+    ["enter_pass_from_linux_account"]="$YELLOW 请输入 Linux 用户密码. $NONE"
+    ["no_connection_with_router"]="$RED 无法连接到路由器 $NONE"
+    ["connecting_to_router"]="$BLUE 正在连接到路由器地址 $IP $NONE"
+    ["bad_pass"]="$RED 密码不正确. $NONE"
+    ["webui_pass"]="$BLUE Web 界面密码: $NONE"
+    ["enter_router_ip"]="$BLUE 输入路由器 IP (默认 - 192.168.31.1): $NONE"
+    ["you_want_to_continue_task"]=" 你要继续吗? (y/n) "
+    ["source_code_patch_is_good"]="$GREEN 源代码补丁有效, 可以安全地构建. $NONE"
+    ["source_code_patch_is_bad"]="$RED 用于源代码的补丁无效, 构建时可能出现错误! "
+    ["dont_ask_questions_without_logs"]="$RED 请复制日志并在 4PDA 提问! $NONE"
+    ["toolchain_error"]="$BLUE 构建工具链时出现错误! $NONE"
+    ["building_toolchain"]="$BLUE 正在构建工具链... $NONE"
+    ["enter_yes_no"]=" 请输入 'yes' 或 'no'"
+    ["toolchain_build_canceled"]="$BLUE 已终止构建工具链! $NONE"
+    ["toolchain_build_started"]="$BLUE 已开始构建工具链... $NONE"
+    ["rebuild_toolchain"]=" 重新构建工具链? "
+    ["checking_installed_themes"]="$BLUE 正在检查已安装的主题... $NONE"
+    ["updating_skins"]="$BLUE 正在更新并应用主题... $NONE"
+    ["updating_source_code"]="$BLUE 正在更新源代码... $NONE"
+    ["revert_classic_skin"]="$BLUE 正在恢复原始主题... $NONE"
+    ["skins_found"]="$BLUE 检测到已安装的主题 $NONE"
+    ["ssh_access_established"]="$YELLOW 已建立 SSH 连接... $NONE"
+    ["ssh_access_not_established"]="$YELLOW 没有建立 SSH 访问, 脚本已完成. $NONE"
+    ["rebooting_router"]="$YELLOW 正在重启路由器并完成脚本! $NONE"
+    ["press_to_proceed"]="$RED 按任意键继续... $NONE"
+    ["skins_screen_select_item"]="${BLUE}请输入菜单项目序号: $NONE"
+    ["white_theme_off"]="$NONE 6. 白色主题              [0.0 MB] [$RED0$off$NONE]"
+    ["white_theme_on"]="$NONE 6. 白色主题              [0.2 MB] [$GREEN0$on$NONE]"
+    ["yellow_theme_off"]="$NONE 5. 黄色主题             [0.0 MB] [$RED0$off$NONE]"
+    ["yellow_theme_on"]="$NONE 5. 黄色主题             [0.2 MB] [$GREEN0$on$NONE]"
+    ["dark_blue_theme_off"]="$NONE 4. 深蓝色主题          [0.0 MB] [$RED0$off$NONE]"
+    ["dark_blue_theme_on"]="$NONE 4. 深蓝色主题          [0.6 MB] [$GREEN0$on$NONE]"
+    ["blue_theme_off"]="$NONE 3. 蓝色主题               [0.0 MB] [$RED0$off$NONE]"
+    ["blue_theme_on"]="$NONE 3. 蓝色主题               [0.4 MB] [$GREEN0$on$NONE]"
+    ["grey_theme_vector_off"]="$NONE 2. 深灰色主题 (vector) [0.0 MB] [$RED0$off$NONE]"
+    ["grey_theme_vector_on"]="$NONE 2. 深灰色主题 (vector) [0.6 MB] [$GREEN0$on$NONE]"
+    ["grey_theme_off"]="$NONE 1. 深灰色主题          [0.0 MB] [$RED0$off$NONE]"
+    ["grey_theme_on"]="$NONE 1. 深灰色主题          [0.6 MB] [$GREEN0$on$NONE]"
+    ["skins_core_off"]="$NONE 0. 主题核心               [0.0 MB] [$RED0$off$NONE]"
+    ["skins_core_on"]="$NONE 0. 主题核心               [0.4 MB] [$GREEN0$on$NONE]"
+    ["available_skins"]="$BLUE 可用的主题列表: $NONE"
+    ["select_module"]=" 请输入模块序号: "
+    ["available_modules"]="$BLUE 可用的模块列表: $NONE"
+    ["skin_full_tp2"]="$BLUE 主题:    $NONE $YELLOW    完整 $NONE"
+    ["skin_full_tp"]="$BLUE 主题:$NONE$YELLOW 完整$NONE"
+    ["skin_original2"]="$BLUE 主题:    $NONE $GREEN    原始 $NONE"
+    ["skin_original"]="$BLUE 主题:$NONE$GREEN 原始$NONE"
+    ["skin_lite_tp2"]="$BLUE 主题:    $NONE $YELLOW    精简 $NONE"
+    ["skin_lite_tp"]="$BLUE 主题:$NONE$YELLOW 精简$NONE"
+    ["installing_software"]="$YELLOW 正在安装软件, $NONE"
+    ["from_your_linux_account"]="$YELLOW 请输入 Linux 用户的密码. $NONE"
+    ["selected_config"]="$RED 已选择 ${CONFIGN[$yn]} $NONE"
+    ["select_existed_config"]="$RED 请选择一个存在的配置: $NONE"
+    ["select_config"]=" 输入配置序号: "
+    ["configs_to_choose"]="$BLUE 可用的路由器配置列表: $NONE"
+    ["xrmwrt_patch_ok"]="$BLUE XRMWRT 补丁:$NONE$GREEN  正常 $NONE"
+    ["source_code_not_found"]="$BLUE 源代码:$NONE$YELLOW     未找到 $NONE"
+    ["source_code_ok"]="$BLUE 源代码:$NONE$YELLOW       $GITCOMMIT $NONE"
+    ["directories_not_found"]="$BLUE 目录:$NONE$YELLOW     未找到 $NONE"
+    ["directories_ok"]="$BLUE 目录:$NONE$GREEN         正常 $NONE"
+    ["dependencies_ok"]="$BLUE 依赖:$NONE$GREEN         正常$NONE"
+    ["no_internet_connection"]="$RED 没有找到互联网连接. 接下来的工作无法进行! $NONE"
+    ["config_ok"]="$BLUE 配置:$NONE$GREEN         正常 $NONE"
+    ["slow_connection"]="互联网连接非常缓慢"
+    ["scripts_ok"]="$BLUE 脚本:$NONE$GREEN         正常 $NONE"
+    ["editor_warning_msg"]="$RED 请注意, 要禁用一个参数, 在一行前面加上 #, 反之亦然...$NONE"
+    ["autoeditor_bottom2"]="$NONE (F)常见问题 		(W)下一页 	(Q)退出 $NONE\n\n${BLUE} 请输入菜单序号: $NONE"
+    ["autoeditor_bottom1"]="$NONE (F)常见问题		(W)下一页 	(O)penSSL	(Q)退出 $NONE\n\n${BLUE} 请输入菜单序号: $NONE"
+    ["autoeditor_title"]="$BLUE 可用的配置参数列表:$NONE\n-------------------------------------------------------------------------------"
+    ["faq_screen_menu3"]="$YELLOW 恢复所有改动            (S) - 恢复一个原始备份.$NONE"
+    ["faq_screen_menu2"]="$YELLOW 刷入 EEPROM 补丁        (6) - 仅应用一次.$NONE"
+    ["please_enter_number_of_desired_language"]="$NONE-------------------------------------------------------------------------------$RED
+ 请输入菜单项目序号: "
+    ["list_of_available_languages"]="$BLUE 可用的界面语言列表: $NONE
+$NONE-------------------------------------------------------------------------------"
+    ["entware_module_header"]="$BLUE 此模块允许你在没有外部存储的情况下启用 Entware. $NONE
+$BLUE 此模块需要一个已经安装了 Entware 的路由器. $NONE
+$RED 固件压缩比率为 5.
+ 即 30Mb 的 Entware 会使固件增加 6Mb. $NONE"
+    ["tor_privoxy_module_header"]="$BLUE 此模块添加 TOR&PRIVOXY&DNSCRYPT 到源代码. $NONE
+$RED 请注意此模块需要特定版本的源代码!
+ 如果你应用模块, 固件版本将会改变! $NONE
+$BLUE 安装之后你可以通过修改配置文件来选择你需要的软件. $NONE"
+    ["you_dont_have_to_change_opened_file"]="$RED 你不需要修改稍后打开的文件.
+ define - 启用, undef - 禁用.$NONE"
+    ["router_will_be_available_on_next_address_dont_forget_turn_on_ssh"]="$BLUE 可以从 192.168.1.1 访问路由器 (重启后),
+ 用户名是 'admin', 密码是 'admin', WiFi 名称是 'ASUS',
+ WiFi 默认密码是 '1234567890'.
+ 请不要忘记开启 SSH 以用于以后的固件升级.
+ 注意, 之前的路由器设置没有改变... $NONE"
+    ["uboot_screen_menu_other_routers"]="  请输入菜单序号:
+  (1) 刷入/更新 U-Boot
+  (2) 从源代码构建 U-Boot
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["uboot_screen_menu_mi_mini"]="  请输入菜单序号:
+  (1) 刷入/更新 U-Boot
+  (2) 从源代码构建 U-Boot
+  (3) 恢复原始 U-Boot
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["uboot_screen_menu_mi_3"]="  请输入菜单序号:
+  (1) 刷入/更新 U-Boot
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["your_firmware_destroyed_in_safety_precautions"]="$RED 因为安全原因固件已被销毁!
+ 更改配置然后再构建一次.$NONE"
+    ["restore_backup_warning"]="$RED 警告! $NONE
+$BLUE 如果出现了问题, 不要重启路由器并再刷入一次直到成功. $NONE
+$BLUE 回滚之后所有路由器设置将会恢复到创建备份时的状态. $NONE
+
+"
+    ["faq_screen_menu"]="$YELLOW 请选择一个项目. 如果你不知道该做什么,
+ 从上到下选择每一个项目. 风险由你自己承担...
+
+ 更新脚本                (1) - 更新此脚本.
+ 更新源代码              (2) - 更新源代码, 请在步骤3和4之前进行.
+ 构建工具链              (3) - 用于构建工具链, 很少变化.
+ 刷入固件                (4) - 上传固件到路由器.
+ U-Boot                  (5) - 刷入路由器的引导程序.$NONE"
+    ["firmware_uploaded_into_router_do_flashing"]="$BLUE 固件已上传到路由器... $NONE
+$BLUE 正在刷入... $NONE"
+    ["enable_ssh_and_enter_data_from_xiaomi_site_or_xrmwrt_webui"]="$YELLOW 官方固件请到小米官网获取数据,
+ xrmwrt 从 WebUI 获取,
+ 必须在 WebUI 中 启用 SSH 访问. $NONE"
+    ["connection_screen_menu"]="-------------------------------------------------------------------------------
+ 以下参数正确吗?
+  (1) 参数正确
+  (2) 更新参数
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["update_prometheus_menu"]="-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 更新脚本到稳定版本
+  (2) 更新脚本到测试版本
+  (3) 只更新补丁
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 自动编辑器
+  (2) 编辑配置文件
+  (3) 恢复所有改动
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_wt3020"]="-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 自动编辑器
+  (2) 编辑配置文件
+  (3) 恢复所有改动
+  (4) 把 '重置' 按钮替换为 'WPS' [ 可以在 WebUI 中修改 ]
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_mi_mini"]="-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 自动编辑器
+  (2) 编辑配置文件
+  (3) 恢复所有改动
+  (4) 把 '重置' 按钮替换为 'WPS' [ 可以在 WebUI 中修改 ]
+  (5) 启用 WAN 红色 LED [ 可以在 WebUI 中修改 ]
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["firmware_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 更改构建配置
+  (2) 应用主题
+  (3) 构建固件
+  (4) 刷入固件
+  (5) 从档案中选择一个固件
+  (6) 清空固件档案
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["firmware_screen_menu_mi_3"]="-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 更改构建配置
+  (2) 应用主题
+  (3) 构建固件
+  (4) 刷入固件
+  (5) 从档案中选择一个固件
+  (6) 清空固件档案
+  (7) 格式化 RWFS
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["settings_screen_menu"]="
+$BLUE  脚本作者: Freize, Yadoff, Firsthash.
+  简体中文翻译: ysc3839
+  联系: is@freize.net
+  网站: http://prometheus.freize.net/ $NONE
+
+-------------------------------------------------------------------------------
+  请输入菜单序号:
+  (1) 修改路由器配置
+  (2) 删除配置
+  (3) 模块
+  (4) 语言
+  (5) SSH 设置
+  (6) Select a repository
+  (F) 常见问题
+  (Q) 退出
+-------------------------------------------------------------------------------"
+    ["prometheus_header"]="-------------------------------------------------------------------------------$BLUE
+  $NONE$GREEN                               PROMETHEUS $NONE$BLUE
+  $NONE$RED                       脚本版本: $PROMETHEUS2$PROMETHEUS3 $stable $NONE$BLUE
+  Prometheus 是用于维护及更新路由器固件的脚本.
+  路由器配置: $GREEN$CONFIG_FIRMWARE_PRODUCT_ID$BLUE SN: $YELLOW$SSHTOK$BLUE GIT$GITOK$YELLOW$GITCOMMIT$BLUE
+ $ST52$FIRM$SKIN$NONE
+"
+    ["main_screen_menu_mi_mini"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+    (6) EEPROM [ 仅应用一次 ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_mini"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (0) 开启原始固件 SSH 访问 [ 未完全测试 ]
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+    (6) EEPROM [ 仅应用一次 ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_mi_3"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+    (6) EEPROM [ 仅应用一次 ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_3"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (0) 开启原始固件 SSH 访问 [ 未完全测试 ]
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+    (6) EEPROM [ 仅应用一次 ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_mi_nano"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_nano"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (0) 开启原始固件 SSH 访问 [ 未完全测试 ]
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  请输入菜单序号或字母
+  初始操作:
+    (1) 更新脚本
+    (2) 更新源代码
+    (3) 构建工具链
+  最终操作:
+    (4) 固件
+    (5) U-Boot [ 注意! 路由器可能会损坏! ]
+  杂项:
+    (S) 脚本设置
+    (T) 恢复备份
+    (F) 常见问题
+    (Q) 退出
+-------------------------------------------------------------------------------"
+)

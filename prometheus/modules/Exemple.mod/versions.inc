@@ -1,0 +1,3 @@
+version-mod=0.1
+url-mod=http://pm.freize.net/modules/exemple.tar.gz
+# Описание модуля и его основное предназнаение...
