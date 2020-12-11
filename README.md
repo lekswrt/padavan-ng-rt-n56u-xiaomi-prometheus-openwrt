@@ -100,3 +100,5 @@ Script community support: [Russian pda developers board, forum thread](https://4
 
 P.S.
 Original project author is Padavan. Old repository here: [rt-n56u project](https://bitbucket.org/padavan/rt-n56u)
+
+GitHub mirror: https://github.com/CSRedRat/padavan-ng-rt-n56u-xiaomi-prometheus-openwrt
