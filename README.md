@@ -6,6 +6,8 @@ This project aims to improve the rt-n56u and other supported devices on the soft
 This project was created in hope to be useful, but comes without warranty or support. Installing it will probably void your warranty. 
 Contributors of this project are not responsible for what happens next.
 
+![Start page Web UI](prometheus/images/main_web_padavan.png)
+
 ### How do I get set up? ###
 
 * [Get the tools to build the system](https://bitbucket.org/padavan/rt-n56u/wiki/EN/HowToMakeFirmware)
