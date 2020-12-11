@@ -1,0 +1,537 @@
+dictionary=(
+    ["padavan_ng_repository_warning"]="\n $RED Вы выбрали репозиторий padavan-ng(linaro). Код в ядре Linux, имеющий\n отношение к флэш памяти, был переписан и не проходил тщательное тестирование!\n Рекомендуется не использовать данный репозиторий, если в вашем устройстве\n нет режима восстановления в загрузчике!\n $NONE"
+    ["select_the_version_of_the_repository"]="$BLUE Пожалуйста выберите версию репозитория: $NONE"
+    ["cleaning_is_launched"]="$BLUE ВНИМАНИЕ! Для правильной работы требуется очистить исходный код. "
+    ["available_patchs"]="$BLUE Доступны следующие патчи: $NONE"
+    ["select_patch"]=" Выберите номер патча, который вы хотите запустить: "
+    ["patchs_are_absent"]="$RED Патчи отсутствуют! Патчи не поставляются в стандартной сборке скриптов. Возможно, требуется обновить данный модуль для подгрузки патчей с сервера. $NONE"
+    ["patch_has_been_added"]="$GREEN Патч добавлен. $NONE"
+    ["mi3_recovery_confirm"]="$RED Ваш роутер перезагружается в режим recovery. Пожалуйста вставьте USB диск со стоковой прошивкой (miwifi.bin) и нажмите кнопку reset. $NONE"
+    ["please_enter_the_first_mac"]="$BLUE Пожалуйста введите первый MAC адрес или введите NO для генерации. (WAN&WLAN2.4) $NONE"
+    ["please_enter_the_second_mac"]="$BLUE Пожалуйста введите второй MAC адрес или введите NO для генерации. (LAN&WLAN5)$NONE"
+    ["selected_mac"]="$BLUE MAC адрес принят! $NONE"
+    ["select_existed_mac"]="$RED Пожалуйста введите корректный адрес.
+ Например DD:AF:E2:01:2A:65$NONE"
+    ["mac_addresses_selected"]="$BLUE Выбраны следующие адреса:
+ WAN/WLAN 2.4 : $YELLOW$MAC1$BLUE
+ LAN/WLAN 5   : $YELLOW$MAC2$NONE"
+    ["addresses_have_changed"]="$RED MAC адреса успешно изменены. $NONE"
+    ["confirm_the_input_addresses"]="$RED Вы точно хотите сменить MAC? (y/n) $NONE"
+    ["you_want_to_delete_config"]="$RED Точно хотите удалить выбранный конфиг: $GREEN$CONFIG_FIRMWARE_PRODUCT_ID$RED? (y/n) $NONE"
+    ["i_understand_and_agree"]="$RED Все равно прошить? (y/n) $NONE"
+    ["ids_comparison"]="$BLUE Ошибка идентификации, пожалуйста проверьте данные:
+ Firmware: $RED$FFM$BLUE
+ Router:   $RED$rt_hostname$BLUE
+ Config:   $RED$CONFIG_FIRMWARE_PRODUCT_ID$BLUE
+ Данные могут отличаться для стоковой прошивки, это нормально. $NONE"
+    ["source_code_download_error"]="$RED Ошибка загрузки исходного кода! $NONE"
+    ["software_installation_error"]="$RED Ошибка установки зависимостей! $NONE"
+    ["incorrect_configuration"]="$RED Ошибка. Выбран неверный конфиг. Выходим... $NONE"
+    ["tor_patch_not_applied"]="$RED Ошибка. Патч не применился. Выходим... $NONE"
+    ["select_mtd"]=" Выберите номер раздела для установки прошивки "
+    ["available_mtd"]="$BLUE Доступны следующие разделы: $NONE"
+    ["mtd_has_been_selected"]="$GREEN Выбран ${MTDS[$yn]} $NONE"
+    ["insert_usb_flash_drive"]="$RED Теперь вставьте флешку со стоковой прошивкой miwifi.bin в USB и кратковременно нажмите ресет. $NONE"
+    ["error_firmware_1"]="$RED Незамедлительно прошейте стоковую прошивку через WEB интерфейс! Не перезагружайте роутер! $NONE"
+    ["entware_mounted"]="$GREEN Entware уже смонтировано! $NONE"
+    ["error_occured_so_removing_module"]="$RED $error_text...удаляем модуль $NONE"
+    ["cleaning_router_temp_directory"]="$GREEN Очищаем временную папку роутера... $NONE"
+    ["copying_entware_from_router_to_firmware"]="$GREEN Переносим полученный архив из роутера в прошивку... $NONE"
+    ["compressing_router_entware"]="$GREEN Архивируем entware на роутере... $NONE"
+    ["cant_get_access_to_the_router"]="Соединение с роутером не может быть установлено"
+    ["testing_router_connection"]="$GREEN Проверяем соединение с роутером... $NONE"
+    ["router_access_params_is_abc"]="$BLUE Параметры доступа к роутеру: логин=$ROOTWRT, пароль=$PWDR, адрес=$IPWRT $NONE"
+    ["removing_entware_patch"]="$GREEN Удаляем патч Entware... $NONE"
+    ["applying_entware_patch"]="$GREEN Применяем патч Entware... $NONE"
+    ["paragon_ntfs_driver_has_been_added"]="$BLUE Парагоновский драйвер NTFS подключен... $NONE"
+    ["cleaning_sources"]="$BLUE Очищаем... $NONE"
+    ["do_you_want_to_clean_up"]=" Вы желаете очистить? (y/n) "
+    ["cleaning_module_is_launched"]="$BLUE Запущен модуль очистки исходного кода! $RED"
+    ["resetting_module_settings"]="$BLUE Сбрасываем настройки модуля на начальные... $NONE"
+    ["adding_module_to_config_ok"]="$BLUE Добавляем в конфиг$GREEN OK $NONE"
+    ["removing_module_from_config_ok"]="$BLUE Удаляем из конфига$GREEN OK $NONE"
+    ["tor_privoxy_patch_has_been_removed"]="$GREEN Патч TOR&PRIVOXY&DNSCRYPT удален! $NONE"
+    ["moving_module_patch"]="$BLUE Перемещаем патч... $NONE"
+    ["adding_module_update_fix"]="$BLUE Добавляем фикс обновления... $NONE"
+    ["applying_tor_privoxy_patch"]="$BLUE Применяем патч TOR&PRIVOXY&DNSCRYPT... $NONE"
+    ["please_before_module_deletion_update_sources"]="$BLUE Пожалуйста, перед удалением, обновите исходники! $NONE"
+    ["module_has_been_deactivated"]="$GREEN Модуль деактивирован! $NONE"
+    ["preparing_module_patch"]="$BLUE Подготавливаем патч... $NONE"
+    ["module_operation_canceled"]="$GREEN Отменено! $NONE"
+    ["module_already_installed_do_you_want_to_remove"]="$RED Модуль уже установлен. Удалить? (y/n)  $NONE"
+    ["do_you_want_to_install_module"]="$RED Вы желаете установить модуль? (y/n)  $NONE"
+    ["languages_have_been_lost"]="$RED Языковые файлы отсутствуют... $NONE"
+    ["selected_language_is_abc"]="$RED Язык интерфейса: ${CONFIGN[$yn]} $NONE"
+    ["please_select_existed_language"]="$RED Пожалуйста, выберите существующий пункт $NONE"
+    ["cancel_archive_backup"]="$BLUE Q) Отменить $NONE"
+    ["cleaning_update"]="$BLUE Чистим... $NONE"
+    ["decompressing_update"]="$BLUE Разархивируем... $NONE"
+    ["downloading_update"]="$BLUE Загружаем... $NONE"
+    ["activate_item_with_number_or_return_with_q"]="$YELLOW Нажмите цифру для активации и деактивации параметра Q для возврата.$NONE"
+    ["you_can_build_uboot_only_on_x86_machine"]="$YELLOW Собрать U-BOOT можно только на х86 машине.$NONE"
+    ["archive_file_is_absent_please_update_script"]="$RED Архивный файл отсутствует, обновите скрипт$NONE"
+    ["archive_file_is_corrupted_please_update_script"]="$RED Архивный файл поврежден, обновите скрипт$NONE"
+    ["changes_will_be_applied_after_reboot"]="$BLUE Изменения вступят в силу после перезанрузки ... $NONE"
+    ["action_has_been_canceled_because_of_copy_error"]="$RED Действие отменено из-за ошибки копирования. Попробуйте повторить. $NONE"
+    ["do_you_want_to_flash_stock_uboot"]=" Вы желаете прошить стоковый U-Boot? (y/n) "
+    ["uboot_isnt_found"]="$RED U-Boot не найден! $NONE"
+    ["your_uboot_has_actual_version"]="$GREEN Ваш U-Boot актуален! $NONE"
+    ["update_canceled"]="$BLUE Отмена обновления. $NONE"
+    ["dont_reboot_your_router_if_you_have_stock_firmware"]="$BLUE Не перезагружайте роутер если прошивка все еще стоковая... $NONE $BLUE"
+    ["dont_reboot_your_router_until_bootloader_will_be_flashed_successfully"]="$RED НЕ ПЕРЕЗАГРУЖАЙТЕ$BLUE роутер пока u-boot не прошьется успешно!!! $NONE"
+    ["newer_bootloader_with_version_abc_has_been_found"]="$RED Обнаруженн новый загрузчик: $uboot_new_version $NONE $BLUE"
+    ["current_bootloader_version_is_abc"]="$BLUE Текущий загрузчик в роутере: $uboot_old_version $NONE"
+    ["preparing_uboot"]="$BLUE Подготавливаем U-Boot... $NONE"
+    ["do_you_want_to_flash_uboot"]=" Вы желаете прошить U-Boot? (y/n) "
+    ["uboot_has_been_uploaded_to_the_router"]="$BLUE uboot.bin загружен на роутер... $NONE"
+    ["uboot_assembled"]="$GREEN U-BOOT собран! $NONE"
+    ["configs_have_been_lost"]="$RED Упс! Конфиги потерялись... $NONE"
+    ["dumping_partition_to_path_abc"]="$BLUE Дампим /dev/$mtd в $SNAPSHOT  $NONE"
+    ["sources_have_been_patched"]="$BLUE Патч,$NONE$GREEN OK $NONE"
+    ["please_try_again"]="$BLUE Повторите попытку $NONE"
+    ["unfortunately_something_goes_wrong"]="$RED К сожалению что-то пошло не так $NONE"
+    ["access_parameters_for_ssh_are_abc"]="$BLUE Параметры доступа:  $RED IP: $GREEN$IP   $RED username:$GREEN root   $RED password: $GREEN$password $NONE"
+    ["congratulations_you_have_obtained_ssh_access"]="$GREEN Поздравляем!!! $BLUEВы получили доступ по SSH$NONE"
+    ["checking_ssh_access"]="$BLUE Проверяем доступ по SSH$NONE"
+    ["launching_ssh"]="$BLUE Запускаем SSH $NONE"
+    ["telnet_has_been_launched"]="$GREEN telnet запущен $NONE"
+    ["launch_error_is_abc"]="$RED Ошибка запуска: $BLUE$result$NONE"
+    ["launching_telnet_on_router"]="$BLUE Запускаем telnet на роутере $NONE"
+    ["your_ssh_telnet_password_is_abc"]="$BLUE Пароль для доступа по ssh/telnet $GREEN$password$NONE"
+    ["founded_router_version_is_abc"]="$BLUE Найден роутер: $GREEN$platform $BLUE($version $revision) SN=$GREEN$serial $BLUE($memory) $NONE"
+    ["checkpoint_has_been_created"]="$NONE$GREEN Чекпоинт создан $NONE"
+    ["do_you_want_to_create_current_state_checkpoint"]=" Создать чекпоинт для восстановления к текущему состоянию? (y/n) "
+    ["backup_has_been_saved_to_selected_directory"]="$GREEN Бэкап сохранён в MTD_BACKUP_$CONFIG_FIRMWARE_PRODUCT_ID/$SNAPSHOT $NONE$RED"
+    ["something_goes_wrong_unable_to_create_backup"]="$RED Что-то пошло не так, не удалось создать бэккап! $NONE"
+    ["preparing_partitions_backup"]="$BLUE Подготавливаем бэккап... $NONE"
+    ["do_you_want_create_backup_of_all_partitions"]=" Создать бэккап всех разделов? (y/n) "
+    ["checking_eeprom"]="$BLUE Проверяем EEPROM... $NONE"
+    ["eeprom_already_has_been_patched_there_is_no_need_to_do_it_again"]="$GREEN EEPROM уже был пропатчен! Не надо повторять снова. $NONE"
+    ["keeping_eeprom_in_its_original_state"]="$BLUE Оставляем как есть... $NONE"
+    ["uploading_eeprom"]="$BLUE Загружаем EEPROM... $NONE"
+    ["do_you_want_to_flash_eeprom"]=" Вы желаете прошить EEPROM? (y/n) "
+    ["do_you_want_to_do_it_now"]="$BLUE"
+    ["stock_eeprom_has_been_found_its_recommended_apply_patch"]="$RED Обнаружен заводской EEPROM, рекомендуется накатить патч!  $NONE"
+    ["file_doesnt_exist_or_empty"]="$RED Файл не существует или пуст!!! $NONE"
+    ["in_every_unknown_situation_press_3"]="$YELLOW В любой запутанной ситуации жмите 3.$NONE"
+    ["in_every_unknown_situation_press_1"]="$YELLOW В любой запутанной ситуации жмите 1.$NONE"
+    ["something_has_been_deleted"]="$YELLOW Удалено! $NONE"
+    ["action_has_been_canceled"]="$BLUE Действие отменено. $NONE"
+    ["router_has_been_flashed_successfully"]="$GREEN Роутер прошит... $NONE $BLUE"
+    ["flashing_firmware"]="$BLUE Прошиваем... $NONE"
+    ["detecting_partition"]="$BLUE Определяем раздел... $NONE"
+    ["checking_checksum"]="$BLUE Проверяем Checksum... $NONE"
+    ["error_occured_during_firmware_uploading"]="$RED Ошибка при загрузке прошивки... $NONE"
+    ["rebooting_router_wait_20_seconds"]="$BLUE Перезагружаем, ждите 20 секунд... $NONE"
+    ["rebooting_router_wait_50_seconds"]="$BLUE Перезагружаем, ждите 50 секунд... $NONE"
+    ["unsupported_router"]="$RED Роутер не поддерживается! $NONE"
+    ["do_you_want_reboot_router"]=" Перезагрузить роутер? (y/n) "
+    ["flashing_completed"]="$BLUE Прошивка завершена... "
+    ["resetting_sources_to_initial_state"]="$BLUE Полный сброс исходного кода... $NONE"
+    ["do_you_want_restore_sources"]=" Попробовать восстановить исходники? (y/n) "
+    ["looks_like_error_happened_in_middle_of_compilation"]="$BLUE Похоже, при компиляции произошла ошибка! $NONE"
+    ["your_firmware_fits_allowed_size"]="$GREEN Размер $FFM = $firmware_size B и соответствует допустимому $max_allowed_size B $NONE"
+    ["your_firmware_exceeds_allowed_size"]="$RED Размер $FFM = $firmware_size B и превышает допустимый $max_allowed_size B $NONE"
+    ["building_firmware"]="$BLUE Собираем firmware... $NONE"
+    ["do_you_want_try_fast_build"]=" Попробовать ускореную сборку? (экспериментально) (y/n/q) "
+    ["fast_build_available_only_for_same_source_version"]="$BLUE Быстрая сборка доступна только для этой же версии кода.$NONE $RED"
+    ["you_already_have_build_this_firmware"]="$BLUE Вы уже собирали прошивку... $NONE"
+    ["modules_are_absent"]="$RED Модули отсутствуют! $NONE"
+    ["module_has_been_selected"]="$GREEN Выбран ${MODS[$yn]} $NONE"
+    ["selected_module_doesnt_support_updates"]="$RED $line не поддерживает обновление... $NONE"
+    ["getting_update_for_selected_module"]="$BLUE Загружаем обновление для $line ... $NONE"
+    ["go_backward_key"]="$BLUE Q)  Назад $NONE"
+    ["update_modules_key"]="$BLUE U)  Обновить $NONE"
+    ["script_will_be_restarted"]="$RED Cкрипт будет перезапущен. $NONE"
+    ["ssh_connection_cant_be_established"]="$RED Нет соединения по SSH! $NONE"
+    ["uploading_storage"]="$BLUE Загружаем Storage... $NONE"
+    ["uploading_firmware"]="$BLUE Загружаем Firmware... $NONE"
+    ["uploading_factory"]="$BLUE Загружаем Factory... $NONE"
+    ["flashing_backup"]="$BLUE Прошиваем... $NONE"
+    ["done_now_you_must_reboot_your_router_manually"]="$BLUE Сделано! Теперь перезагрузите роутер... $NONE"
+    ["should_not_reboot_your_router_until_uboot_flashed_successfully"]="$RED Настоятельно рекоммендуется повторить попытку не перезагружая роутер! $NONE"
+    ["script_is_stopping_because_of_possibility_router_brick"]="$RED Для предотвращения повреждения роутера, скрипт останавливается! $NONE"
+    ["uploading_uboot"]="$BLUE Загружаем U-BOOT... $NONE"
+    ["uploading_bootenv"]="$BLUE Загружаем BootEnv... $NONE"
+    ["preparing_bootenv"]="$BLUE Подготавливаем BootEnv... $NONE"
+    ["do_you_want_restore_uboot_from_backup_or_remain_one_unchanged"]=" Вы желаете восстановить U-BOOT из бэкапа (y), или оставить без изменений (n) "
+    ["do_you_want_restore_firmware_using_selected_file"]=" Вы желаете восстановить прошивку используя файл ${BACKUP[$I]}? "
+    ["please_enter_existed_backup"]="$RED Пожалуйста введите сушествующий бэкап. $NONE"
+    ["restore_backup_canceled"]="$BLUE Отмена... $NONE"
+    ["select_backup_that_you_want_to_flash"]=" Выберите бэкап который вы хотите прошить "
+    ["restore_backup_quit"]="$BLUE Q) Отменить $NONE"
+    ["this_script_works_only_with_xrmwrt_firmware"]="$BLUE Данный скрипт работает только с прошивкой XRMWRT $NONE"
+    ["backups_not_found"]="$RED Бэкапы не найдены... $NONE"
+    ["starting_tftp_server_enter_password"]="$YELLOW Запускаем tftp server, требуется ввести пароль от $NONE"
+    ["firmware_size_cant_exceed_n_bytes"]="$YELLOW Размер прошивки не может превышать $RED $mtd_max_size $YELLOW байт $NONE"
+    ["please_enter_yes_or_no"]="Пожалуйста введите yes или no."
+    ["do_you_want_flash_anyway"]=" Все равно прошить заново? (y/n) "
+    ["router_flashed_with_exactly_same_build"]="$RED Роутер уже прошит именно этим билдом $FFM... $NONE $BLUE"
+    ["you_dont_have_firmware"]="$BLUE У вас нет прошивки, её сначала надо собрать. $NONE"
+    ["enter_existing_file"]="$RED Пожалуйста введите сушествующий файл. $NONE"
+    ["canceling"]="$BLUE Отмена... $NONE"
+    ["select_build_that_you_want_to_flash"]=" Выберите билд который вы хотите прошить "
+    ["creating_directories"]="$BLUE Создаем каталоги... $NONE"
+    ["better_use_stable_build"]="$YELLOW Лучше использовать стабильный билд.$NONE"
+    ["remote_server_doesnt_respond"]="$RED Удаленный сервер не отвечает, дальнейшая работа невозможна! $NONE"
+    ["server_connection_is_slow"]="Соединение с сервером медленное"
+    ["checking_connection"]="$BLUE Проверяем соединение... $NONE"
+    ["command_not_found"]="$RED Нет такой команды! $NONE"
+    ["in_capital_letters_please"]="$YELLOW С большой буквы, пожалуйста! $NONE"
+    ["enter_router_password"]="$BLUE  Введите пароль от роутера: $NONE"
+    ["enter_router_login"]="$BLUE  Введите логин от роутера: $NONE"
+    ["router_ip_examples"]="$BLUE  Пример 192.168.1.1 или freize.net:22 $NONE"
+    ["enter_router_ip2"]="$BLUE  Введите IP роутера: $NONE"
+    ["enter_data"]="$BLUE  Введите данные $NONE"
+    ["trying_again"]="$BLUE Пытаемся снова ... $NONE"
+    ["telnet_access_has_been_granted"]="$BLUE Доступ по TELNET предоставлен... $NONE"
+    ["ssh_access_has_been_granted"]="$BLUE Доступ по SSH предоставлен... $NONE"
+    ["ssh_access_error"]="$RED Ошибка доступа SSH, перепроверьте... $NONE"
+    ["obtained_telnet_connection"]="$BLUE Получено подключение по telnet $NONE"
+    ["connected_to_devicex"]="$YELLOW Подключено к $deviceX $NONE"
+    ["connected_to_unknown_device_running_openwrt"]="$YELLOW Подключено к неизвестному устройству на OpenWrt $NONE"
+    ["connected_to_config_firmware_product_id"]="$YELLOW Подключено к $CONFIG_FIRMWARE_PRODUCT_ID $NONE"
+    ["connected_to_mi_mini"]="$GREEN Подключено к MI роутеру$NONE"
+    ["login_n_pass_couldnt_be_empty"]="$RED Логин и Пароль не могут быть пустыми! $NONE"
+    ["you_entered_wrong_routerip_or_one_not_connected"]="$RED Возможно вы ошиблись с IP адресом роутера или он не подключен $NONE"
+    ["maybe_ssh_connection_forbidden"]="$RED Возможно запрещено подключение по SSH, проверьте в настройках роутера! $NONE"
+    ["invalid_login_or_password"]="$RED Логин или пароль неверен! $NONE"
+    ["connection_settings"]="$BLUE Параметры подключения $NONE"
+    ["sources_error2"]="$BLUE Исходный код:$NONE$RED ERROR $NONE"
+    ["sources_error"]="$BLUE Исходный код,$NONE$RED ERROR $NONE"
+    ["checking_loaded_files"]="$BLUE Проверяем загрузку... $NONE"
+    ["loading_sources"]="$BLUE Загружаем исходный код... $NONE"
+    ["you_want_to_continue"]=" Продолжить? (y/n) "
+    ["unrecognized_router"]="$RED Неопознанная версия роутера $GREEN$platform $BLUE($version $revision) SN=$GREEN$serial $BLUE($memory) $NONE"
+    ["getting_router_info"]="$BLUE Получаем информацию о роутере $NONE"
+    ["init_router"]="$BLUE Инициализируем роутер (может занять до 30сек) $NONE"
+    ["wrong_pass_or_ipaddr"]="$RED Возможно введен неверный пароль или IP адрес $NONE"
+    ["logging_to_webui"]="$BLUE Логинимся в web админку $NONE"
+    ["enter_pass_from_linux_account"]="$YELLOW Требуется ввести пароль от вашей учетной записи в Linux. $NONE"
+    ["no_connection_with_router"]="$RED Нет соединения с роутером $NONE"
+    ["connecting_to_router"]="$BLUE Подключаемся к роутеру по адресу $IP $NONE"
+    ["bad_pass"]="$RED Недопустимый пароль. Введите другой $NONE"
+    ["webui_pass"]="$BLUE Пароль от WEB админки: $NONE"
+    ["enter_router_ip"]="$BLUE Введите IP роутера (192.168.31.1 по-умолчанию): $NONE"
+    ["you_want_to_continue_task"]=" Продолжить операцию? (y/n) "
+    ["source_code_patch_is_good"]="$GREEN Патч исходного кода актуален, сборка безопасна. $NONE"
+    ["source_code_patch_is_bad"]="$RED Патч исходного кода НЕ СООТВЕТСТВУЕТ, сборка может завершиться с ошибкой! "
+    ["dont_ask_questions_without_logs"]="$RED Без логов выше вопросы на форуме не задавать! $NONE"
+    ["toolchain_error"]="$BLUE В процессе сборки Toolchain произошла ошибка! $NONE"
+    ["building_toolchain"]="$BLUE Собираем toolchain... $NONE"
+    ["enter_yes_no"]=" Пожалуйста введите yes или no."
+    ["toolchain_build_canceled"]="$BLUE Сборка Toolchain отменена! $NONE"
+    ["toolchain_build_started"]="$BLUE Сборка Toolchain запущена... $NONE"
+    ["rebuild_toolchain"]=" Пересобрать Toolchain? "
+    ["checking_installed_themes"]="$BLUE Проверяем установленные темы... $NONE"
+    ["updating_skins"]="$BLUE Восстанавливаем и обновляем скины... $NONE"
+    ["updating_source_code"]="$BLUE Обновляем исходный код... $NONE"
+    ["revert_classic_skin"]="$BLUE Возвращаем класический скин... $NONE"
+    ["skins_found"]="$BLUE Найдены скины $NONE"
+    ["ssh_access_established"]="$YELLOW Доступ по SSH предоставлен... $NONE"
+    ["ssh_access_not_established"]="$YELLOW Доступ по SSH не получен, просто завершаем скрипт... $NONE"
+    ["rebooting_router"]="$YELLOW Перезагружаем роутер и завершаем скрипт! $NONE"
+    ["press_to_proceed"]="$RED Для продолжения нажмите любую кнопку... $NONE"
+    ["skins_screen_select_item"]="$BLUEПожалуйста введите номер желаемого пункта $NONE"
+    ["white_theme_off"]="$NONE 6. Белая тема               [0.0 MB] [$RED0$off$NONE]"
+    ["white_theme_on"]="$NONE 6. Белая тема               [0.2 MB] [$GREEN0$on$NONE]"
+    ["yellow_theme_off"]="$NONE 5. Желтая тема              [0.0 MB] [$RED0$off$NONE]"
+    ["yellow_theme_on"]="$NONE 5. Желтая тема              [0.2 MB] [$GREEN0$on$NONE]"
+    ["dark_blue_theme_off"]="$NONE 4. Синяя тема (темная)      [0.0 MB] [$RED0$off$NONE]"
+    ["dark_blue_theme_on"]="$NONE 4. Синяя тема (темная)      [0.6 MB] [$GREEN0$on$NONE]"
+    ["blue_theme_off"]="$NONE 3. Голубая тема             [0.0 MB] [$RED0$off$NONE]"
+    ["blue_theme_on"]="$NONE 3. Голубая тема             [0.4 MB] [$GREEN0$on$NONE]"
+    ["grey_theme_vector_off"]="$NONE 2. Серая тема (вектор)      [0.0 MB] [$RED0$off$NONE]"
+    ["grey_theme_vector_on"]="$NONE 2. Серая тема (вектор)      [0.6 MB] [$GREEN0$on$NONE]"
+    ["grey_theme_off"]="$NONE 1. Серая тема               [0.0 MB] [$RED0$off$NONE]"
+    ["grey_theme_on"]="$NONE 1. Серая тема               [0.6 MB] [$GREEN0$on$NONE]"
+    ["skins_core_off"]="$NONE 0. Основа скинов            [0.0 MB] [$RED0$off$NONE]"
+    ["skins_core_on"]="$NONE 0. Основа скинов            [0.4 MB] [$GREEN0$on$NONE]"
+    ["available_skins"]="$BLUE Следующие скины подключены:$NONE"
+    ["select_module"]=" Выберите номер модуля, который вы хотите запустить: "
+    ["available_modules"]="$BLUE Доступны следующие модули: $NONE"
+    ["skin_full_tp2"]="$BLUE Скин:    $NONE $YELLOW    FULL-TP $NONE"
+    ["skin_full_tp"]="$BLUE Скин:$NONE$YELLOW FULL-TP$NONE"
+    ["skin_original2"]="$BLUE Скин:    $NONE $GREEN    ORIGINAL $NONE"
+    ["skin_original"]="$BLUE Скин:$NONE$GREEN ORIGINAL$NONE"
+    ["skin_lite_tp2"]="$BLUE Скин:    $NONE $YELLOW    LITE-TP $NONE"
+    ["skin_lite_tp"]="$BLUE Скин:$NONE$YELLOW LITE-TP$NONE"
+    ["installing_software"]="$YELLOW Устанавливаем ПО, требуется ввести пароль от $NONE"
+    ["from_your_linux_account"]="$YELLOW вашей учетной записи в Linux. $NONE"
+    ["selected_config"]="$RED Выбран ${CONFIGN[$yn]} $NONE"
+    ["select_existed_config"]="$RED Пожалуйста введите сушествующий $NONE"
+    ["select_config"]=" Выберите номер конфига который вы хотите использовать "
+    ["configs_to_choose"]="$BLUE Доступны следующие файлы конфигов для сборки: $NONE"
+    ["xrmwrt_patch_ok"]="$BLUE Патч XRMWRT: $NONE$GREEN OK $NONE"
+    ["source_code_not_found"]="$BLUE Исходный код:$NONE$YELLOW ОТСУТСТВУЕТ $NONE"
+    ["source_code_ok"]="$BLUE Исходный код:$NONE$YELLOW $GITCOMMIT $NONE"
+    ["directories_not_found"]="$BLUE Каталоги:$NONE$YELLOW     ОТСУТСТВУЮТ $NONE"
+    ["directories_ok"]="$BLUE Каталоги:$NONE$GREEN     OK $NONE"
+    ["dependencies_ok"]="$BLUE Зависимости: $NONE$GREEN OK$NONE"
+    ["no_internet_connection"]="$RED Нет соединения с интернетом, дальнейшая работа невозможна! $NONE"
+    ["config_ok"]="$BLUE Конфиг:$NONE$GREEN       OK $NONE"
+    ["slow_connection"]="Соединение с интернетом медленное"
+    ["scripts_ok"]="$BLUE Скрипты:$NONE$GREEN      OK $NONE"
+    ["editor_warning_msg"]="$RED Измените открывшийся файл, решетка перед\n параметром его выключает...$NONE"
+    ["autoeditor_bottom2"]="$NONE (F)AQ (Q)uit $NONE\n\n$BLUE Пожалуйста введите номер желаемого пункта $NONE"
+    ["autoeditor_bottom1"]="$NONE (F)AQ (Q)uit Follo(W)ing (O)penSSL $NONE\n\n$BLUE Пожалуйста введите номер желаемого пункта $NONE"
+    ["autoeditor_title"]="$BLUE В конфиге действуют следующие параметры:$NONE\n--------------------------------------------------------------------"
+    ["faq_screen_menu3"]="$YELLOW Откатить все изменения       (S) - восстанавливает бэккап стока.$NONE"
+    ["faq_screen_menu2"]="$YELLOW Прошить патч EEPROM          (6) - делается один раз в жизни.$NONE"
+    ["please_enter_number_of_desired_language"]="$NONE-------------------------------------------------------------------------------$RED
+ Пожалуйста, введите номер желаемого пункта "
+    ["list_of_available_languages"]="$BLUE Доступны следующие языки интерфейса: $NONE
+$NONE-------------------------------------------------------------------------------"
+    ["entware_module_header"]="$BLUE Данный модуль дает возможность заупускать Entware без внешнего накопителя. $NONE
+$BLUE Для работы модуля требуется подключенный роутер с настроенным Entware. $NONE
+$RED В прошивке применяется 5 кратное сжатие.
+ Т.е. 30Мб Entware добавят 6Мб к прошивке. $NONE"
+    ["tor_privoxy_module_header"]="$BLUE Модуль добавления TOR&PRIVOXY&DNSCRYPT в исходный код прошивки запущен! $NONE
+$RED Обратите внимание, что модуль требует определенной версии прошивки!
+ После применения, версия прошивки будет изменена! $NONE
+$BLUE После установки вы можете выбрать, какое программное обеспечение вы хотите включить, отредактировав файл конфигурации. $NONE"
+    ["you_dont_have_to_change_opened_file"]="$RED Открывшийся файл можно не менять.
+ define - активно, undef - пассивно.$NONE"
+    ["router_will_be_available_on_next_address_dont_forget_turn_on_ssh"]="$BLUE Роутер будет доступен (после перезагрузки) по адресу 192.168.1.1,
+ логин - admin, пароль - admin; WiFi сеть - ASUS,
+ пароль по умолчанию - 1234567890.
+ Не забудьте включить доступ по SSH для обновлений прошивки.
+ Настройки при перепрошивке не сбрасываются... $NONE"
+    ["uboot_screen_menu_other_routers"]="  Пожалуйста введите номер желаемого пункта:
+  Установить/обновить U-BOOT   (1)
+  Собрать U-BOOT из исходников (2)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["uboot_screen_menu_mi_mini"]="  Пожалуйста введите номер желаемого пункта:
+  Установить/обновить U-BOOT   (1)
+  Собрать U-BOOT из исходников (2)
+  Откатить U-BOOT на стоковый  (3)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["uboot_screen_menu_mi_3"]="  Пожалуйста введите номер желаемого пункта:
+  Установить/обновить U-BOOT   (1)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["your_firmware_destroyed_in_safety_precautions"]="$RED Ваша прошивка уничтожена в целях безопасности!
+ Измените конфигурацию и пересоберите ее.$NONE"
+    ["restore_backup_warning"]="$RED Предупреждение! $NONE
+$BLUE Если что-то пойдет не так, не спешите перезагружать роутер, повторяйте попытки пока не прошьется без ошибок. $NONE
+$BLUE После отката Роутер и его настройки вернутся в то состояние перед которым был сделан бэкап. $NONE
+
+"
+    ["faq_screen_menu"]="$YELLOW Пожалуйста, выберите нужный пункт. Если не знаете какой, нажимайте
+ все подряд, сверху и донизу. Только перекреститься не забудьте...
+
+ Обновить скрипты             (1) - обновит скрипт, но сбросит настройки.
+ Обновить исходный код        (2) - нужен для обнов., делать перед 3 и 4.
+ Собрать Toolchain            (3) - нужен для обнов., раз в месяц не чаще.
+ Прошить Firmware             (4) - заливает прошивку в роутер.
+ U-Boot                       (5) - загрузочный сектор.$NONE"
+    ["firmware_uploaded_into_router_do_flashing"]="$BLUE Прошивка загружена на роутер... $NONE
+$BLUE Прошиваем... $NONE
+$BLUE Роутер будет доступен (после перезагрузки) по адресу 192.168.1.1,
+ логин - admin, пароль - admin; WiFi сеть - ASUS,
+ пароль по умолчанию - 1234567890.
+ Не забудьте включить доступ по SSH для обновлений прошивки.
+ Настройки при перепрошивке не сбрасываются... $NONE"
+    ["enable_ssh_and_enter_data_from_xiaomi_site_or_xrmwrt_webui"]="$YELLOW Для заводской прошивки введите данные с сайта xiaomi, а для xrmwrt
+ укажите логин и пароль от веб интерфейса, предварительно включив
+ доступ по SSH в админке. $NONE"
+    ["connection_screen_menu"]="-------------------------------------------------------------------------------
+ Данные параметры верны?
+ Введите ответ:
+ Данные верны    (1)
+ Обновить данные (2)
+                 (F)AQ
+                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["update_prometheus_menu"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Обновить до стабильного      (1)
+  Обновить до тестового        (2)
+  Обновить только патч         (3)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Автоматический редактор      (1)
+  Редактировать config в cm    (2)
+  Сбросить все правки          (3)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_wt3020"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Автоматический редактор      (1)
+  Редактировать config в cm    (2)
+  Сбросить все правки          (3)
+  Заменить кнопку Reset на WPS (4) [ Программируется ]
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["config_screen_menu_mi_mini"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Автоматический редактор      (1)
+  Редактировать config в mc    (2)
+  Сбросить все правки          (3)
+  Заменить кнопку Reset на WPS (4)
+  Включить RED LED для WAN     (5) [ Программируется ]
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["firmware_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Изменить config сборки       (1)
+  Применить скины              (2)
+  Собрать Firmware             (3)
+  Прошить Firmware             (4)
+  Выбрать из архива прошивок   (5)
+  Очистить архив прошивок      (6)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["firmware_screen_menu_mi_3"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Изменить config сборки       (1)
+  Применить скины              (2)
+  Собрать Firmware             (3)
+  Прошить Firmware             (4)
+  Выбрать из архива прошивок   (5)
+  Очистить архив прошивок      (6)
+  Форматировать RWFS           (7)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["settings_screen_menu"]="
+$BLUE  Авторы скрипта: Freize, Yadoff, Firsthash.
+  Контакты: is@freize.net
+  Сайт: http://prometheus.freize.net/ $NONE
+
+-------------------------------------------------------------------------------
+  Пожалуйста введите номер желаемого пункта:
+  Выбрать конфиг роутера       (1)
+  Удалить конфиг роутера       (2)
+  Активировать модули          (3)
+  Выбрать язык                 (4)
+  Изменить настройки SSH       (5)
+  Выбрать репозиторий          (6)
+                               (F)AQ
+                               (Q)uit
+-------------------------------------------------------------------------------"
+    ["prometheus_header"]="-------------------------------------------------------------------------------$BLUE
+  $NONE$GREEN                          PROMETHEUS $NONE$BLUE
+  $NONE$RED                 Версия скрипта: $PROMETHEUS2$PROMETHEUS3 $stable $NONE$BLUE
+  Prometheus - пакет скриптов по обслуживанию и прошивке роутера.
+  Конфиг роутера: $GREEN$CONFIG_FIRMWARE_PRODUCT_ID$BLUE SN: $YELLOW$SSHTOK$BLUE GIT$GITOK$YELLOW$GITCOMMIT$BLUE
+ $ST52$FIRM$SKIN$NONE
+"
+    ["main_screen_menu_mi_mini"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    EEPROM                       (6)  [      Делается 1 раз и навсегда       ]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_mini"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Хак SSH стоковой прошивки    (0)  [      Экспериментальная функция       ]
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    EEPROM                       (6)  [      Делается 1 раз и навсегда       ]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_mi_3"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    EEPROM                       (6)  [      Делается 1 раз и навсегда       ]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_3"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Хак SSH стоковой прошивки    (0)  [      Экспериментальная функция       ]
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    EEPROM                       (6)  [      Делается 1 раз и навсегда       ]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_mi_nano"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_ssh_mi_nano"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Хак SSH стоковой прошивки    (0)  [      Экспериментальная функция       ]
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+    ["main_screen_menu_other_routers"]="-------------------------------------------------------------------------------
+  Пожалуйста введите номер или букву желаемого пункта.
+  Подготовка:
+    Обновить скрипты             (1)
+    Обновить исходный код        (2)
+    Собрать Toolchain            (3)
+  Сборка и установка:
+    Firmware                     (4)
+    U-Boot                       (5)  [ВНИМАНИЕ! Роутер может быть повреждён!]
+    Настройки скрипта            (S)ettings
+    Восстановить бэкап          s(T)ok
+                                 (F)AQ
+                                 (Q)uit
+-------------------------------------------------------------------------------"
+)

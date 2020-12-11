@@ -26,6 +26,8 @@ chmod +x start.sh
 ./start.sh
 ```
 
+![Start menu Prometheus](prometheus/images/prometheus_menu_padavan.png)
+
 **Features:**
 * Auto-install build requirements on start
 * Build toolchain (build tools for build router firmware from Linux source)
@@ -91,6 +93,12 @@ Hardware device support:
 * **ZyXEL Keenetic**: 4g3, extra, giga3, lite2, lite3, omni, omni2, ultra2, viva
 * NEXX WT3020 (A,H,F), Belkin N750 DB, Samsung CY-SWR1100
 * And other, see full model list in script menu.
+
+![Router manufacturer](prometheus/images/router_manafacturer.png)
+
+After enter **2**:
+
+![Xiaomi models](prometheus/images/xiaomi_device_models.png)
 
 Script community support: [Russian pda developers board, forum thread](https://4pda.ru/forum/index.php?showtopic=714487)
 
